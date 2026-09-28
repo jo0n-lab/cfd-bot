@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+"""Add bot/status flags while forwarding existing ofps modes unchanged."""
+import os
+import subprocess
+import sys
+import time
+import math
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+args = sys.argv[1:]
+saved_legacy = Path.home() / '.local/bin/ofps-legacy'
+default_legacy = saved_legacy if saved_legacy.exists() else Path.home() / '.local/bin/ofps'
+legacy = Path(os.environ.get('OFPS_LEGACY', str(default_legacy))).expanduser()
+if not legacy.exists() or legacy.resolve() == Path(__file__).resolve():
+    legacy = ROOT / 'vendor/ofps-legacy'
+config = os.environ.get('CFD_BOT_CONFIG', str(ROOT / 'bot.json'))
+mapping = {'--json': ['status', '--json'], '--status': ['status'], '--queue': ['queue'],
+           '--bot': ['serve'], '--enqueue': ['enqueue']}
+if args and args[0] in mapping:
+    from cfd_bot.cli import main
+    raise SystemExit(main(['--config', config] + mapping[args[0]] + args[1:]))
+if args and args[0] in ('-h', '--help'):
+    print('Extended ofps: --status | --json | --queue | --enqueue CASE | --bot\n'
+          'Configuration: CFD_BOT_CONFIG=/absolute/path/bot.json\n', flush=True)
+
+def scan(arguments):
+    result = subprocess.run([str(legacy)] + arguments, capture_output=True, text=True)
+    print(result.stdout, end='', flush=True)
+    print(result.stderr, end='', file=sys.stderr, flush=True)
+    if 'ENGINE: ' in result.stdout or 'No active ' in result.stdout:
+        try:
+            from cfd_bot.config import load_bot
+            from cfd_bot.processes import parse_snapshot
+            from cfd_bot.storage import Store
+            from cfd_bot.tickets import sync_ticket_states
+            settings = load_bot(config)
+            store = Store(settings['state_dir'])
+            snap = dict(raw=result.stdout, cases=parse_snapshot(result.stdout), at=time.time())
+            store.put('snapshot', snap)
+            sync_ticket_states(settings, store, snap)
+        except Exception as exc:
+            print(f'Ticket state update failed: {exc}', file=sys.stderr)
+    return result.returncode
+
+
+if args and args[0] == '--watch':
+    try:
+        interval = float(args[1]) if len(args) == 2 else 2
+        if len(args) > 2 or not math.isfinite(interval) or interval <= 0:
+            raise ValueError()
+        while True:
+            if sys.stdout.isatty():
+                print('\033[H\033[2J', end='')
+            print(time.strftime('TCB process snapshot: %F %T %Z\n'), flush=True)
+            scan([])
+            time.sleep(interval)
+    except ValueError:
+        print('SECONDS must be a positive number', file=sys.stderr)
+        raise SystemExit(2)
+    except KeyboardInterrupt:
+        raise SystemExit(130)
+raise SystemExit(scan(args))

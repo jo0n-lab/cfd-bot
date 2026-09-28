@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "task_type": "macro",
+  "role": "alone",
+  "name": "Example batch",
+  "case_dir": "/home/user/OpenFOAM/run/batch",
+  "resource_source": "macro",
+  "cores": 4,
+  "cpu_policy": "auto",
+  "allow_cross_socket": true,
+  "command": ["./Allrun"],
+  "preprocess": [{"command": ["./Allclean"]}],
+  "postprocess": [{"command": ["./Allpost"]}],
+  "end_time": null,
+  "watcher": {"logs": ["log.solver"], "failure": {"patterns": ["failed stage:"]}},
+  "residual_pattern": "plots/residual*.png",
+  "exports": [],
+  "cases": [
+    {"case_dir": "/home/user/OpenFOAM/run/batch/case-a", "ticket": "child-case-a.json", "state": "waiting"}
+  ],
+  "queue": {"state": "waiting", "request_id": "example-batch-1", "submit": true}
+}

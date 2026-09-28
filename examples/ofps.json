@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "case_dir": "/home/user/OpenFOAM/run/my-case",
+  "name": "my-case",
+  "expected_seconds": null,
+  "watcher": {
+    "logs": [
+      "log.solver"
+    ],
+    "failure": {
+      "patterns": [
+        "failed stage:"
+      ],
+      "include_openfoam_defaults": true,
+      "updated_files": []
+    }
+  },
+  "notifications": {
+    "events": [
+      "started",
+      "succeeded",
+      "failed",
+      "interrupted"
+    ]
+  },
+  "exports": [
+    {
+      "name": "contour",
+      "pattern": "postProcessing/telegram/contour*.png",
+      "kind": "photo",
+      "max_files": 2,
+      "on": [],
+      "on_complete": false
+    }
+  ],
+  "residual_pattern": "plots/residual*.png"
+}

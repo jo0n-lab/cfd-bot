@@ -1,0 +1,19 @@
+{
+  "detail": "📋 {case_name}\n상태: {status}\n소유대상: {owner}\n코어: {cores}/{cpu_list}\n시작: {started_at}\n경과: {elapsed}\n진행: {simulation_time} · ClockTime {clock_time}\n예상 잔여시간: {eta}\n로그: {log_path}\nResidual PNG: {residuals}\n{errors}{tail}{postprocess_errors}",
+  "completion": "🏁 {case_name}\n결과: {status}\n소유대상: {owner}\n코어: {cores}/{cpu_list}\n시작: {started_at}\n종료: {finished_at}\n총 경과: {elapsed}\n최종 진행값: {simulation_time}\n종료 코드: {return_code}\n판정: {reason}\nResidual PNG: {residuals}\n{errors}{tail}{postprocess_errors}",
+  "eta": {
+    "configured": "{duration} (expected_seconds 설정값 기준)",
+    "configured_overrun": "미정 (expected_seconds 설정 시간을 초과함)",
+    "recent_log": "{duration} (최근 로그 {intervals}구간 · {source}endTime {target} 기준)",
+    "ticket_source": "티켓 ",
+    "target_reached": "목표값 도달 · 종료 확인 대기",
+    "stop_requested": "미정 (controlDict에 종료 요청 설정됨)",
+    "history": "{duration} (최근 정상 종료 {samples}회 기준)",
+    "history_overrun": "미정 (최근 정상 종료 이력의 예상 시간을 초과함)",
+    "insufficient": "미정 (종료값 또는 최근 로그 시간 표본 부족)"
+  },
+  "simulation_time": "Time = {time}",
+  "errors": "오류 로그:\n{content}\n",
+  "tail": "마지막 로그:\n{content}\n",
+  "postprocess_errors": "후처리 오류:\n{content}\n"
+}

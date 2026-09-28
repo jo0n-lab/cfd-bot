@@ -1,0 +1,61 @@
+{
+  "help": "OpenFOAM 계산 봇\n/stat  실시간 계산 현황\n/data  케이스 데이터 요청\n/queue  계산 대기 큐\n/tickets  티켓 생성·수정·복제·매크로 큐 등록\n/clean  현재 대화 메시지 삭제\n/help  이 안내",
+  "keyboard": [
+    [
+      {
+        "text": "티켓 만들기·편집",
+        "action": "tickets"
+      }
+    ],
+    [
+      {
+        "text": "실시간 현황",
+        "action": "status"
+      },
+      {
+        "text": "작업 큐",
+        "action": "queue"
+      }
+    ],
+    [
+      {
+        "text": "케이스 데이터",
+        "action": "cases:0"
+      }
+    ]
+  ],
+  "commands": [
+    {
+      "command": "stat",
+      "description": "실시간 계산 현황"
+    },
+    {
+      "command": "data",
+      "description": "케이스별 데이터"
+    },
+    {
+      "command": "queue",
+      "description": "계산 대기 큐"
+    },
+    {
+      "command": "tickets",
+      "description": "티켓 생성·편집"
+    },
+    {
+      "command": "cancel",
+      "description": "티켓 입력 취소 (초안 보관)"
+    },
+    {
+      "command": "clean",
+      "description": "대화 메시지 삭제"
+    },
+    {
+      "command": "start",
+      "description": "명령 안내"
+    }
+  ],
+  "unauthorized": "허용되지 않은 사용자/대화입니다.",
+  "request_failed": "요청 처리 실패: {error}",
+  "unknown_button": "알 수 없는 버튼입니다.",
+  "unknown_request": "알 수 없는 요청입니다."
+}

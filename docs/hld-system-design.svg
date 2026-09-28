@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="960" viewBox="0 0 1400 960" role="img" aria-labelledby="title desc">
+  <title id="title">ofps Telegram CFD bot High-Level Design</title>
+  <desc id="desc">외부 사용자와 시스템, bot service 내부 컨테이너, 영속 저장소와 주요 설계 원칙을 한 장에 표시한다.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#334155"/>
+    </marker>
+    <marker id="purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#7c3aed"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.1"/>
+    </filter>
+    <style>
+      text { font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; fill: #0f172a; }
+      .title { font-size: 30px; font-weight: 700; }
+      .subtitle { font-size: 15px; fill: #475569; }
+      .section { font-size: 18px; font-weight: 700; }
+      .section-sub { font-size: 12px; fill: #64748b; }
+      .card-title { font-size: 14px; font-weight: 700; text-anchor: middle; }
+      .card-sub { font-size: 12px; fill: #475569; text-anchor: middle; }
+      .small { font-size: 12px; fill: #475569; }
+      .badge { font-size: 12px; font-weight: 700; text-anchor: middle; }
+      .card { stroke-width: 1.5; rx: 11; filter: url(#shadow); }
+      .user { fill: #eff6ff; stroke: #60a5fa; }
+      .bot { fill: #f5f3ff; stroke: #a78bfa; }
+      .domain { fill: #ecfdf5; stroke: #34d399; }
+      .external { fill: #fff7ed; stroke: #fb923c; }
+      .data { fill: #f8fafc; stroke: #94a3b8; }
+      .arrow { fill: none; stroke: #334155; stroke-width: 1.7; marker-end: url(#arrow); }
+      .flow { fill: none; stroke: #7c3aed; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#purple); }
+      .rule { stroke: #cbd5e1; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="960" fill="#f8fafc"/>
+  <text class="title" x="42" y="50">High-Level Design</text>
+  <text class="subtitle" x="42" y="78">ofps Telegram CFD bot · 시스템 경계, 런타임 컨테이너, 데이터 소유권</text>
+
+  <text class="section" x="48" y="126">1. 외부 사용자와 시스템</text>
+  <text class="section-sub" x="48" y="148">bot service 바깥의 입력·출력 경계</text>
+
+  <g transform="translate(48 170)">
+    <rect class="card user" width="250" height="84"/>
+    <text class="card-title" x="125" y="29">Telegram 사용자</text>
+    <text class="card-sub" x="125" y="51">/stat · /data · /queue · /tickets</text>
+    <text class="card-sub" x="125" y="69">상태 · 데이터 · 자동 알림 수신</text>
+  </g>
+  <g transform="translate(372 170)">
+    <rect class="card user" width="250" height="84"/>
+    <text class="card-title" x="125" y="29">운영자</text>
+    <text class="card-sub" x="125" y="51">Ticket GUI · CLI · JSON 관리</text>
+    <text class="card-sub" x="125" y="69">systemd user service 운영</text>
+  </g>
+  <g transform="translate(778 170)">
+    <rect class="card external" width="250" height="84"/>
+    <text class="card-title" x="125" y="29">ofps · Linux /proc</text>
+    <text class="card-sub" x="125" y="51">활성 CASE · PID · owner</text>
+    <text class="card-sub" x="125" y="69">CPU affinity · socket · NUMA</text>
+  </g>
+  <g transform="translate(1102 170)">
+    <rect class="card external" width="250" height="84"/>
+    <text class="card-title" x="125" y="29">OpenFOAM 케이스</text>
+    <text class="card-sub" x="125" y="51">controlDict · solver 로그</text>
+    <text class="card-sub" x="125" y="69">Residual · 후처리 결과</text>
+  </g>
+
+  <line class="rule" x1="48" y1="290" x2="1352" y2="290"/>
+  <text class="section" x="48" y="326">2. cfd-bot service</text>
+  <text class="section-sub" x="48" y="348">하나의 daemon process + 독립 calculation worker</text>
+
+  <rect x="42" y="370" width="1316" height="330" rx="18" fill="#f5f3ff"/>
+  <text class="section" x="68" y="404">Runtime containers</text>
+
+  <g transform="translate(72 430)">
+    <rect class="card bot" width="250" height="92"/>
+    <text class="card-title" x="125" y="29">Telegram Router</text>
+    <text class="card-sub" x="125" y="51">allowlist · command · callback</text>
+    <text class="card-sub" x="125" y="70">요청 시 즉시 ofps snapshot</text>
+  </g>
+  <g transform="translate(374 430)">
+    <rect class="card bot" width="250" height="92"/>
+    <text class="card-title" x="125" y="29">Monitor + Scheduler</text>
+    <text class="card-sub" x="125" y="51">등록·미등록 CASE 추적</text>
+    <text class="card-sub" x="125" y="70">FIFO · CPU 예약 · worker 복구</text>
+  </g>
+  <g transform="translate(676 430)">
+    <rect class="card bot" width="250" height="92"/>
+    <text class="card-title" x="125" y="29">Notification Delivery</text>
+    <text class="card-sub" x="125" y="51">SQLite outbox 소비</text>
+    <text class="card-sub" x="125" y="70">중복 방지 · retry · 파일 전송</text>
+  </g>
+  <g transform="translate(1028 430)">
+    <rect class="card external" width="280" height="92"/>
+    <text class="card-title" x="140" y="29">Detached Worker</text>
+    <text class="card-sub" x="140" y="51">preprocess → solver → postprocess</text>
+    <text class="card-sub" x="140" y="70">bot 재시작과 독립된 process group</text>
+  </g>
+
+  <g transform="translate(164 570)">
+    <rect class="card domain" width="250" height="88"/>
+    <text class="card-title" x="125" y="29">UiCatalog</text>
+    <text class="card-sub" x="125" y="51">menus · scenarios · strings</text>
+    <text class="card-sub" x="125" y="69">manifest · template 검증</text>
+  </g>
+  <g transform="translate(488 570)">
+    <rect class="card domain" width="250" height="88"/>
+    <text class="card-title" x="125" y="29">TicketService</text>
+    <text class="card-sub" x="125" y="51">검증 · 저장 · 복제 · macro</text>
+    <text class="card-sub" x="125" y="69">Telegram과 GUI 공용</text>
+  </g>
+  <g transform="translate(812 570)">
+    <rect class="card domain" width="250" height="88"/>
+    <text class="card-title" x="125" y="29">Logs + Outcomes</text>
+    <text class="card-sub" x="125" y="51">증분 parser · 실패 증거</text>
+    <text class="card-sub" x="125" y="69">final Time ≥ endTime 판정</text>
+  </g>
+
+  <path class="arrow" d="M173 254V430"/>
+  <path class="arrow" d="M497 254V360H613V570"/>
+  <path class="flow" d="M903 254V330H499V430"/>
+  <path class="flow" d="M1227 254V348H937V570"/>
+  <path class="arrow" d="M322 476H374"/>
+  <path class="arrow" d="M624 476H676"/>
+  <path class="arrow" d="M624 500H1028"/>
+
+  <line class="rule" x1="48" y1="728" x2="1352" y2="728"/>
+  <text class="section" x="48" y="764">3. 영속 설정과 상태</text>
+  <text class="section-sub" x="48" y="786">정적 구성과 런타임 상태의 소유권 분리</text>
+
+  <g transform="translate(48 808)">
+    <rect class="card data" width="240" height="76"/>
+    <text class="card-title" x="120" y="28">bot.json</text>
+    <text class="card-sub" x="120" y="50">service · allowlist · scheduler</text>
+  </g>
+  <g transform="translate(314 808)">
+    <rect class="card data" width="240" height="76"/>
+    <text class="card-title" x="120" y="28">tickets/*.json</text>
+    <text class="card-sub" x="120" y="50">케이스별 watcher · data · 실행</text>
+  </g>
+  <g transform="translate(580 808)">
+    <rect class="card data" width="240" height="76"/>
+    <text class="card-title" x="120" y="28">telegram-ui/**/*.json</text>
+    <text class="card-sub" x="120" y="50">문구 · 버튼 · template · manifest</text>
+  </g>
+  <g transform="translate(846 808)">
+    <rect class="card data" width="240" height="76"/>
+    <text class="card-title" x="120" y="28">state.sqlite3</text>
+    <text class="card-sub" x="120" y="50">jobs · observed · outbox · history</text>
+  </g>
+  <g transform="translate(1112 808)">
+    <rect class="card data" width="240" height="76"/>
+    <text class="card-title" x="120" y="28">state/events</text>
+    <text class="card-sub" x="120" y="50">종료 시점 Residual snapshot</text>
+  </g>
+
+  <rect x="48" y="910" width="304" height="30" rx="15" fill="#dbeafe"/>
+  <text class="badge" x="200" y="930" fill="#1d4ed8">실행 중 여부 = 현재 ofps snapshot</text>
+  <rect x="370" y="910" width="304" height="30" rx="15" fill="#dcfce7"/>
+  <text class="badge" x="522" y="930" fill="#15803d">티켓 없이도 외부 계산 자동 감시</text>
+  <rect x="692" y="910" width="304" height="30" rx="15" fill="#ede9fe"/>
+  <text class="badge" x="844" y="930" fill="#6d28d9">상태 변경과 Telegram 전송 분리</text>
+  <rect x="1014" y="910" width="338" height="30" rx="15" fill="#ffedd5"/>
+  <text class="badge" x="1183" y="930" fill="#c2410c">정상 종료 = controlDict + 최종 Time</text>
+</svg>

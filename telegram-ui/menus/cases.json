@@ -1,0 +1,11 @@
+{
+  "select": "케이스를 선택하세요.",
+  "empty": "등록된 케이스가 없습니다.",
+  "previous": "이전",
+  "next": "다음",
+  "detail": "상세 현황",
+  "residual": "Residual",
+  "edit_ticket": "티켓 편집",
+  "removed": "설정에서 제거된 케이스입니다.",
+  "unregistered": "등록되지 않은 케이스입니다."
+}

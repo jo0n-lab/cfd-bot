@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+project_dir=/home/joon/telegram/cfd_bot
+cd "$project_dir"
+exec /usr/bin/python3 -m cfd_bot gui "$@"

@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "case_dir": "/home/joon/OpenFOAM/joon-dev/run/stirred_tank/akita_ext/A_Q8p33em7_N2",
+  "watcher": {
+    "logs": [
+      "log.foamRun.preFlow"
+    ],
+    "failure": {
+      "patterns": [],
+      "updated_files": [],
+      "include_openfoam_defaults": true
+    }
+  },
+  "task_type": "single",
+  "role": "child",
+  "end_time": 2500.0,
+  "resource_source": "macro",
+  "cores": 48,
+  "command": [
+    "./Allrun"
+  ],
+  "allow_cross_socket": true,
+  "residual_pattern": "validation/monitoring/preFlow/residuals.png",
+  "notifications": {
+    "events": [
+      "started",
+      "succeeded",
+      "failed",
+      "interrupted"
+    ]
+  },
+  "exports": [
+    {
+      "name": "live-naoh",
+      "pattern": "validation/live/steady_coupled_naoh.png",
+      "kind": "photo",
+      "max_files": 1,
+      "on": [],
+      "on_complete": false
+    },
+    {
+      "name": "profile-changes",
+      "pattern": "validation/monitoring/preFlow/profile_changes.png",
+      "kind": "photo",
+      "max_files": 1,
+      "on": [],
+      "on_complete": false
+    }
+  ],
+  "cpu_policy": "auto",
+  "preprocess": [
+    {
+      "command": [
+        "./Allclean"
+      ]
+    }
+  ],
+  "postprocess": [
+    {
+      "command": [
+        "./Allpost"
+      ]
+    }
+  ],
+  "name": "A_Q8p33em7_N2",
+  "macro_ticket": "macro-akita_ext.json",
+  "queue": {
+    "state": "finished",
+    "request_id": "2dc865b072e64152a39d90de35424605",
+    "result": "succeeded",
+    "updated_at": 1790541880.2055526,
+    "reason": "티켓 end_time 2500 도달 (최종 Time 2500)",
+    "job_id": "8e86bfc84928"
+  }
+}

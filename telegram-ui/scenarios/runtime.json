@@ -1,0 +1,31 @@
+{
+  "owner": {
+    "ssh": "SSH{remote}",
+    "background": "백그라운드",
+    "sshd": "sshd PID {pid}",
+    "manager": "{name} PID {pid}",
+    "systemd": "systemd 백그라운드",
+    "terminal": "터미널 {tty}",
+    "background_pid": "백그라운드 PID {pid}"
+  },
+  "ticket_state": {
+    "running": "계산중 · 실행 불가",
+    "queued": "실행 (이미 대기 중)",
+    "idle": "실행"
+  },
+  "ticket": {
+    "state_failed": "실행 상태 확인 실패: {error}",
+    "macro_members_invalid": "매크로의 child 티켓 경로와 소속을 확인하세요.",
+    "macro_empty": "실행할 하위 케이스가 없습니다.",
+    "changed": "다른 편집기에서 티켓이 변경되었습니다. 다시 열어 확인하세요.",
+    "already_running": "이미 계산 중입니다. 실행이 비활성화되었습니다.",
+    "missing_command": "{name}: Allrun 또는 command가 없습니다."
+  },
+  "cpu": {
+    "topology_missing": "CPU {cpu}의 소켓/코어/NUMA 구성을 확인할 수 없습니다.",
+    "busy_unknown": "ofps에서 실행 중인 작업의 CPU 범위를 확인할 수 없어 자동 배정 대기 중입니다.",
+    "capacity": "요청 {count}코어: 전체 소켓에서 배정 가능한 최대는 {capacity}코어입니다. 코어 수를 줄이세요.",
+    "availability": "소켓 {socket}/NUMA {node}: {count}코어",
+    "waiting": "자동 CPU 배정 대기: 요청 {count}코어 · 가용 {availability}"
+  }
+}

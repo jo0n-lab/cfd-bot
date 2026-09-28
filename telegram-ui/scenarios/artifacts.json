@@ -1,0 +1,10 @@
+{
+  "missing": "{name}: 이번 실행에서 생성된 파일 없음",
+  "too_large": "{name}: 49 MiB 초과, 전송 생략",
+  "caption": "{case_name} · {name}",
+  "residual_extension": "Residual 경로는 PNG 이미지여야 합니다.",
+  "residual_too_large": "Residual 이미지가 49 MiB를 초과하여 전송할 수 없습니다.",
+  "residual_caption": "{case_name} · Residual · {filename}",
+  "residual_error": "Residual: {error}",
+  "export_error": "{name}: {error}"
+}

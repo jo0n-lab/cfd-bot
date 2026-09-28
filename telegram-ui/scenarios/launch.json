@@ -1,0 +1,8 @@
+{
+  "already_running": "이미 계산 중입니다. 실행이 비활성화되었습니다.",
+  "already_queued": "이미 큐에 등록되어 있습니다.",
+  "confirm": "{case_name}을 대기 큐에 추가할까요?\n{cores}코어 · CPU {cpu_set}\n명령: {command}",
+  "automatic_cpu": "실행 직전 자동 배정 (소켓 간 허용 · 코어 중복 금지)",
+  "register": "등록",
+  "queued": "대기 큐 등록: {case_name} ({job_id})"
+}

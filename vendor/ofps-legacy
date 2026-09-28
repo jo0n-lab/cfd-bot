@@ -1,0 +1,602 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+readonly script_path=$(readlink -f -- "${BASH_SOURCE[0]}")
+readonly basilisk_root=$(cd "$(dirname "$script_path")" && pwd)
+
+usage()
+{
+    cat <<'EOF'
+Usage: ofps [--watch [SECONDS]]
+       ofps --check CPU_SET [--allow-cross-socket]
+
+Show active OpenFOAM and TCB Basilisk applications grouped by engine and case.
+For OpenMP applications, CPU_COUNT/CPU_LIST are the union of every thread's
+affinity rather than only the main thread's mask. SOCKETS and NUMA are derived
+from that union. When an Allrun/Allrun.solve or run_case.py supervisor exists,
+its PID and state are shown above the corresponding application table. A
+supervisor that is only waiting for monitor backfill is shown even after the
+solver applications have exited.
+
+Options:
+  --watch [SECONDS]  refresh continuously (default interval: 2 seconds)
+  --check CPU_SET    print the process snapshot and reject CPU overlap,
+                     unavailable CPUs, unknown topology, or multiple sockets
+  --allow-cross-socket
+                     with --check, report but permit an intentional multi-
+                     socket/NUMA allocation; overlap remains fatal
+  -h, --help         show this help
+EOF
+}
+
+watch_mode=false
+check_mode=false
+allow_cross_socket=false
+requested_cpu_set=""
+interval=2
+case "${1:-}" in
+    "") ;;
+    --watch)
+        watch_mode=true
+        if (( $# >= 2 )); then interval=$2; fi
+        if (( $# > 2 )); then usage >&2; exit 2; fi
+        ;;
+    --check|--check-cpu-set)
+        check_mode=true
+        if (( $# < 2 || $# > 3 )); then usage >&2; exit 2; fi
+        requested_cpu_set=$2
+        if (( $# == 3 )); then
+            [[ $3 == --allow-cross-socket ]] || { usage >&2; exit 2; }
+            allow_cross_socket=true
+        fi
+        ;;
+    -h|--help)
+        usage
+        exit 0
+        ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac
+if [[ ! $interval =~ ^([0-9]+([.][0-9]*)?|[.][0-9]+)$ ]] \
+    || ! awk -v value="$interval" 'BEGIN { exit !(value > 0) }'; then
+    echo "SECONDS must be a positive number, got: $interval" >&2
+    exit 2
+fi
+
+cpu_count()
+{
+    local list=$1 item lower upper total=0
+    local -a items=()
+    IFS=',' read -r -a items <<< "$list"
+    for item in "${items[@]}"; do
+        if [[ $item == *-* ]]; then
+            lower=${item%-*}
+            upper=${item#*-}
+            ((total += 10#$upper - 10#$lower + 1))
+        elif [[ $item =~ ^[0-9]+$ ]]; then
+            ((total += 1))
+        fi
+    done
+    printf '%s\n' "$total"
+}
+
+expand_cpu_list()
+{
+    local list=$1 item lower upper cpu
+    local -a items=()
+    IFS=',' read -r -a items <<< "$list"
+    for item in "${items[@]}"; do
+        if [[ $item == *-* ]]; then
+            lower=${item%-*}
+            upper=${item#*-}
+        elif [[ $item =~ ^[0-9]+$ ]]; then
+            lower=$item
+            upper=$item
+        else
+            return 1
+        fi
+        (( 10#$lower <= 10#$upper )) || return 1
+        for ((cpu = 10#$lower; cpu <= 10#$upper; ++cpu)); do
+            printf '%s\n' "$cpu"
+        done
+    done
+}
+
+cpu_set_contains()
+{
+    local list=$1 needle=$2 cpu
+    while IFS= read -r cpu; do
+        [[ $cpu == "$needle" ]] && return 0
+    done < <(expand_cpu_list "$list")
+    return 1
+}
+
+cpu_sets_overlap()
+{
+    local first=$1 second=$2 cpu
+    while IFS= read -r cpu; do
+        cpu_set_contains "$second" "$cpu" && return 0
+    done < <(expand_cpu_list "$first")
+    return 1
+}
+
+topology_ids()
+{
+    local list=$1 kind=$2 cpu value path unknown=false
+    local -a node_paths=()
+    local -A seen=()
+
+    while IFS= read -r cpu; do
+        if [[ $kind == socket ]]; then
+            path="/sys/devices/system/cpu/cpu${cpu}/topology/physical_package_id"
+            if [[ -r $path ]]; then
+                read -r value < "$path"
+            else
+                unknown=true
+                continue
+            fi
+        else
+            shopt -s nullglob
+            node_paths=(/sys/devices/system/cpu/cpu"${cpu}"/node[0-9]*)
+            shopt -u nullglob
+            if (( ${#node_paths[@]} == 1 )); then
+                value=${node_paths[0]##*node}
+            else
+                unknown=true
+                continue
+            fi
+        fi
+        seen[$value]=1
+    done < <(expand_cpu_list "$list")
+
+    if (( ${#seen[@]} == 0 )); then
+        printf '?\n'
+        return
+    fi
+    {
+        printf '%s\n' "${!seen[@]}" | sort -n | paste -sd, -
+        $unknown && printf ',?'
+    } | tr -d '\n'
+    printf '\n'
+}
+
+is_openfoam_application()
+{
+    local name=$1 executable=$2
+    case "$name" in
+        *Foam|foamMultiRun*|foamRun*|foamDictionary|foamPostProcess|foamToVTK|\
+        blockMesh|checkMesh|createBaffles|createPatch|createZones|\
+        decomposePar|reconstructPar*|redistributePar|renumberMesh|\
+        setFields|snappyHexMesh|splitMeshRegions|topoSet)
+            return 0
+            ;;
+    esac
+    [[ $executable == *OpenFOAM* || $executable == */platforms/*/bin/* ]]
+}
+
+is_basilisk_application()
+{
+    local executable=$1
+    [[ $executable == "$basilisk_root"/* ]]
+}
+
+openfoam_case_from_process()
+{
+    local cwd=$1
+    shift
+    local candidate=$cwd argument next_is_case=false resolved link parent
+
+    for argument in "$@"; do
+        if $next_is_case; then
+            candidate=$argument
+            break
+        fi
+        case "$argument" in
+            -case) next_is_case=true ;;
+            -case=*) candidate=${argument#-case=} ; break ;;
+        esac
+    done
+    if [[ $candidate != /* ]]; then candidate="$cwd/$candidate"; fi
+    resolved=$(readlink -f -- "$candidate" 2>/dev/null) || resolved=$candidate
+
+    if [[ -L $resolved/processor0 ]]; then
+        link=$(readlink -f -- "$resolved/processor0" 2>/dev/null || true)
+        if [[ $link == */processor0 ]]; then
+            parent=${link%/processor0}
+            if [[ -f $parent/system/controlDict ]]; then resolved=$parent; fi
+        fi
+    elif [[ -L $resolved/system ]]; then
+        link=$(readlink -f -- "$resolved/system" 2>/dev/null || true)
+        if [[ $link == */system ]]; then
+            parent=${link%/system}
+            if [[ -f $parent/system/controlDict ]]; then resolved=$parent; fi
+        fi
+    fi
+
+    candidate=$resolved
+    while [[ $candidate != / && -n $candidate ]]; do
+        if [[ -f $candidate/system/controlDict ]]; then
+            printf '%s\n' "$candidate"
+            return
+        fi
+        parent=${candidate%/*}
+        [[ -n $parent ]] || parent=/
+        [[ $parent != "$candidate" ]] || break
+        candidate=$parent
+    done
+    printf '%s [controlDict not found]\n' "$resolved"
+}
+
+basilisk_case_from_process()
+{
+    local executable=$1 candidate parent
+    candidate=${executable%/*}
+    while [[ $candidate == "$basilisk_root"* && $candidate != / ]]; do
+        if [[ -f $candidate/Makefile ]] && compgen -G "$candidate/*.c" >/dev/null; then
+            printf '%s\n' "$candidate"
+            return
+        fi
+        parent=${candidate%/*}
+        [[ $parent != "$candidate" ]] || break
+        candidate=$parent
+    done
+    printf '%s\n' "${executable%/*}"
+}
+
+supervisor_identity()
+{
+    local cwd=$1
+    shift
+    local argument basename label="" candidate="" resolved
+
+    for argument in "$@"; do
+        basename=${argument##*/}
+        case "$basename" in
+            Allrun.solve)
+                label=Allrun.solve
+                [[ $argument == */* ]] && candidate=${argument%/*}
+                break
+                ;;
+            run_case.py)
+                label=run_case.py
+                ;;
+            Allrun)
+                [[ -n $label ]] || label=Allrun
+                [[ $argument == */* ]] && candidate=${argument%/*}
+                ;;
+        esac
+    done
+    [[ -n $label ]] || return 1
+
+    if [[ $label == run_case.py ]]; then
+        local supervised=false
+        for argument in "$@"; do
+            case "$argument" in
+                --worker|--foreground) supervised=true ;;
+            esac
+        done
+        $supervised || return 1
+    fi
+
+    if [[ -n $candidate ]]; then
+        [[ $candidate == /* ]] || candidate="$cwd/$candidate"
+        resolved=$(readlink -f -- "$candidate" 2>/dev/null || true)
+        [[ -f $resolved/system/controlDict ]] && candidate=$resolved || candidate=""
+    fi
+    if [[ -z $candidate ]]; then
+        candidate=$(openfoam_case_from_process "$cwd" "$@")
+        [[ $candidate != *'[controlDict not found]'* ]] || return 1
+    fi
+    printf '%s\t%s\n' "$candidate" "$label"
+}
+
+scan_supervisors()
+{
+    local output_file=$1 proc pid cwd ppid elapsed identity case_dir label
+    local -a argv=()
+    : > "$output_file"
+
+    for proc in /proc/[0-9]*; do
+        pid=${proc##*/}
+        [[ -r $proc/cmdline && -r $proc/status ]] || continue
+        argv=()
+        mapfile -d '' -t argv < "$proc/cmdline" 2>/dev/null || true
+        (( ${#argv[@]} > 0 )) || continue
+        cwd=$(readlink -f -- "$proc/cwd" 2>/dev/null || true)
+        [[ -n $cwd ]] || continue
+        identity=$(supervisor_identity "$cwd" "${argv[@]}" 2>/dev/null) || continue
+        IFS=$'\t' read -r case_dir label <<< "$identity"
+        ppid=$(awk '/^PPid:/ {print $2; exit}' "$proc/status" 2>/dev/null)
+        [[ -n $ppid ]] || ppid=?
+        elapsed=$(ps -o etime= -p "$pid" 2>/dev/null | tr -d '[:space:]')
+        [[ -n $elapsed ]] || elapsed=?
+        case_dir=${case_dir//$'\t'/ }
+        case_dir=${case_dir//$'\n'/ }
+        printf '%s\t%s\t%s\t%s\t%s\n' \
+            "$case_dir" "$pid" "$ppid" "$label" "$elapsed" >> "$output_file"
+    done
+}
+
+thread_affinity_union()
+{
+    local pid=$1
+    awk '
+        /^Cpus_allowed_list:/ {
+            count = split($2, groups, ",")
+            for (i = 1; i <= count; ++i) {
+                if (groups[i] ~ /^[0-9]+-[0-9]+$/) {
+                    split(groups[i], bounds, "-")
+                    for (j = bounds[1]; j <= bounds[2]; ++j) cpu[j] = 1
+                } else if (groups[i] ~ /^[0-9]+$/) cpu[groups[i] + 0] = 1
+            }
+        }
+        END {
+            total = 0
+            maximum = -1
+            for (value in cpu) {
+                ++total
+                if (value + 0 > maximum) maximum = value + 0
+            }
+            list = ""
+            value = 0
+            while (value <= maximum) {
+                if (!(value in cpu)) { ++value; continue }
+                lower = value
+                while (value + 1 in cpu) ++value
+                upper = value
+                if (list != "") list = list ","
+                list = list (lower == upper ? lower : lower "-" upper)
+                ++value
+            }
+            if (!total) print "?\t?"
+            else print total "\t" list
+        }
+    ' /proc/"$pid"/task/[0-9]*/status 2>/dev/null
+}
+
+scan_once()
+{
+    local output_file=$1 proc pid cwd executable name engine case_dir role
+    local ppid elapsed threads affinity_record affinity_count affinity
+    local argument socket_ids node_ids
+    local -a argv=()
+
+    : > "$output_file"
+    scan_supervisors "$supervisors_file"
+    for proc in /proc/[0-9]*; do
+        pid=${proc##*/}
+        [[ -r $proc/cmdline && -r $proc/status ]] || continue
+        argv=()
+        mapfile -d '' -t argv < "$proc/cmdline" 2>/dev/null || true
+        (( ${#argv[@]} > 0 )) || continue
+
+        executable=$(readlink -f -- "$proc/exe" 2>/dev/null || true)
+        name=${argv[0]##*/}
+        cwd=$(readlink -f -- "$proc/cwd" 2>/dev/null || true)
+        [[ -n $cwd ]] || continue
+
+        if is_openfoam_application "$name" "$executable"; then
+            engine=OpenFOAM
+            case_dir=$(openfoam_case_from_process "$cwd" "${argv[@]}")
+        elif is_basilisk_application "$executable"; then
+            engine=Basilisk
+            case_dir=$(basilisk_case_from_process "$executable")
+        else
+            continue
+        fi
+
+        threads=$(awk '/^Threads:/ {print $2; exit}' "$proc/status" 2>/dev/null)
+        [[ -n $threads ]] || threads=?
+        affinity_record=$(thread_affinity_union "$pid")
+        IFS=$'\t' read -r affinity_count affinity <<< "$affinity_record"
+        [[ -n $affinity_count ]] || affinity_count=?
+        [[ -n $affinity ]] || affinity=?
+        if [[ $affinity == "?" ]]; then
+            socket_ids=?
+            node_ids=?
+        else
+            socket_ids=$(topology_ids "$affinity" socket)
+            node_ids=$(topology_ids "$affinity" node)
+        fi
+        ppid=$(awk '/^PPid:/ {print $2; exit}' "$proc/status" 2>/dev/null)
+        [[ -n $ppid ]] || ppid=?
+        elapsed=$(ps -o etime= -p "$pid" 2>/dev/null | tr -d '[:space:]')
+        [[ -n $elapsed ]] || elapsed=?
+
+        role=serial
+        if [[ $threads != "?" ]] && (( threads > 1 )); then role=OpenMP; fi
+        if [[ $engine == OpenFOAM ]]; then
+            for argument in "${argv[@]}"; do
+                if [[ $argument == -parallel ]]; then role=MPI; break; fi
+            done
+        elif [[ $name == *-mpi* ]]; then
+            role=MPI
+        fi
+
+        case_dir=${case_dir//$'\t'/ }
+        case_dir=${case_dir//$'\n'/ }
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "$engine" "$case_dir" "$pid" "$ppid" "$name" "$role" \
+            "$threads" "$affinity_count" "$affinity" "$socket_ids" \
+            "$node_ids" "$elapsed" >> "$output_file"
+    done
+
+    if [[ ! -s $output_file && ! -s $supervisors_file ]]; then
+        printf 'No active OpenFOAM or TCB Basilisk application processes found.\n'
+        return
+    fi
+
+    if [[ -s $output_file ]]; then
+    awk -F '\t' '
+        FNR == NR && NF == 5 {
+            priority = ($4 == "Allrun" ? 1 : 2)
+            if (!($1 in supervisor_priority) || priority > supervisor_priority[$1]) {
+                supervisor_priority[$1] = priority
+                supervisor_pid[$1] = $2
+                supervisor_ppid[$1] = $3
+                supervisor_name[$1] = $4
+                supervisor_elapsed[$1] = $5
+            }
+            next
+        }
+        function clear_cpus(key) {
+            for (key in cpu_seen) delete cpu_seen[key]
+            unique_cpu_count = 0
+        }
+        function add_cpu_list(list, count, groups, i, bounds, j, value) {
+            if (list == "?") return
+            count = split(list, groups, ",")
+            for (i = 1; i <= count; ++i) {
+                if (groups[i] ~ /^[0-9]+-[0-9]+$/) {
+                    split(groups[i], bounds, "-")
+                    for (j = bounds[1]; j <= bounds[2]; ++j)
+                        if (!(j in cpu_seen)) { cpu_seen[j] = 1; ++unique_cpu_count }
+                } else if (groups[i] ~ /^[0-9]+$/) {
+                    value = groups[i] + 0
+                    if (!(value in cpu_seen)) { cpu_seen[value] = 1; ++unique_cpu_count }
+                }
+            }
+        }
+        function finish_case() {
+            if (current_key == "") return
+            printf "  summary: %d process(es), %d thread(s), %d unique affinity CPU(s)\n\n", \
+                process_count, thread_count, unique_cpu_count
+        }
+        $1 FS $2 != current_key {
+            finish_case()
+            current_key = $1 FS $2
+            process_count = thread_count = 0
+            clear_cpus()
+            printf "ENGINE: %s\nCASE: %s\n", $1, $2
+            if ($2 in supervisor_pid)
+                printf "SUPERVISOR: PID %s, PPID %s, PROCESS %s, ELAPSED %s\n", \
+                    supervisor_pid[$2], supervisor_ppid[$2], \
+                    supervisor_name[$2], supervisor_elapsed[$2]
+            printf "  %-7s %-7s %-25s %-7s %-8s %-10s %-14s %-8s %-8s %s\n", \
+                "PID", "PPID", "PROCESS", "MODE", "THREADS", "CPU_COUNT", \
+                "CPU_LIST", "SOCKETS", "NUMA", "ELAPSED"
+        }
+        {
+            ++process_count
+            if ($7 ~ /^[0-9]+$/) thread_count += $7
+            add_cpu_list($9)
+            printf "  %-7s %-7s %-25s %-7s %-8s %-10s %-14s %-8s %-8s %s\n", \
+                $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+        }
+        END { finish_case() }
+    ' "$supervisors_file" <(LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n "$output_file")
+    fi
+
+    if [[ -s $supervisors_file ]]; then
+        local supervisor_case supervisor_pid supervisor_ppid supervisor_name supervisor_elapsed
+        local preferred_pid preferred_ppid preferred_name preferred_elapsed priority preferred_priority
+        local -A active_cases=()
+        while IFS=$'\t' read -r engine case_dir pid _; do
+            [[ -n $case_dir ]] && active_cases[$case_dir]=1
+        done < "$output_file"
+        while IFS= read -r supervisor_case; do
+            [[ -n $supervisor_case && -z ${active_cases[$supervisor_case]:-} ]] || continue
+            preferred_pid=""; preferred_priority=0
+            while IFS=$'\t' read -r case_dir supervisor_pid supervisor_ppid supervisor_name supervisor_elapsed; do
+                [[ $case_dir == "$supervisor_case" ]] || continue
+                [[ $supervisor_name == Allrun ]] && priority=1 || priority=2
+                if (( priority > preferred_priority )); then
+                    preferred_priority=$priority
+                    preferred_pid=$supervisor_pid
+                    preferred_ppid=$supervisor_ppid
+                    preferred_name=$supervisor_name
+                    preferred_elapsed=$supervisor_elapsed
+                fi
+            done < "$supervisors_file"
+            printf 'ENGINE: Supervisor\nCASE: %s\n' "$supervisor_case"
+            printf 'SUPERVISOR: PID %s, PPID %s, PROCESS %s, ELAPSED %s\n' \
+                "$preferred_pid" "$preferred_ppid" "$preferred_name" "$preferred_elapsed"
+            printf '  no active solver application; supervisor may be preparing or waiting for monitor backfill\n\n'
+        done < <(cut -f1 "$supervisors_file" | LC_ALL=C sort -u)
+    fi
+}
+
+check_cpu_set()
+{
+    local requested=$1 records_path=$2 sockets nodes count
+    local engine case_dir pid ppid process mode threads active_count active_set
+    local active_sockets active_nodes elapsed status=0
+
+    if [[ ! $requested =~ ^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$ ]] \
+        || ! expand_cpu_list "$requested" >/dev/null \
+        || ! taskset -c "$requested" true 2>/dev/null; then
+        echo "BLOCKED: invalid or unavailable CPU_SET: $requested" >&2
+        return 2
+    fi
+
+    count=$(cpu_count "$requested")
+    sockets=$(topology_ids "$requested" socket)
+    nodes=$(topology_ids "$requested" node)
+    printf 'CPU_SET check: %s (%s CPUs), sockets=%s, NUMA=%s\n' \
+        "$requested" "$count" "$sockets" "$nodes"
+
+    if [[ $sockets == "?" || $nodes == "?" ]]; then
+        echo "BLOCKED: CPU_SET $requested has unknown socket/NUMA topology" >&2
+        status=5
+    elif [[ $sockets == *,* || $nodes == *,* ]]; then
+        if $allow_cross_socket; then
+            printf 'WARNING: intentional cross-topology allocation allowed: sockets=%s, NUMA=%s\n' \
+                "$sockets" "$nodes" >&2
+        else
+            echo "BLOCKED: CPU_SET $requested spans sockets=$sockets, NUMA=$nodes" >&2
+            status=5
+        fi
+    fi
+
+    while IFS=$'\t' read -r engine case_dir pid ppid process mode threads \
+        active_count active_set active_sockets active_nodes elapsed; do
+        if [[ -z $active_set || $active_set == "?" ]]; then
+            printf 'BLOCKED: PID %s (%s, %s) has unknown CPU affinity\n' \
+                "$pid" "$engine" "$process" >&2
+            status=4
+            continue
+        fi
+        if cpu_sets_overlap "$requested" "$active_set"; then
+            printf 'BLOCKED: overlaps PID %s (%s/%s), case %s, active CPUs %s\n' \
+                "$pid" "$engine" "$process" "$case_dir" "$active_set" >&2
+            status=4
+        fi
+    done < "$records_path"
+
+    if (( status == 0 )); then
+        if $allow_cross_socket && [[ $sockets == *,* || $nodes == *,* ]]; then
+            echo "SAFE: no active TCB affinity overlap; cross-topology allocation explicitly allowed"
+        else
+            echo "SAFE: no active TCB affinity overlap; requested CPUs stay within one socket and NUMA node"
+        fi
+    fi
+    return "$status"
+}
+
+readonly scratch_dir=$(mktemp -d -t tcb-processes.XXXXXX)
+readonly records_file="$scratch_dir/records.tsv"
+readonly supervisors_file="$scratch_dir/supervisors.tsv"
+cleanup() { rm -rf -- "$scratch_dir"; }
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+if $check_mode; then
+    scan_once "$records_file"
+    check_cpu_set "$requested_cpu_set" "$records_file"
+    exit $?
+fi
+
+if ! $watch_mode; then
+    scan_once "$records_file"
+    exit 0
+fi
+
+while true; do
+    if [[ -t 1 ]]; then printf '\033[H\033[2J'; fi
+    printf 'TCB process snapshot: %s\n\n' "$(date '+%F %T %Z')"
+    scan_once "$records_file"
+    sleep "$interval"
+done

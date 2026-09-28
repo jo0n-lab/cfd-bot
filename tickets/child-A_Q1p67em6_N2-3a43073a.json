@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "case_dir": "/home/joon/OpenFOAM/joon-dev/run/stirred_tank/akita_ext/A_Q1p67em6_N2",
+  "watcher": {
+    "logs": [
+      "log.foamRun.preFlow"
+    ],
+    "failure": {
+      "patterns": [],
+      "updated_files": [],
+      "include_openfoam_defaults": true
+    }
+  },
+  "task_type": "single",
+  "role": "child",
+  "end_time": 2500.0,
+  "resource_source": "macro",
+  "cores": 48,
+  "command": [
+    "./Allrun"
+  ],
+  "allow_cross_socket": true,
+  "residual_pattern": "validation/monitoring/preFlow/residuals.png",
+  "notifications": {
+    "events": [
+      "started",
+      "succeeded",
+      "failed",
+      "interrupted"
+    ]
+  },
+  "exports": [
+    {
+      "name": "live-naoh",
+      "pattern": "validation/live/steady_coupled_naoh.png",
+      "kind": "photo",
+      "max_files": 1,
+      "on": [],
+      "on_complete": false
+    },
+    {
+      "name": "profile-changes",
+      "pattern": "validation/monitoring/preFlow/profile_changes.png",
+      "kind": "photo",
+      "max_files": 1,
+      "on": [],
+      "on_complete": false
+    }
+  ],
+  "cpu_policy": "auto",
+  "preprocess": [
+    {
+      "command": [
+        "./Allclean"
+      ]
+    }
+  ],
+  "postprocess": [
+    {
+      "command": [
+        "./Allpost"
+      ]
+    }
+  ],
+  "name": "A_Q1p67em6_N2",
+  "macro_ticket": "macro-akita_ext.json",
+  "queue": {
+    "state": "finished",
+    "request_id": "2dc865b072e64152a39d90de35424605",
+    "result": "failed",
+    "updated_at": 1790523760.835192,
+    "reason": "명령 종료 코드 2 · FAILED: phase=stage_last_to_2500 exit=2; see FAILED_CASES.md",
+    "job_id": "236c37b3ad4c"
+  }
+}

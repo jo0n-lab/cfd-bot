@@ -1,0 +1,22 @@
+{
+  "hook_alive": "실행기 연결 끊김; 전·후처리 프로세스가 살아 있어 CPU 예약 유지",
+  "solver_alive": "실행기 연결 끊김; 계산 프로세스는 살아 있어 CPU 예약 유지",
+  "preprocess_lost": "전처리 중 실행기 소멸",
+  "startup_lost": "실행기/계산 프로세스가 시작 완료 전에 소멸함",
+  "verdict_failed": "실행기/계산 프로세스 소멸 후 종료 판정 실패: {error}",
+  "external_running": "이 케이스의 외부 계산이 실행 중입니다.",
+  "external_finishing": "이 케이스의 외부 계산 종료를 확인 중입니다.",
+  "external_duplicate": "대기 중 외부 계산이 정상 종료되어 중복 실행 생략",
+  "ticket_deleted": "티켓이 삭제되어 실행 취소",
+  "case_path_changed": "대기 중 케이스 경로가 변경되었습니다. 큐를 취소하고 다시 등록하세요.",
+  "macro_missing": "매크로 티켓이 없어 실행 대기 중입니다.",
+  "cpu_unavailable": "이 서비스에서 사용할 수 없는 CPU: {cpus}",
+  "cpu_reserved": "앞선 계산이 지정 CPU를 사용 중입니다.",
+  "worker_start_failed": "실행기 시작 실패: {error}",
+  "hook_failed": "{label} 실행 실패: {error}",
+  "hook_timeout": "{label} 시간 제한 초과 ({timeout}초)",
+  "hook_exit": "{label} 종료 코드 {code}: {command}",
+  "preprocess": "전처리",
+  "postprocess": "후처리",
+  "worker_error": "실행기 오류: {error}"
+}

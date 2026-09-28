@@ -1,0 +1,21 @@
+{
+  "add": "새 계산 추가",
+  "edit_tickets": "티켓 만들기·편집",
+  "resume": "큐 재개",
+  "pause": "큐 일시 정지",
+  "cancel_case": "대기 취소: {case_name}",
+  "cancelled": "대기 취소했습니다.",
+  "cancel_unavailable": "이미 실행 중이거나 취소된 계산입니다.",
+  "title": "계산 대기 큐",
+  "paused_suffix": " (자동 실행 꺼짐)",
+  "empty": "등록된 계산이 없습니다.",
+  "line": "{index}. {case_name} · {status} · {detail}",
+  "auto_cpu": "{cores}코어 / CPU 자동 배정 대기 (소켓 간 허용 · 코어 중복 금지)",
+  "manual_cpu": "{cores}코어 / {cpu_set}",
+  "timing": "시작까지 약 {wait} · 실행 예상 {expected}",
+  "estimate_notice": "시작 예상은 FIFO 기준 보수적 추정이며 외부 계산·후처리에 따라 달라집니다.",
+  "job": "{job_id} · {case_name} · {status}",
+  "child": " · {macro} #{index}",
+  "separator": " · {value}",
+  "reason": "\n  {reason}"
+}

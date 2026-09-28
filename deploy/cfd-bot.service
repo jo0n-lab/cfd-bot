@@ -1,0 +1,18 @@
+[Unit]
+Description=OpenFOAM ofps Telegram monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/joon/telegram/cfd_bot
+EnvironmentFile=%h/.config/cfd-bot/telegram.env
+ExecStart=/usr/bin/python3 -m cfd_bot --config /home/joon/telegram/cfd_bot/bot.json serve
+Restart=on-failure
+RestartSec=5
+# Queue workers and solver process groups must survive a bot-only restart.
+KillMode=process
+UMask=0077
+
+[Install]
+WantedBy=default.target

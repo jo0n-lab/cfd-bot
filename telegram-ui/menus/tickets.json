@@ -1,0 +1,295 @@
+{
+  "fields": {
+    "case_dir": {
+      "title": "Case directory",
+      "hint": "서버의 케이스 디렉터리 경로를 입력하세요."
+    },
+    "name": {
+      "title": "표시 이름",
+      "hint": "표시할 이름을 입력하세요. 비우면 폴더 이름을 사용합니다."
+    },
+    "filename": {
+      "title": "티켓 파일명",
+      "hint": ".json 파일명을 입력하세요. 종류에 맞는 접두어를 붙입니다."
+    },
+    "logs": {
+      "title": "로그 파일",
+      "hint": "케이스 기준 상대 경로를 한 줄에 하나씩 입력하세요."
+    },
+    "residual_pattern": {
+      "title": "Residual PNG 경로",
+      "hint": "공통 상대 경로 또는 패턴을 입력하세요. 예: plots/residual*.png"
+    },
+    "end_time": {
+      "title": "End Time / Iteration",
+      "hint": "종료값을 입력하세요. 기본값 버튼은 각 케이스의 controlDict를 사용합니다."
+    },
+    "failure_patterns": {
+      "title": "실패 로그 패턴",
+      "hint": "추가 실패 정규식을 한 줄에 하나씩 입력하세요."
+    },
+    "updated_files": {
+      "title": "실패 표식 파일",
+      "hint": "갱신되면 실패로 판정할 상대 경로를 한 줄에 하나씩 입력하세요."
+    },
+    "macro_ticket": {
+      "title": "매크로 티켓 경로",
+      "hint": "현재 티켓 기준 상대 경로를 입력하세요. 예: macro-batch.json"
+    },
+    "macro_cores": {
+      "title": "공통 코어 수 (NP)",
+      "hint": "1 이상의 코어 수를 입력하세요."
+    },
+    "macro_cpu_set": {
+      "title": "공통 CPU 범위",
+      "hint": "예: 0-23 또는 0-7,12-15"
+    },
+    "macro_command": {
+      "title": "공통 실행 명령",
+      "hint": "예: ./Allrun --foreground"
+    },
+    "preprocess": {
+      "title": "전처리 명령",
+      "hint": "기본값: ./Allclean · 한 줄에 한 명령. 빈칸이면 실행하지 않습니다."
+    },
+    "postprocess": {
+      "title": "후처리 명령",
+      "hint": "기본값: ./Allpost · 한 줄에 한 명령. 계산 정상 종료 후 실행합니다."
+    },
+    "x_name": {
+      "title": "요청 이름",
+      "hint": "영문·숫자·_- 로 된 요청 이름을 입력하세요."
+    },
+    "x_pattern": {
+      "title": "요청 파일 경로",
+      "hint": "케이스 기준 상대 경로/패턴을 입력하세요. 예: postProcessing/*.csv"
+    },
+    "x_max_files": {
+      "title": "최대 파일 수",
+      "hint": "1~10 사이의 정수를 입력하세요."
+    },
+    "template_name": {
+      "title": "패턴 템플릿 이름",
+      "hint": "현재 실패 패턴을 저장할 이름을 입력하세요."
+    },
+    "browse_path": {
+      "title": "폴더 경로",
+      "hint": "탐색할 서버 폴더의 절대 경로를 입력하세요."
+    }
+  },
+  "errors": {
+    "draft_required": "티켓을 먼저 선택하거나 새로 만드세요.",
+    "open_required": "티켓 목록에서 편집할 파일을 선택하세요.",
+    "stale_button": "이전 화면 또는 다른 사용자의 버튼입니다. /tickets에서 현재 편집 화면을 여세요.",
+    "prefix": "티켓 편집: {error}",
+    "unsupported_field": "지원하지 않는 입력 항목입니다.",
+    "max_files": "최대 파일 수는 10 이하입니다.",
+    "case_directory": "서버에 존재하는 케이스 디렉터리를 입력하세요.",
+    "automatic_cpu": "CPU 범위는 자동으로 배정됩니다. 직접 지정하려면 작업 큐 설정의 고급 설정을 선택하세요.",
+    "command_required": "실행 명령을 입력하세요.",
+    "logs_required": "로그를 한 개 이상 지정하세요.",
+    "duplicate_paths": "중복 경로를 제거하세요.",
+    "png_pattern": "PNG 파일 또는 .png로 끝나는 패턴을 입력하세요.",
+    "template_name": "기본 템플릿과 다른 이름을 1~80자로 입력하세요.",
+    "browse_kind": "파일 선택 종류를 확인하세요.",
+    "case_first": "Case directory를 먼저 지정하세요.",
+    "macro_scan_first": "하위 케이스를 검색한 뒤 기준 케이스의 로그를 선택하세요.",
+    "folder_retry": "폴더가 없습니다. 경로를 다시 입력하세요.",
+    "inside_case": "케이스 디렉터리 안에서 선택하세요.",
+    "folder_missing": "폴더가 없습니다.",
+    "macro_required": "매크로 작업을 선택하고 상위 Case directory를 지정하세요.",
+    "switch": "티켓 선택 동작을 확인하세요.",
+    "scan_before_save": "검색이 끝난 뒤 저장하세요.",
+    "mode": "작업 종류를 확인하세요.",
+    "role": "소속을 확인하세요.",
+    "event": "알림 종류를 확인하세요.",
+    "cpu_policy": "CPU 배정 방식을 확인하세요.",
+    "setting": "설정 항목을 확인하세요.",
+    "auto_cross_socket": "자동 배정은 소켓 간 실행을 허용하며 코어 중복을 금지합니다.",
+    "file_again": "파일을 다시 선택하세요.",
+    "unknown_button": "알 수 없는 편집 버튼입니다."
+  },
+  "list": {
+    "resume": "편집 이어가기",
+    "discard": "초안 버리기",
+    "new_single": "새 개별 티켓",
+    "new_macro": "새 매크로 티켓",
+    "bulk": "여러 티켓 선택·삭제",
+    "refresh": "목록 새로고침",
+    "title": "티켓 목록 · {count}개\n파일을 선택하면 설정을 편집합니다.",
+    "page_all": "현재 페이지 전체 선택",
+    "clear_all": "전체 선택 해제",
+    "delete_selected": "선택 삭제 ({count}개)",
+    "back": "목록으로 돌아가기",
+    "bulk_title": "티켓 다중 선택 · {count}개 선택\n페이지를 이동해도 선택이 유지됩니다.\n매크로를 선택하면 소속 child도 함께 삭제합니다.\n대기·실행 중인 작업은 먼저 /queue에서 상태를 확인하세요.",
+    "delete_review": "티켓 삭제 확인 · 선택 {selected}개 / 하위 child 포함 총 {total}개\n케이스 폴더와 계산 결과는 유지됩니다.\n\n{names}",
+    "delete_confirm": "삭제 확정",
+    "deleted": "{count}개 티켓 삭제 완료",
+    "previous": "이전",
+    "next": "다음"
+  },
+  "notices": {
+    "cancelled": "입력 취소 · 티켓 초안은 보관했습니다.",
+    "run_check": "실행 상태 확인 필요",
+    "save_then_run": "저장 후 실행",
+    "validated": "검증 정상",
+    "already_running": "이미 계산 중입니다. 실행할 수 없습니다.",
+    "already_queued": "이미 큐에 등록되어 있습니다.",
+    "queued": "실행 큐 등록 완료",
+    "saved_queued": "저장 완료 · 이미 큐에 등록되어 있습니다.",
+    "saved_and_queued": "저장 및 실행 큐 등록 완료",
+    "saved": "저장 완료",
+    "awaiting_queue": " · 봇의 큐 접수 대기",
+    "field_applied": "{field} 반영 · 저장 전 초안입니다.",
+    "search_failed": "검색 실패: {error}",
+    "search_done": "하위 케이스 검색 완료: {included}개 · 제외 {excluded}개. /tickets에서 이어가세요."
+  },
+  "card": {
+    "basic": "기본 설정",
+    "rules": "종료·실패 판정",
+    "exports": "요청 데이터",
+    "queue": "작업 큐 설정",
+    "scripts": "전·후처리",
+    "mode": "작업 종류 변경",
+    "filename": "티켓 파일명",
+    "validate": "검증",
+    "save": "저장",
+    "save_run": "저장 및 큐 등록",
+    "refresh_run": "실행 상태 새로고침",
+    "duplicate": "선택 복제",
+    "delete": "티켓 삭제",
+    "list": "티켓 목록",
+    "macro": "매크로 작업",
+    "single": "개별 작업 · {role}",
+    "dirty": "저장 전 변경 있음",
+    "editing": "편집 중",
+    "body": "{kind} · {edit_state}\n파일: {filename}\n이름: {name}\nCase directory: {case_dir}\n로그: {logs}\nResidual: {residual}\nEnd: {end}\n요청 데이터: {exports}개",
+    "macro_existing": "\n선택 케이스: {count}개 · 접수된 매크로의 설정을 편집합니다.",
+    "macro_new": "\n선택 케이스: {count}개 · 저장하면 순차 실행 큐에 접수됩니다.",
+    "end_explicit": "{value} (지정값)",
+    "end_control": "{value} (controlDict 기본값)",
+    "end_each": "각 케이스의 controlDict 기본값"
+  },
+  "basic": {
+    "case_input": "Case directory 입력",
+    "folder_select": "폴더 선택",
+    "display_name": "표시 이름",
+    "log_input": "로그 경로 입력",
+    "log_select": "로그 파일 선택",
+    "residual": "Residual PNG 경로",
+    "png_select": "PNG 파일 선택",
+    "end": "End Time / Iteration",
+    "event": "{mark}{label} 알림",
+    "event_started": "시작",
+    "event_succeeded": "성공",
+    "event_failed": "실패",
+    "event_interrupted": "중단",
+    "body": "기본 설정\n경로 입력 또는 서버 파일 선택을 사용하세요.\nEnd는 완료 판정·자동 예상시간 기준이며 기본값은 controlDict입니다."
+  },
+  "rules": {
+    "body": "종료·실패 판정\n정상 종료는 controlDict의 stopAt과 지정 종료값으로 판정합니다.\n\n추가 실패 패턴:\n{patterns}\n실패 표식: {files}",
+    "pattern_input": "실패 패턴 입력",
+    "openfoam": "{mark} OpenFOAM 기본 오류 감지",
+    "failure_file": "실패 표식 파일",
+    "load_template": "템플릿 불러오기",
+    "save_template": "현재 패턴 저장",
+    "template_title": "실패 패턴 템플릿\nGUI와 같은 템플릿 목록을 사용합니다.",
+    "template_overwrite": "{name} 템플릿을 덮어쓸까요?",
+    "overwrite": "덮어쓰기"
+  },
+  "queue": {
+    "cores": "공통 코어 수 (NP)",
+    "command": "공통 실행 명령",
+    "manual": "고급: CPU 직접 지정",
+    "automatic": "자동 배정 사용 (권장)",
+    "cpu_set": "공통 CPU 범위",
+    "cross_socket": "{mark} 여러 소켓/NUMA 허용",
+    "scan": "하위 케이스 검색",
+    "members": "선택 케이스 목록",
+    "auto_label": "자동 배정 (소켓 간 허용 · 코어 중복 금지)",
+    "manual_label": "{cpu_set} · 수동",
+    "macro_body": "매크로 공통 실행 설정\nNP: {cores}\nCPU: {cpu}\n명령: {command}\n자동 배정은 실행 직전에 ofps 점유와 CPU 예약을 확인합니다. 빈 코어가 부족하면 대기합니다.\n선택 케이스: {count}개\n검색한 케이스에서 제외할 행을 삭제한 뒤 저장하세요.",
+    "single_body": "개별 작업 소속: {role}\n매크로: {macro}",
+    "alone": "alone · 독립 작업",
+    "child": "child · 매크로 소속",
+    "macro_path": "매크로 상대 경로"
+  },
+  "scripts": {
+    "body": "전·후처리\n각 케이스 폴더에서 전처리 → 계산 → 정상 종료 후 후처리 순으로 실행합니다.\nAllclean은 기존 계산 결과를 정리합니다. 이어서 계산할 때는 전처리를 비우세요.\n\n전처리: {preprocess}\n후처리: {postprocess}",
+    "edit_pre": "전처리 수정",
+    "default_pre": "Allclean 기본값",
+    "edit_post": "후처리 수정",
+    "default_post": "Allpost 기본값"
+  },
+  "input": {
+    "control_default": "controlDict 기본값",
+    "clear": "비우기",
+    "cancel": "입력 취소",
+    "body": "{title}\n{hint}\n\n현재 값: {current}\n\n값을 보내세요. 그룹에서는 이 메시지에 답장하세요."
+  },
+  "browser": {
+    "parent": "상위 폴더",
+    "move": "경로 직접 이동",
+    "select_folder": "이 폴더 선택",
+    "apply_logs": "선택 로그 적용 ({count}개)",
+    "cancel": "파일 선택 취소",
+    "body": "서버 파일 선택\n{path}{macro_note}",
+    "macro_note": "\n매크로의 로그는 기준 child에 대한 상대 경로로 저장합니다."
+  },
+  "exports": {
+    "add": "요청 데이터 추가",
+    "body": "요청 데이터 · {count}개\n/data에서 요청할 때 보낼 파일을 정의합니다.",
+    "name": "요청 이름",
+    "pattern": "파일 경로 / 패턴",
+    "photo": "이미지",
+    "document": "파일",
+    "max_files": "최대 파일 수",
+    "edit": "요청 데이터 편집",
+    "cancel": "수정 취소",
+    "field_name": "이름",
+    "field_pattern": "경로",
+    "field_kind": "전송 형식",
+    "field_max": "최대 개수",
+    "field_line": "{label}: {value}"
+  },
+  "members": {
+    "title": "선택 케이스 · {count}개 · 순서대로 실행\n🟨 postProcessing 있음 · 실행 대상에 포함",
+    "remove": "삭제",
+    "rescan": "하위 케이스 다시 검색",
+    "searching": "하위 케이스를 검색 중입니다.",
+    "checking": "ofps 실행 상태와 체크포인트·후처리를 확인 중입니다.\n다른 봇 메뉴는 계속 사용할 수 있습니다.",
+    "cancel": "검색 취소",
+    "line": "{marker}{index}. {path}\n{reason}",
+    "button": "{marker}{index}. {name}"
+  },
+  "switch": {
+    "body": "현재 초안에 저장하지 않은 변경이 있습니다.",
+    "discard": "변경 버리고 계속",
+    "back": "편집으로 돌아가기"
+  },
+  "review": {
+    "body": "저장 확인\n파일: {filename}\n이름: {name}\nCase directory: {case_dir}",
+    "macro": "\n선택 케이스: {count}개\n공통 NP: {cores} · CPU: {cpu}\n소켓 간 실행: {cross_socket}\n명령: {command}",
+    "pre": "\n전처리: {value}",
+    "post": "\n후처리: {value}",
+    "will_run": "\n\n변경 내용을 저장한 뒤 실행 큐에 등록합니다.",
+    "save_only": "\n\n티켓 설정을 저장합니다.",
+    "macro_run": "\n이미 대기 중인 작업은 중복 등록하지 않습니다.",
+    "macro_save": "\n일반 저장은 실행하지 않습니다. 대기·실행 중에는 케이스 목록을 유지하세요.",
+    "overwrite_notice": "\n같은 이름의 파일을 덮어씁니다.",
+    "overwrite_run": "덮어쓰기·저장 및 실행",
+    "overwrite": "덮어쓰기 및 저장",
+    "save_run": "저장 및 실행 확정",
+    "save": "저장 확정",
+    "back": "수정으로 돌아가기"
+  },
+  "run": {
+    "confirm": "{filename}을 실행 큐에 등록할까요?\n{detail}",
+    "macro": "매크로의 모든 child를 저장된 순서대로 실행합니다.",
+    "single": "저장된 티켓 설정으로 실행합니다.",
+    "button": "실행 확정",
+    "mode_title": "작업 종류 선택",
+    "single_button": "개별 작업",
+    "macro_button": "매크로 작업"
+  }
+}

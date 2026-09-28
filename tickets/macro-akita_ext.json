@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "case_dir": "/home/joon/OpenFOAM/joon-dev/run/stirred_tank/akita_ext",
+  "watcher": {
+    "logs": [
+      "log.foamRun.preFlow"
+    ],
+    "failure": {
+      "patterns": [],
+      "updated_files": [],
+      "include_openfoam_defaults": true
+    }
+  },
+  "task_type": "macro",
+  "role": "alone",
+  "end_time": 2500.0,
+  "cases": [
+    {
+      "case_dir": "/home/joon/OpenFOAM/joon-dev/run/stirred_tank/akita_ext/A_Q1p67em6_N2",
+      "ticket": "child-A_Q1p67em6_N2-3a43073a.json",
+      "state": "finished",
+      "result": "failed",
+      "reason": "명령 종료 코드 2 · FAILED: phase=stage_last_to_2500 exit=2; see FAILED_CASES.md",
+      "job_id": "236c37b3ad4c"
+    },
+    {
+      "case_dir": "/home/joon/OpenFOAM/joon-dev/run/stirred_tank/akita_ext/A_Q1p67em6_N4",
+      "ticket": "child-A_Q1p67em6_N4-446cf682.json",
+      "state": "finished",
+      "result": "succeeded",
+      "reason": "티켓 end_time 2500 도달 (최종 Time 2500)",
+      "job_id": "56d1eff777c4"
+    },
+    {
+      "case_dir": "/home/joon/OpenFOAM/joon-dev/run/stirred_tank/akita_ext/A_Q1p67em6_N8",
+      "ticket": "child-A_Q1p67em6_N8-7024edef.json",
+      "state": "finished",
+      "result": "succeeded",
+      "reason": "티켓 end_time 2500 도달 (최종 Time 2500)",
+      "job_id": "3e483d38ae1f"
+    },
+    {
+      "case_dir": "/home/joon/OpenFOAM/joon-dev/run/stirred_tank/akita_ext/A_Q4p17em7_N2",
+      "ticket": "child-A_Q4p17em7_N2-9c18e6fe.json",
+      "state": "finished",
+      "result": "succeeded",
+      "reason": "티켓 end_time 2500 도달 (최종 Time 2500)",
+      "job_id": "24dc4b464734"
+    },
+    {
+      "case_dir": "/home/joon/OpenFOAM/joon-dev/run/stirred_tank/akita_ext/A_Q8p33em7_N2",
+      "ticket": "child-A_Q8p33em7_N2-184bc7fc.json",
+      "state": "finished",
+      "result": "succeeded",
+      "reason": "티켓 end_time 2500 도달 (최종 Time 2500)",
+      "job_id": "8e86bfc84928"
+    }
+  ],
+  "resource_source": "macro",
+  "cores": 48,
+  "command": [
+    "./Allrun"
+  ],
+  "allow_cross_socket": true,
+  "residual_pattern": "validation/monitoring/preFlow/residuals.png",
+  "notifications": {
+    "events": [
+      "started",
+      "succeeded",
+      "failed",
+      "interrupted"
+    ]
+  },
+  "exports": [
+    {
+      "name": "live-naoh",
+      "pattern": "validation/live/steady_coupled_naoh.png",
+      "kind": "photo",
+      "max_files": 1,
+      "on": [],
+      "on_complete": false
+    },
+    {
+      "name": "profile-changes",
+      "pattern": "validation/monitoring/preFlow/profile_changes.png",
+      "kind": "photo",
+      "max_files": 1,
+      "on": [],
+      "on_complete": false
+    }
+  ],
+  "queue": {
+    "state": "finished",
+    "submit": false,
+    "request_id": "2dc865b072e64152a39d90de35424605",
+    "updated_at": 1790541880.2370589
+  },
+  "cpu_policy": "auto",
+  "preprocess": [
+    {
+      "command": [
+        "./Allclean"
+      ]
+    }
+  ],
+  "postprocess": [
+    {
+      "command": [
+        "./Allpost"
+      ]
+    }
+  ],
+  "name": "akita_ext"
+}

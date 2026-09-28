@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "state_dir": "state",
+  "ui_dir": "telegram-ui",
+  "ofps_command": ["/home/joon/.local/bin/ofps"],
+  "cases": [],
+  "case_globs": ["tickets/*.json"],
+  "poll_seconds": 5,
+  "missing_polls": 2,
+  "telegram": {
+    "token_env": "TELEGRAM_BOT_TOKEN",
+    "allowed_user_ids": [],
+    "chat_ids": []
+  },
+  "scheduler": {
+    "enabled": false,
+    "max_parallel": 1,
+    "openfoam_bashrc": "../deploy/openfoam-env.sh"
+  }
+}

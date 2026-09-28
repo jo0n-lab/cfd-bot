@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "case_dir": "/home/joon/OpenFOAM/joon-dev/run/stirred_tank/akita_ext/TEMPLATE_A",
+  "watcher": {
+    "logs": [
+      "log.solver"
+    ],
+    "failure": {
+      "patterns": [],
+      "updated_files": [],
+      "include_openfoam_defaults": true
+    }
+  },
+  "task_type": "single",
+  "role": "alone",
+  "end_time": 2500.0,
+  "resource_source": "macro",
+  "cores": 24,
+  "command": [
+    "./Allrun"
+  ],
+  "allow_cross_socket": true,
+  "residual_pattern": "validation/monitoring/preFlow/residuals.png",
+  "notifications": {
+    "events": [
+      "started",
+      "succeeded",
+      "failed",
+      "interrupted"
+    ]
+  },
+  "exports": [
+    {
+      "name": "live-naoh",
+      "pattern": "validation/live/steady_coupled_naoh.png",
+      "kind": "photo",
+      "max_files": 1,
+      "on": [],
+      "on_complete": false
+    }
+  ],
+  "name": "TEMPLATE_A",
+  "queue": {
+    "state": "finished",
+    "request_id": "0084bf61f84546ab9ab748c0f2dee59c",
+    "result": "cancelled",
+    "updated_at": 1790400092.6229222,
+    "reason": "",
+    "job_id": "903898b3711f"
+  },
+  "cpu_policy": "auto"
+}

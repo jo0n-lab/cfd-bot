@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly config_dir=/home/joon/.config/cfd-bot
+readonly target=$config_dir/telegram.env
+
+install -d -m 700 "$config_dir"
+IFS= read -r -s -p 'New Telegram bot token: ' token
+printf '\n'
+
+if [[ ! $token =~ ^[0-9]+:[A-Za-z0-9_-]+$ ]]; then
+    unset token
+    echo 'Invalid Telegram bot token format.' >&2
+    exit 2
+fi
+
+umask 077
+temporary=$(mktemp "$config_dir/.telegram.env.XXXXXX")
+cleanup()
+{
+    rm -f -- "$temporary"
+    unset token
+}
+trap cleanup EXIT
+printf 'TELEGRAM_BOT_TOKEN=%s\n' "$token" > "$temporary"
+chmod 600 "$temporary"
+mv -f -- "$temporary" "$target"
+trap - EXIT
+unset token
+printf 'Saved securely: %s\n' "$target"

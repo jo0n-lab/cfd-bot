@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "task_type": "single",
+  "role": "child",
+  "macro_ticket": "macro-batch.json",
+  "name": "case-a",
+  "case_dir": "/home/user/OpenFOAM/run/batch/case-a",
+  "resource_source": "macro",
+  "cores": 4,
+  "cpu_policy": "auto",
+  "allow_cross_socket": true,
+  "command": ["./Allrun"],
+  "preprocess": [{"command": ["./Allclean"]}],
+  "postprocess": [{"command": ["./Allpost"]}],
+  "end_time": null,
+  "watcher": {"logs": ["log.solver"], "failure": {"patterns": ["failed stage:"]}},
+  "residual_pattern": "plots/residual*.png",
+  "exports": [],
+  "queue": {"state": "waiting", "request_id": "example-batch-1"}
+}

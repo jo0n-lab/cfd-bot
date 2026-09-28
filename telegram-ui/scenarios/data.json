@@ -1,0 +1,12 @@
+{
+  "no_observation": "{case_name}: 아직 관측된 실행이 없습니다.",
+  "residual_path_required": "티켓 편집기에서 Residual PNG 경로를 지정하세요.",
+  "residual_missing": "Residual PNG가 없습니다: {pattern}",
+  "unknown_export": "등록되지 않은 데이터 종류입니다.",
+  "export_missing": "{name}: 생성된 파일이 없습니다.",
+  "too_large": "{filename}: 49 MiB 초과로 전송할 수 없습니다.",
+  "caption": "{case_name} · {name} · 파일 수정 {modified}",
+  "attachment_skipped": "첨부 전송 생략: {error}",
+  "attachment_notes": "첨부 안내:\n{notes}",
+  "case_header": "{case_name}\n{case_root}"
+}

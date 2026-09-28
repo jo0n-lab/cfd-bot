@@ -1,0 +1,439 @@
+import hashlib
+import logging
+import os
+import threading
+import time
+from pathlib import Path
+
+from .artifacts import MAX_DOCUMENT, export_files, residual_files
+from .config import cases_for
+from .monitor import Monitor
+from .processes import DaemonLock, snapshot as process_snapshot
+from .report import compact_status, queue_text, render_run
+from .telegram import Telegram, TelegramError, chunks
+from .texts import load_text
+from .ui import load_ui
+
+LOG = logging.getLogger(__name__)
+
+
+def button(text, data):
+    return {'text': text, 'callback_data': data}
+
+
+def keyboard(rows):
+    return {'inline_keyboard': rows}
+
+
+def case_id(case):
+    return hashlib.sha256(case['_root'].encode()).hexdigest()[:12]
+
+
+def elapsed_seconds(value):
+    """Parse ps/ofps elapsed values such as MM:SS, HH:MM:SS or DD-HH:MM:SS."""
+    try:
+        day_text, clock = value.split('-', 1) if '-' in value else ('0', value)
+        parts = [int(part) for part in clock.split(':')]
+        if not 1 <= len(parts) <= 3:
+            return 0
+        seconds = sum(part * 60 ** index for index, part in enumerate(reversed(parts)))
+        return int(day_text) * 86400 + seconds
+    except (AttributeError, TypeError, ValueError):
+        return 0
+
+
+class Bot:
+    def __init__(self, config, store, api):
+        self.config, self.store, self.api = config, store, api
+        self.ui = load_ui(config.get('_ui_dir'))
+        self.ticket_ui = None
+
+    def cases(self):
+        return {case_id(c): c for c in cases_for(self.config)}
+
+    def templates(self):
+        return load_text(self.config.get('_text_file'), self.ui)
+
+    def _remember(self, chat, result):
+        if result is None:
+            return
+        results = result if isinstance(result, list) else [result]
+        for message in results:
+            if isinstance(message, dict) and type(message.get('message_id')) is int:
+                self.store.remember_message(chat, message['message_id'], message.get('date'))
+
+    def send(self, chat, text, markup=None):
+        result = self.api.send(chat, text, markup)
+        self._remember(chat, result)
+        return result
+
+    def file(self, chat, item):
+        result = self.api.file(chat, item)
+        self._remember(chat, result)
+        return result
+
+    def active_runs(self, snapshot=None):
+        """Translate the current ofps snapshot directly; watcher state is irrelevant."""
+        snapshot = snapshot if snapshot is not None else (self.store.get('snapshot') or {})
+        runs = []
+        registered = {case['_root']: case for case in self.cases().values()}
+        observed_at = snapshot.get('at', time.time())
+        for root, record in snapshot.get('cases', {}).items():
+            case = registered.get(root)
+            is_registered = case is not None
+            if case is None:
+                case = {'name': Path(root).name + ' · ' + self.ui.text('strings.common.unregistered'),
+                        '_root': root, '_ui_dir': self.config['_ui_dir'],
+                        'watcher': {}, 'command': []}
+            members = record.get('supervisors', []) + record.get('processes', [])
+            elapsed = max((elapsed_seconds(member.get('elapsed')) for member in members),
+                          default=0)
+            runs.append(dict(
+                id='ofps-' + hashlib.sha256(root.encode()).hexdigest()[:12],
+                case=case, case_root=root, created=observed_at,
+                started=observed_at - elapsed, status='running', telemetry={},
+                external=True, registered=is_registered,
+                owner=record.get('owner', self.ui.text('strings.common.unavailable')),
+                actual_cores=record.get('actual_cores'),
+                actual_cpu_list=record.get('actual_cpu_list'),
+            ))
+        return runs
+
+    def fresh_runs(self):
+        """Run ofps for this /stat request so Telegram sees the same live data."""
+        try:
+            snap = process_snapshot(self.config['ofps_command'])
+            snap['at'] = time.time()
+            self.store.put('snapshot', snap)
+            from .tickets import sync_ticket_states
+            sync_ticket_states(self.config, self.store, snap)
+            return snap, self.active_runs(snap), None
+        except (OSError, RuntimeError) as exc:
+            snap = {'at': time.time(), 'cases': {}}
+            return snap, [], {'message': self.ui.text('strings.common.technical_error',
+                                                     type=type(exc).__name__, error=exc)}
+
+    def status(self, snap=None, runs=None, error=None):
+        snap = snap if snap is not None else self.store.get('snapshot')
+        if error is None:
+            error = self.store.get('monitor_error')
+        age = self.ui.text('scenarios.status.age', seconds=max(0, int(time.time() - snap['at']))) if snap else ''
+        lines = [self.ui.text('scenarios.status.title', age=age)]
+        if error:
+            lines.append(self.ui.text('scenarios.status.collection_error', message=error['message']))
+        runs = self.active_runs(snap) if runs is None else runs
+        for run in runs:
+            if run.get('registered', True):
+                run['runtime_history'] = self.store.runtime_history(
+                    run['case'], run.get('actual_cores'))
+            lines.append(compact_status(run, self.ui))
+        if not runs:
+            lines.append(self.ui.text('scenarios.status.empty'))
+        return '\n'.join(lines)
+
+    def status_keyboard(self, runs=None):
+        by_root = {case['_root']: (cid, case) for cid, case in self.cases().items()}
+        rows = []
+        for run in self.active_runs() if runs is None else runs:
+            item = by_root.get(run['case_root'])
+            if item:
+                rows.append([button(item[1]['name'], 'detail:' + item[0])])
+        return keyboard(rows) if rows else None
+
+    def show_cases(self, chat, page=0):
+        cases = list(self.cases().items())
+        page = max(0, min(page, max(0, (len(cases) - 1) // 8)))
+        rows = [[button(c['name'], 'case:' + cid)] for cid, c in cases[page * 8:page * 8 + 8]]
+        nav = []
+        if page:
+            nav.append(button(self.ui.text('menus.cases.previous'), f'cases:{page-1}'))
+        if (page + 1) * 8 < len(cases):
+            nav.append(button(self.ui.text('menus.cases.next'), f'cases:{page+1}'))
+        if nav:
+            rows.append(nav)
+        self.send(chat, self.ui.text('menus.cases.select' if cases else 'menus.cases.empty'), keyboard(rows))
+
+    def case_menu(self, chat, cid):
+        case = self.cases().get(cid)
+        if case is None:
+            raise ValueError(self.ui.text('menus.cases.removed'))
+        rows = [[button(self.ui.text('menus.cases.detail'), 'detail:' + cid)]]
+        if case.get('residual_pattern'):
+            rows[0].append(button(self.ui.text('menus.cases.residual'), 'residual:' + cid))
+        rows += [[button(e['name'], 'export:' + cid + ':' + e['name'])] for e in case['exports']]
+        if case.get('command') or (Path(case['_root']) / 'Allrun').is_file():
+            state = self.case_runner(case).state(Path(case['_config']).name)
+            rows.append([button(state['label'], ('prepare:' if state['enabled'] else 'case:') + cid)])
+        ticket_key = hashlib.sha256(case['_config'].encode()).hexdigest()[:16]
+        rows.append([button(self.ui.text('menus.cases.edit_ticket'), 'ticketopen:' + ticket_key)])
+        self.send(chat, self.ui.text('scenarios.data.case_header', case_name=case['name'],
+                                     case_root=case['_root']), keyboard(rows))
+
+    def case_runner(self, case):
+        from .editor import TicketService
+        from .ticket_run import TicketRunner
+        return TicketRunner(TicketService(Path(case['_config']).parent), self.config, self.store)
+
+    def detail_keyboard(self, case, cid):
+        rows = [[button(self.ui.text('menus.cases.residual'), 'residual:' + cid)]] if case.get('residual_pattern') else []
+        rows += [[button(e['name'], 'export:' + cid + ':' + e['name'])] for e in case['exports']]
+        return keyboard(rows) if rows else None
+
+    def latest_run(self, case):
+        runs = [j for j in self.store.jobs() if j['case_root'] == case['_root']]
+        external = self.store.get('observed:' + case['_root'])
+        if external:
+            runs.append(external)
+        if not runs:
+            return None
+        run = max(runs, key=lambda x: x['created'])
+        run['runtime_history'] = self.store.runtime_history(case, run.get('actual_cores'))
+        return run
+
+    def handle(self, update):
+        callback = update.get('callback_query')
+        message = callback.get('message', {}) if callback else update.get('message', {})
+        sender = (callback or message).get('from', {}).get('id')
+        chat = message.get('chat', {}).get('id')
+        # Both sender and destination must be explicitly allowed, including in groups.
+        if sender not in self.config['telegram']['allowed_user_ids'] or chat not in self.config['telegram']['chat_ids']:
+            if callback:
+                self.api.call('answerCallbackQuery', {'callback_query_id': callback['id'],
+                                                      'text': self.ui.text('menus.home.unauthorized')})
+            return
+        if type(message.get('message_id')) is int:
+            self.store.remember_message(chat, message['message_id'], message.get('date'))
+        if callback:
+            self.api.call('answerCallbackQuery', {'callback_query_id': callback['id']})
+        if self.ticket_ui is None:
+            from .ticket_chat import TicketChat
+            self.ticket_ui = TicketChat(self)
+        if self.ticket_ui.handle(update):
+            return
+        if callback:
+            action = callback.get('data', '')
+        else:
+            command = message.get('text', '').split()
+            name = command[0].split('@')[0] if command else ''
+            action = {'/start': 'home', '/help': 'home', '/stat': 'status',
+                      '/clean': 'clean', '/queue': 'queue', '/cases': 'cases:0',
+                      '/data': 'cases:0'}.get(name, 'home')
+        try:
+            self.dispatch(chat, action, str(update['update_id']))
+        except (ValueError, OSError) as exc:
+            self.send(chat, self.ui.text('menus.home.request_failed', error=str(exc)))
+
+    def dispatch(self, chat, action, request_key):
+        if action == 'home':
+            spec = self.ui.value('menus.home.keyboard')
+            rows = [[button(item['text'], item['action']) for item in row] for row in spec]
+            self.send(chat, self.ui.text('menus.home.help'), keyboard(rows))
+            return
+        if action == 'status':
+            snap, runs, error = self.fresh_runs()
+            self.send(chat, self.status(snap, runs, error), self.status_keyboard(runs))
+            return
+        if action == 'clean':
+            # Telegram cannot delete messages older than 48 hours. Use the
+            # message's Telegram timestamp and a small boundary margin so one
+            # expired ID cannot force the whole batch into a slow fallback.
+            messages = self.store.chat_messages(chat, since=time.time() - 48 * 3600 + 60)
+            self.api.delete_messages(chat, messages)
+            # Expired and otherwise undeletable IDs must not poison every later
+            # /clean attempt. A transport/server error raises before this point.
+            self.store.clear_messages(chat)
+            if self.ticket_ui is not None:
+                self.ticket_ui.forget_panels(chat)
+            return
+        if action in ('queue', 'pause', 'resume'):
+            if action != 'queue':
+                self.store.put('queue_paused', action == 'pause')
+            enabled = self.config['scheduler']['enabled'] and not self.store.get('queue_paused', False)
+            rows = [[button(self.ui.text('menus.queue.add'), 'cases:0'),
+                     button(self.ui.text('menus.queue.edit_tickets'), 'tickets')]]
+            rows.append([button(self.ui.text('menus.queue.resume') if self.store.get('queue_paused', False)
+                                else self.ui.text('menus.queue.pause'),
+                                'resume' if self.store.get('queue_paused', False) else 'pause')])
+            rows += [[button(self.ui.text('menus.queue.cancel_case', case_name=j['case']['name']),
+                             'cancel:' + j['id'])]
+                     for j in self.store.jobs(('queued',))[:20]]
+            self.send(chat, queue_text(self.store, enabled, self.ui), keyboard(rows))
+            return
+        parts = action.split(':')
+        if parts[0] == 'cases':
+            self.show_cases(chat, int(parts[1]))
+            return
+        if parts[0] == 'cancel' and len(parts) == 2:
+            job = self.store.update_job(parts[1], expected=('queued',), status='cancelled', finished=time.time())
+            self.send(chat, self.ui.text('menus.queue.cancelled' if job else 'menus.queue.cancel_unavailable'))
+            return
+        if len(parts) < 2:
+            raise ValueError(self.ui.text('menus.home.unknown_button'))
+        cid = parts[1]
+        case = self.cases().get(cid)
+        if case is None:
+            raise ValueError(self.ui.text('menus.cases.unregistered'))
+        if parts[0] == 'case':
+            self.case_menu(chat, cid)
+        elif parts[0] == 'detail':
+            run = self.latest_run(case)
+            text = (render_run(run, self.templates(), 'detail', self.ui) if run else
+                    self.ui.text('scenarios.data.no_observation', case_name=case['name']))
+            self.send(chat, text, self.detail_keyboard(case, cid))
+        elif parts[0] == 'prepare':
+            from .execution import execution_case
+            state = self.case_runner(case).state(Path(case['_config']).name, fresh=True)
+            if not state['enabled']:
+                raise ValueError(self.ui.text('scenarios.launch.already_running'))
+            if state['state'] == 'queued':
+                self.send(chat, self.ui.text('scenarios.launch.already_queued'))
+                return
+            execution = execution_case(case)
+            self.send(chat, self.ui.text(
+                'scenarios.launch.confirm', case_name=case['name'], cores=execution['cores'],
+                cpu_set=execution.get('cpu_set', self.ui.text('scenarios.launch.automatic_cpu')),
+                command=execution['command']),
+                keyboard([[button(self.ui.text('scenarios.launch.register'), 'enqueue:' + cid)]]))
+        elif parts[0] == 'enqueue':
+            state = self.case_runner(case).state(Path(case['_config']).name, fresh=True)
+            if not state['enabled']:
+                raise ValueError(self.ui.text('scenarios.launch.already_running'))
+            if state['state'] == 'queued':
+                self.send(chat, self.ui.text('scenarios.launch.already_queued'))
+                return
+            job = self.store.enqueue(case, request_key=request_key)
+            self.send(chat, self.ui.text('scenarios.launch.queued', case_name=case['name'], job_id=job['id']))
+        elif parts[0] == 'residual':
+            if not case.get('residual_pattern'):
+                self.send(chat, self.ui.text('scenarios.data.residual_path_required'))
+                return
+            files = residual_files(case)
+            if not files:
+                self.send(chat, self.ui.text('scenarios.data.residual_missing', pattern=case['residual_pattern']))
+            for item in files:
+                self.file(chat, item)
+        elif parts[0] == 'export' and len(parts) == 3:
+            export = next((e for e in case['exports'] if e['name'] == parts[2]), None)
+            if export is None:
+                raise ValueError(self.ui.text('scenarios.data.unknown_export'))
+            files = export_files(case, export)
+            if not files:
+                self.send(chat, self.ui.text('scenarios.data.export_missing', name=export['name']))
+            for path in files:
+                if path.stat().st_size > MAX_DOCUMENT:
+                    self.send(chat, self.ui.text('scenarios.data.too_large', filename=path.name))
+                else:
+                    stamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(path.stat().st_mtime))
+                    self.file(chat, dict(path=str(path), kind=export['kind'], caption=self.ui.text(
+                        'scenarios.data.caption', case_name=case['name'], name=export['name'], modified=stamp)))
+        else:
+            raise ValueError(self.ui.text('menus.home.unknown_request'))
+
+
+def remember_sent(store, chat, result):
+    if result is None:
+        return
+    results = result if isinstance(result, list) else [result]
+    for message in results:
+        if isinstance(message, dict) and type(message.get('message_id')) is int:
+            store.remember_message(chat, message['message_id'], message.get('date'))
+
+
+def deliver(store, api, text_path=None, ui=None):
+    ui = ui or load_ui()
+    for event in store.pending():
+        body = event['body']
+        try:
+            if 'messages' not in body:
+                if body['kind'] == 'terminal':
+                    run = body['run']
+                    # PNGs were frozen at completion, before another run could overwrite them.
+                    body.setdefault('files', [])
+                    text = render_run(run, load_text(text_path, ui), 'completion', ui)
+                    if body.get('notes'):
+                        text += '\n' + ui.text('scenarios.data.attachment_notes', notes='\n'.join(body['notes']))
+                else:
+                    text = body['text']
+                    body.setdefault('files', [])
+                body['messages'] = list(chunks(text))
+                body['message_index'] = 0
+                body['file_index'] = 0
+                store.save_delivery(event['id'], body)
+            while body['message_index'] < len(body['messages']):
+                result = api.send(event['chat_id'], body['messages'][body['message_index']])
+                remember_sent(store, event['chat_id'], result)
+                body['message_index'] += 1
+                store.save_delivery(event['id'], body)
+            while body['file_index'] < len(body['files']):
+                item = body['files'][body['file_index']]
+                try:
+                    result = api.file(event['chat_id'], item)
+                    remember_sent(store, event['chat_id'], result)
+                except (FileNotFoundError, ValueError) as exc:
+                    result = api.send(event['chat_id'], ui.text('scenarios.data.attachment_skipped', error=str(exc)))
+                    remember_sent(store, event['chat_id'], result)
+                body['file_index'] += 1
+                store.save_delivery(event['id'], body)
+            store.delivered(event['id'])
+        except TelegramError as exc:
+            LOG.warning('Notification retry: %s', exc)
+            store.retry(event['id'], exc.retry_after)
+        except Exception as exc:
+            LOG.warning('Notification processing retry: %s', exc)
+            store.retry(event['id'])
+
+
+def serve(config, store, stop=None):
+    token = os.environ.get(config['telegram']['token_env'])
+    if not token:
+        raise ValueError(load_ui(config.get('_ui_dir')).text(
+            'scenarios.diagnostics.service.token_missing', name=config['telegram']['token_env']))
+    if not config['telegram']['allowed_user_ids'] or not config['telegram']['chat_ids']:
+        raise ValueError(load_ui(config.get('_ui_dir')).text(
+            'scenarios.diagnostics.service.allowlist_missing'))
+    api = Telegram(token)
+    stop = stop or threading.Event()
+    bot = Bot(config, store, api)
+    ui = bot.ui
+    monitor = Monitor(config, store)
+
+    def monitor_loop():
+        while not stop.is_set():
+            monitor.run_once()
+            stop.wait(config['poll_seconds'])
+
+    def notification_loop():
+        while not stop.is_set():
+            deliver(store, api, config.get('_text_file'), ui)
+            stop.wait(1)
+
+    with DaemonLock(store.root / 'daemon.lock'):
+        cases_for(config)
+        load_text(config.get('_text_file'), ui)
+        api.call('getMe', {})
+        api.call('setMyCommands', {'commands': ui.value('menus.home.commands')})
+        webhook = api.call('getWebhookInfo', {})
+        if webhook.get('url'):
+            raise ValueError(ui.text('scenarios.diagnostics.service.webhook'))
+        workers = [threading.Thread(target=monitor_loop, daemon=True),
+                   threading.Thread(target=notification_loop, daemon=True)]
+        for thread in workers:
+            thread.start()
+        try:
+            while not stop.is_set():
+                try:
+                    updates = api.updates(store.get('telegram_offset', 0))
+                    for update in updates:
+                        try:
+                            bot.handle(update)
+                        except Exception as exc:
+                            LOG.warning('Telegram request failed: %s', exc)
+                        # A broken update must not indefinitely block subsequent buttons.
+                        store.put('telegram_offset', update['update_id'] + 1)
+                except TelegramError as exc:
+                    LOG.warning('Telegram polling: %s', exc)
+                    stop.wait(max(3, exc.retry_after))
+        finally:
+            stop.set()
+            for thread in workers:
+                thread.join(timeout=2)

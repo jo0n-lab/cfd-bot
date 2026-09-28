@@ -1,0 +1,14 @@
+{
+  "nonzero_exit": "명령 종료 코드 {returncode}{detail}",
+  "failure_file": "이번 실행에서 케이스 실패 기록이 갱신됨: {path}",
+  "failure_log": "로그에 실패 패턴 발견: {error}",
+  "stale_log": "조기 종료: 이번 실행에서 갱신된 계산 로그를 확인할 수 없음",
+  "control_missing": "종료 판정 실패: system/controlDict의 stopAt endTime과 endTime을 읽을 수 없음",
+  "stop_mode": "종료 판정 실패: controlDict stopAt이 {stop_at}임 (endTime 필요)",
+  "ticket_target": "티켓 end_time",
+  "control_target": "controlDict endTime",
+  "time_missing": "조기 종료: 로그의 최종 Time을 확인할 수 없음 ({target_label} {target})",
+  "success": "{source}{target_label} {target} 도달 (최종 Time {current})",
+  "external_source": "외부 계산 · ",
+  "incomplete": "조기 종료: {target_label} {target} 중 Time {current}까지 진행"
+}

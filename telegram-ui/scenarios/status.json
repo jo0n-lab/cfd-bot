@@ -1,0 +1,8 @@
+{
+  "title": "실시간 계산 현황{age}",
+  "age": " · {seconds}초 전 수집",
+  "collection_error": "⚠️ 상태 수집 오류: {message}",
+  "empty": "실행 중인 계산이 없습니다.",
+  "compact": "{case_name} | {owner} | {cores}/{cpu_list} | {started_at}/{elapsed}",
+  "unobserved": "{case_name} | 아직 관측되지 않음 | 코어·CPU 관측 대기 | 미정 / 미정"
+}
