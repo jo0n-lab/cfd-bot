@@ -2,6 +2,8 @@
 
 이 문서는 현재 Python 구현의 모듈 경계, 런타임 흐름, 데이터 구조와 실패 처리를 설명합니다. 시스템 수준 결정은 [HLD.md](HLD.md)를 참조합니다.
 
+![ofps Telegram CFD bot LLD](lld-component-design.svg)
+
 ## 1. 프로세스와 동시성 모델
 
 ### 1.1 daemon process

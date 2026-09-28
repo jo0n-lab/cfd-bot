@@ -2,6 +2,12 @@
 
 이 문서는 현재 구현을 기준으로 사용자 단, Telegram bot 단, `ofps` 단의 책임과 유즈케이스별 데이터 흐름을 설명합니다. 시스템 수준 설계는 [HLD.md](HLD.md), 모듈·상태·DB 수준 설계는 [LLD.md](LLD.md)를 함께 참조합니다.
 
+![ofps Telegram CFD bot 핵심 아키텍처](ofps-telegram-architecture.svg)
+
+전체 명령과 백그라운드 동작을 한 장에서 보려면 [전체 기능 Flow Chart](all-feature-flows.svg)를 참조합니다.
+
+![ofps Telegram CFD bot 전체 기능 Flow Chart](all-feature-flows.svg)
+
 ## 1. 핵심 경계
 
 | 기능 | 진실 원천 | Telegram bot의 역할 | 티켓 필요 여부 |

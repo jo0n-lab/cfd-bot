@@ -2,6 +2,8 @@
 
 이 문서는 시스템의 책임, 경계, 주요 데이터 흐름과 운영 원칙을 설명합니다. 클래스·함수·DB 키 수준의 설계는 [LLD.md](LLD.md), 전체 유즈케이스와 상세 흐름은 [ARCHITECTURE.md](ARCHITECTURE.md)를 참조합니다.
 
+![ofps Telegram CFD bot HLD](hld-system-design.svg)
+
 ## 1. 목적과 범위
 
 이 시스템은 Linux 호스트에서 실행되는 OpenFOAM/Basilisk 계산을 기존 `ofps`로 관측하고 Telegram으로 조회·알림·큐 실행 기능을 제공합니다.
@@ -175,4 +177,5 @@ Residual은 봇이 생성하지 않고 케이스가 만든 최신 PNG를 전송�
 - [LLD.md](LLD.md): 모듈, DB, 상태 전이, 함수 단위 흐름
 - [ARCHITECTURE.md](ARCHITECTURE.md): 전체 구성과 유즈케이스별 sequence/flow chart
 - [ofps-telegram-architecture.svg](ofps-telegram-architecture.svg): 한 장짜리 아키텍처 그림
+- [all-feature-flows.svg](all-feature-flows.svg): 전체 사용자·백그라운드·운영 기능 플로우
 - [../README.md](../README.md): 설치·설정·사용 방법

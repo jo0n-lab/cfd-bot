@@ -22,12 +22,12 @@
       .card-sub { font-size: 11px; fill: #475569; text-anchor: middle; }
       .small { font-size: 11px; fill: #475569; }
       .badge { font-size: 12px; font-weight: 700; fill: white; text-anchor: middle; }
-      .card { stroke-width: 1.4; rx: 10; filter: url(#shadow); }
-      .interface { fill: #eff6ff; stroke: #60a5fa; }
-      .app { fill: #f5f3ff; stroke: #a78bfa; }
-      .domain { fill: #ecfdf5; stroke: #34d399; }
-      .infra { fill: #fff7ed; stroke: #fb923c; }
-      .store { fill: #f8fafc; stroke: #94a3b8; }
+      .card { stroke-width: 2; rx: 10; }
+      .interface { fill: #ffffff; stroke: #3b82f6; }
+      .app { fill: #fcfbff; stroke: #8b5cf6; }
+      .domain { fill: #f0fdf4; stroke: #10b981; }
+      .infra { fill: #fffaf5; stroke: #f97316; }
+      .store { fill: #ffffff; stroke: #64748b; }
       .arrow { fill: none; stroke: #334155; stroke-width: 1.7; marker-end: url(#arrow); }
       .flow { fill: none; stroke: #7c3aed; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#purple); }
       .rule { stroke: #cbd5e1; stroke-width: 1; }
@@ -50,22 +50,22 @@
 
   <text class="flow-title" x="48" y="202">1. 시작과 UI resource</text>
   <g transform="translate(52 220)">
-    <rect class="card interface" width="200" height="70"/>
+    <rect rx="10" class="card interface" width="200" height="70"/>
     <text class="card-title" x="100" y="28">cli.main / bot.serve</text>
     <text class="card-sub" x="100" y="49">config 경로 · command</text>
   </g>
   <g transform="translate(338 220)">
-    <rect class="card app" width="210" height="70"/>
+    <rect rx="10" class="card app" width="210" height="70"/>
     <text class="card-title" x="105" y="28">config.load_bot</text>
     <text class="card-sub" x="105" y="49">bot + ticket schema 검증</text>
   </g>
   <g transform="translate(590 220)">
-    <rect class="card domain" width="210" height="70"/>
+    <rect rx="10" class="card domain" width="210" height="70"/>
     <text class="card-title" x="105" y="28">ui.UiCatalog</text>
     <text class="card-sub" x="105" y="49">namespace · format · manifest</text>
   </g>
   <g transform="translate(1088 220)">
-    <rect class="card infra" width="330" height="70"/>
+    <rect rx="10" class="card infra" width="330" height="70"/>
     <text class="card-title" x="165" y="27">bot.json + tickets + telegram-ui</text>
     <text class="card-sub" x="165" y="49">검증 실패 시 service 시작 중단</text>
   </g>
@@ -76,22 +76,22 @@
   <line class="rule" x1="48" y1="322" x2="1448" y2="322"/>
   <text class="flow-title" x="48" y="354">2. /stat — 현재 프로세스 직접 조회</text>
   <g transform="translate(52 374)">
-    <rect class="card interface" width="200" height="72"/>
+    <rect rx="10" class="card interface" width="200" height="72"/>
     <text class="card-title" x="100" y="28">Bot.handle / dispatch</text>
     <text class="card-sub" x="100" y="50">allowlist · /stat only</text>
   </g>
   <g transform="translate(338 374)">
-    <rect class="card app" width="210" height="72"/>
+    <rect rx="10" class="card app" width="210" height="72"/>
     <text class="card-title" x="105" y="28">Bot.fresh_runs</text>
     <text class="card-sub" x="105" y="50">매 요청마다 새 snapshot</text>
   </g>
   <g transform="translate(590 374)">
-    <rect class="card domain" width="210" height="72"/>
+    <rect rx="10" class="card domain" width="210" height="72"/>
     <text class="card-title" x="105" y="28">report.compact_status</text>
     <text class="card-sub" x="105" y="50">티켓 이름 + 관측 owner/CPU</text>
   </g>
   <g transform="translate(1088 374)">
-    <rect class="card infra" width="330" height="72"/>
+    <rect rx="10" class="card infra" width="330" height="72"/>
     <text class="card-title" x="165" y="28">processes.snapshot → ofps</text>
     <text class="card-sub" x="165" y="50">SNAPSHOT_LOCK · parse_snapshot</text>
   </g>
@@ -104,24 +104,24 @@
   <line class="rule" x1="48" y1="488" x2="1448" y2="488"/>
   <text class="flow-title" x="48" y="520">3. Monitor — 등록·미등록 계산의 종료 판정</text>
   <g transform="translate(52 542)">
-    <rect class="card interface" width="200" height="72"/>
+    <rect rx="10" class="card interface" width="200" height="72"/>
     <text class="card-title" x="100" y="28">Telegram 알림</text>
     <text class="card-sub" x="100" y="50">시작 · 성공 · 실패 + Residual</text>
   </g>
   <g transform="translate(338 532)">
-    <rect class="card app" width="210" height="92"/>
+    <rect rx="10" class="card app" width="210" height="92"/>
     <text class="card-title" x="105" y="27">monitor.Monitor</text>
     <text class="card-sub" x="105" y="49">observe · missing_polls</text>
     <text class="card-sub" x="105" y="68">automatic_case · managed 제외</text>
   </g>
   <g transform="translate(590 532)">
-    <rect class="card domain" width="210" height="92"/>
+    <rect rx="10" class="card domain" width="210" height="92"/>
     <text class="card-title" x="105" y="27">logs + outcomes</text>
     <text class="card-sub" x="105" y="49">incremental telemetry</text>
     <text class="card-sub" x="105" y="68">stopAt/endTime/final Time</text>
   </g>
   <g transform="translate(1088 532)">
-    <rect class="card infra" width="330" height="92"/>
+    <rect rx="10" class="card infra" width="330" height="92"/>
     <text class="card-title" x="165" y="27">ofps + case filesystem</text>
     <text class="card-sub" x="165" y="49">프로세스 소멸 · 최신 단계 로그</text>
     <text class="card-sub" x="165" y="68">controlDict · fatal · 표식 파일</text>
@@ -137,24 +137,24 @@
   <line class="rule" x1="48" y1="704" x2="1448" y2="704"/>
   <text class="flow-title" x="48" y="736">4. FIFO queue — admission과 독립 worker</text>
   <g transform="translate(52 758)">
-    <rect class="card interface" width="200" height="72"/>
+    <rect rx="10" class="card interface" width="200" height="72"/>
     <text class="card-title" x="100" y="28">/queue · TicketRun</text>
     <text class="card-sub" x="100" y="50">단일 / macro submit</text>
   </g>
   <g transform="translate(338 748)">
-    <rect class="card app" width="210" height="92"/>
+    <rect rx="10" class="card app" width="210" height="92"/>
     <text class="card-title" x="105" y="27">jobs.Scheduler</text>
     <text class="card-sub" x="105" y="49">FIFO · environment · CPU 예약</text>
     <text class="card-sub" x="105" y="68">ofps --check · worker 복구</text>
   </g>
   <g transform="translate(590 748)">
-    <rect class="card domain" width="210" height="92"/>
+    <rect rx="10" class="card domain" width="210" height="92"/>
     <text class="card-title" x="105" y="27">jobs.worker</text>
     <text class="card-sub" x="105" y="49">pre → solver → post</text>
     <text class="card-sub" x="105" y="68">terminal_event · artifact freeze</text>
   </g>
   <g transform="translate(1088 748)">
-    <rect class="card infra" width="330" height="92"/>
+    <rect rx="10" class="card infra" width="330" height="92"/>
     <text class="card-title" x="165" y="27">OpenFOAM / Allrun</text>
     <text class="card-sub" x="165" y="49">taskset CPU_SET · foreground wait</text>
     <text class="card-sub" x="165" y="68">worker와 SQLite로 상태 공유</text>
@@ -166,24 +166,24 @@
   <line class="rule" x1="48" y1="872" x2="1448" y2="872"/>
   <text class="flow-title" x="48" y="904">5. 상태·알림·편집 저장소</text>
   <g transform="translate(52 928)">
-    <rect class="card interface" width="200" height="76"/>
+    <rect rx="10" class="card interface" width="200" height="76"/>
     <text class="card-title" x="100" y="28">TicketChat / GUI</text>
     <text class="card-sub" x="100" y="50">공용 TicketService</text>
   </g>
   <g transform="translate(338 918)">
-    <rect class="card domain" width="210" height="96"/>
+    <rect rx="10" class="card domain" width="210" height="96"/>
     <text class="card-title" x="105" y="27">storage.Store</text>
     <text class="card-sub" x="105" y="49">transaction · CAS update</text>
     <text class="card-sub" x="105" y="68">event dedup · retry offset</text>
   </g>
   <g transform="translate(590 918)">
-    <rect class="card app" width="210" height="96"/>
+    <rect rx="10" class="card app" width="210" height="96"/>
     <text class="card-title" x="105" y="27">bot.deliver</text>
     <text class="card-sub" x="105" y="49">outbox message/file cursor</text>
     <text class="card-sub" x="105" y="68">retry_after + backoff</text>
   </g>
   <g transform="translate(1088 908)">
-    <rect class="card infra" width="330" height="116"/>
+    <rect rx="10" class="card infra" width="330" height="116"/>
     <text class="card-title" x="165" y="25">state.sqlite3</text>
     <text class="card-sub" x="165" y="47">jobs · kv · outbox</text>
     <text class="card-sub" x="165" y="65">chat_messages · run_history</text>

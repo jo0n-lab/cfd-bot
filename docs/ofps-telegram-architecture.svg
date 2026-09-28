@@ -22,11 +22,11 @@
       .card-sub { font-size: 12px; fill: #475569; text-anchor: middle; }
       .small { font-size: 12px; fill: #475569; }
       .badge { font-size: 12px; font-weight: 700; fill: white; text-anchor: middle; }
-      .card { stroke-width: 1.4; rx: 10; filter: url(#shadow); }
-      .user { fill: #eff6ff; stroke: #60a5fa; }
-      .bot { fill: #f5f3ff; stroke: #a78bfa; }
-      .foam { fill: #fff7ed; stroke: #fb923c; }
-      .state { fill: #ecfdf5; stroke: #34d399; }
+      .card { stroke-width: 2; rx: 10; }
+      .user { fill: #ffffff; stroke: #3b82f6; }
+      .bot { fill: #fcfbff; stroke: #8b5cf6; }
+      .foam { fill: #fffaf5; stroke: #f97316; }
+      .state { fill: #f0fdf4; stroke: #10b981; }
       .arrow { fill: none; stroke: #334155; stroke-width: 1.7; marker-end: url(#arrow); }
       .watch { fill: none; stroke: #7c3aed; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#purple-arrow); }
       .rule { stroke: #cbd5e1; stroke-width: 1; }
@@ -49,22 +49,22 @@
 
   <text class="flow-title" x="48" y="200">1. /stat 실시간 현황</text>
   <g transform="translate(52 220)">
-    <rect class="card user" width="180" height="64"/>
+    <rect rx="10" class="card user" width="180" height="64"/>
     <text class="card-title" x="90" y="27">Telegram /stat</text>
     <text class="card-sub" x="90" y="47">현재 계산 요청</text>
   </g>
   <g transform="translate(330 220)">
-    <rect class="card bot" width="210" height="64"/>
+    <rect rx="10" class="card bot" width="210" height="64"/>
     <text class="card-title" x="105" y="27">인증 + 명령 분기</text>
     <text class="card-sub" x="105" y="47">요청 시 즉시 snapshot</text>
   </g>
   <g transform="translate(982 220)">
-    <rect class="card foam" width="330" height="64"/>
+    <rect rx="10" class="card foam" width="330" height="64"/>
     <text class="card-title" x="165" y="27">기존 ofps 실행</text>
     <text class="card-sub" x="165" y="47">활성 CASE · PID · CPU affinity</text>
   </g>
   <g transform="translate(610 220)">
-    <rect class="card state" width="250" height="64"/>
+    <rect rx="10" class="card state" width="250" height="64"/>
     <text class="card-title" x="125" y="27">경로 match + 한 줄 요약</text>
     <text class="card-sub" x="125" y="47">이름 | 소유 | 코어/CPU | 시간</text>
   </g>
@@ -77,35 +77,35 @@
   <line class="rule" x1="48" y1="326" x2="1348" y2="326"/>
   <text class="flow-title" x="48" y="358">2. 백그라운드 감시와 종료 알림</text>
   <g transform="translate(330 380)">
-    <rect class="card bot" width="210" height="64"/>
+    <rect rx="10" class="card bot" width="210" height="64"/>
     <text class="card-title" x="105" y="27">Monitor timer</text>
     <text class="card-sub" x="105" y="47">전체 CASE · 기본 5초</text>
   </g>
   <g transform="translate(982 380)">
-    <rect class="card foam" width="330" height="64"/>
+    <rect rx="10" class="card foam" width="330" height="64"/>
     <text class="card-title" x="165" y="27">ofps snapshot</text>
     <text class="card-sub" x="165" y="47">등록·미등록 경로 · 소멸 감지</text>
   </g>
   <g transform="translate(982 470)">
-    <rect class="card foam" width="330" height="86"/>
+    <rect rx="10" class="card foam" width="330" height="86"/>
     <text class="card-title" x="165" y="25">system/controlDict + 최신 로그</text>
     <text class="card-sub" x="165" y="46">stopAt · endTime · 최종 Time</text>
     <text class="card-sub" x="165" y="66">fatal · 종료 코드 · 실패 표식</text>
   </g>
   <g transform="translate(585 466)">
-    <rect class="card bot" width="305" height="94"/>
+    <rect rx="10" class="card bot" width="305" height="94"/>
     <text class="card-title" x="152.5" y="24">종료 판정</text>
     <text class="card-sub" x="152.5" y="45">Time ≥ endTime → 정상 종료</text>
     <text class="card-sub" x="152.5" y="64">Time &lt; endTime → 조기 종료 실패</text>
     <text class="card-sub" x="152.5" y="82">명시적 오류는 항상 실패 우선</text>
   </g>
   <g transform="translate(330 478)">
-    <rect class="card state" width="210" height="70"/>
+    <rect rx="10" class="card state" width="210" height="70"/>
     <text class="card-title" x="105" y="28">SQLite outbox</text>
     <text class="card-sub" x="105" y="49">중복 방지 · 재시도</text>
   </g>
   <g transform="translate(52 482)">
-    <rect class="card user" width="180" height="64"/>
+    <rect rx="10" class="card user" width="180" height="64"/>
     <text class="card-title" x="90" y="27">Telegram 알림</text>
     <text class="card-sub" x="90" y="47">요약 + Residual</text>
   </g>
@@ -122,22 +122,22 @@
   <line class="rule" x1="48" y1="634" x2="1348" y2="634"/>
   <text class="flow-title" x="48" y="666">3. /data 요청</text>
   <g transform="translate(52 688)">
-    <rect class="card user" width="180" height="60"/>
+    <rect rx="10" class="card user" width="180" height="60"/>
     <text class="card-title" x="90" y="25">/data</text>
     <text class="card-sub" x="90" y="44">케이스 · 파일 선택</text>
   </g>
   <g transform="translate(330 688)">
-    <rect class="card state" width="210" height="60"/>
+    <rect rx="10" class="card state" width="210" height="60"/>
     <text class="card-title" x="105" y="25">tickets/*.json</text>
     <text class="card-sub" x="105" y="44">pattern · 형식 · 개수</text>
   </g>
   <g transform="translate(982 688)">
-    <rect class="card foam" width="330" height="60"/>
+    <rect rx="10" class="card foam" width="330" height="60"/>
     <text class="card-title" x="165" y="25">기존 후처리 결과</text>
     <text class="card-sub" x="165" y="44">Residual · contour · CSV · log</text>
   </g>
   <g transform="translate(610 688)">
-    <rect class="card bot" width="250" height="60"/>
+    <rect rx="10" class="card bot" width="250" height="60"/>
     <text class="card-title" x="125" y="25">검증 후 Telegram 전송</text>
     <text class="card-sub" x="125" y="44">photo 또는 document</text>
   </g>
@@ -149,22 +149,22 @@
   <line class="rule" x1="48" y1="778" x2="1348" y2="778"/>
   <text class="flow-title" x="48" y="810">4. FIFO 큐 실행</text>
   <g transform="translate(52 832)">
-    <rect class="card user" width="180" height="60"/>
+    <rect rx="10" class="card user" width="180" height="60"/>
     <text class="card-title" x="90" y="25">/queue</text>
-    <text class="card-sub" x="90" y="44">등록 · 조회 · 취소</text>
+    <text class="card-sub" x="90" y="44">조회 · pause/resume · 취소</text>
   </g>
   <g transform="translate(330 832)">
-    <rect class="card state" width="210" height="60"/>
+    <rect rx="10" class="card state" width="210" height="60"/>
     <text class="card-title" x="105" y="25">SQLite FIFO</text>
     <text class="card-sub" x="105" y="44">대기 · 실행 상태</text>
   </g>
   <g transform="translate(610 832)">
-    <rect class="card bot" width="250" height="60"/>
+    <rect rx="10" class="card bot" width="250" height="60"/>
     <text class="card-title" x="125" y="25">Scheduler + worker</text>
     <text class="card-sub" x="125" y="44">CPU 예약 · ofps --check</text>
   </g>
   <g transform="translate(982 832)">
-    <rect class="card foam" width="330" height="60"/>
+    <rect rx="10" class="card foam" width="330" height="60"/>
     <text class="card-title" x="165" y="25">OpenFOAM / Allrun</text>
     <text class="card-sub" x="165" y="44">종료 후 같은 controlDict 판정</text>
   </g>

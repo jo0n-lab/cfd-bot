@@ -21,12 +21,12 @@
       .card-sub { font-size: 12px; fill: #475569; text-anchor: middle; }
       .small { font-size: 12px; fill: #475569; }
       .badge { font-size: 12px; font-weight: 700; text-anchor: middle; }
-      .card { stroke-width: 1.5; rx: 11; filter: url(#shadow); }
-      .user { fill: #eff6ff; stroke: #60a5fa; }
-      .bot { fill: #f5f3ff; stroke: #a78bfa; }
-      .domain { fill: #ecfdf5; stroke: #34d399; }
-      .external { fill: #fff7ed; stroke: #fb923c; }
-      .data { fill: #f8fafc; stroke: #94a3b8; }
+      .card { stroke-width: 2; rx: 11; }
+      .user { fill: #ffffff; stroke: #3b82f6; }
+      .bot { fill: #fcfbff; stroke: #8b5cf6; }
+      .domain { fill: #f0fdf4; stroke: #10b981; }
+      .external { fill: #fffaf5; stroke: #f97316; }
+      .data { fill: #ffffff; stroke: #64748b; }
       .arrow { fill: none; stroke: #334155; stroke-width: 1.7; marker-end: url(#arrow); }
       .flow { fill: none; stroke: #7c3aed; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#purple); }
       .rule { stroke: #cbd5e1; stroke-width: 1; }
@@ -41,25 +41,25 @@
   <text class="section-sub" x="48" y="148">bot service 바깥의 입력·출력 경계</text>
 
   <g transform="translate(48 170)">
-    <rect class="card user" width="250" height="84"/>
+    <rect rx="10" class="card user" width="250" height="84"/>
     <text class="card-title" x="125" y="29">Telegram 사용자</text>
     <text class="card-sub" x="125" y="51">/stat · /data · /queue · /tickets</text>
     <text class="card-sub" x="125" y="69">상태 · 데이터 · 자동 알림 수신</text>
   </g>
   <g transform="translate(372 170)">
-    <rect class="card user" width="250" height="84"/>
+    <rect rx="10" class="card user" width="250" height="84"/>
     <text class="card-title" x="125" y="29">운영자</text>
     <text class="card-sub" x="125" y="51">Ticket GUI · CLI · JSON 관리</text>
     <text class="card-sub" x="125" y="69">systemd user service 운영</text>
   </g>
   <g transform="translate(778 170)">
-    <rect class="card external" width="250" height="84"/>
+    <rect rx="10" class="card external" width="250" height="84"/>
     <text class="card-title" x="125" y="29">ofps · Linux /proc</text>
     <text class="card-sub" x="125" y="51">활성 CASE · PID · owner</text>
     <text class="card-sub" x="125" y="69">CPU affinity · socket · NUMA</text>
   </g>
   <g transform="translate(1102 170)">
-    <rect class="card external" width="250" height="84"/>
+    <rect rx="10" class="card external" width="250" height="84"/>
     <text class="card-title" x="125" y="29">OpenFOAM 케이스</text>
     <text class="card-sub" x="125" y="51">controlDict · solver 로그</text>
     <text class="card-sub" x="125" y="69">Residual · 후처리 결과</text>
@@ -73,44 +73,44 @@
   <text class="section" x="68" y="404">Runtime containers</text>
 
   <g transform="translate(72 430)">
-    <rect class="card bot" width="250" height="92"/>
+    <rect rx="10" class="card bot" width="250" height="92"/>
     <text class="card-title" x="125" y="29">Telegram Router</text>
     <text class="card-sub" x="125" y="51">allowlist · command · callback</text>
     <text class="card-sub" x="125" y="70">요청 시 즉시 ofps snapshot</text>
   </g>
   <g transform="translate(374 430)">
-    <rect class="card bot" width="250" height="92"/>
+    <rect rx="10" class="card bot" width="250" height="92"/>
     <text class="card-title" x="125" y="29">Monitor + Scheduler</text>
     <text class="card-sub" x="125" y="51">등록·미등록 CASE 추적</text>
     <text class="card-sub" x="125" y="70">FIFO · CPU 예약 · worker 복구</text>
   </g>
   <g transform="translate(676 430)">
-    <rect class="card bot" width="250" height="92"/>
+    <rect rx="10" class="card bot" width="250" height="92"/>
     <text class="card-title" x="125" y="29">Notification Delivery</text>
     <text class="card-sub" x="125" y="51">SQLite outbox 소비</text>
     <text class="card-sub" x="125" y="70">중복 방지 · retry · 파일 전송</text>
   </g>
   <g transform="translate(1028 430)">
-    <rect class="card external" width="280" height="92"/>
+    <rect rx="10" class="card external" width="280" height="92"/>
     <text class="card-title" x="140" y="29">Detached Worker</text>
     <text class="card-sub" x="140" y="51">preprocess → solver → postprocess</text>
     <text class="card-sub" x="140" y="70">bot 재시작과 독립된 process group</text>
   </g>
 
   <g transform="translate(164 570)">
-    <rect class="card domain" width="250" height="88"/>
+    <rect rx="10" class="card domain" width="250" height="88"/>
     <text class="card-title" x="125" y="29">UiCatalog</text>
     <text class="card-sub" x="125" y="51">menus · scenarios · strings</text>
     <text class="card-sub" x="125" y="69">manifest · template 검증</text>
   </g>
   <g transform="translate(488 570)">
-    <rect class="card domain" width="250" height="88"/>
+    <rect rx="10" class="card domain" width="250" height="88"/>
     <text class="card-title" x="125" y="29">TicketService</text>
     <text class="card-sub" x="125" y="51">검증 · 저장 · 복제 · macro</text>
     <text class="card-sub" x="125" y="69">Telegram과 GUI 공용</text>
   </g>
   <g transform="translate(812 570)">
-    <rect class="card domain" width="250" height="88"/>
+    <rect rx="10" class="card domain" width="250" height="88"/>
     <text class="card-title" x="125" y="29">Logs + Outcomes</text>
     <text class="card-sub" x="125" y="51">증분 parser · 실패 증거</text>
     <text class="card-sub" x="125" y="69">final Time ≥ endTime 판정</text>
@@ -129,27 +129,27 @@
   <text class="section-sub" x="48" y="786">정적 구성과 런타임 상태의 소유권 분리</text>
 
   <g transform="translate(48 808)">
-    <rect class="card data" width="240" height="76"/>
+    <rect rx="10" class="card data" width="240" height="76"/>
     <text class="card-title" x="120" y="28">bot.json</text>
     <text class="card-sub" x="120" y="50">service · allowlist · scheduler</text>
   </g>
   <g transform="translate(314 808)">
-    <rect class="card data" width="240" height="76"/>
+    <rect rx="10" class="card data" width="240" height="76"/>
     <text class="card-title" x="120" y="28">tickets/*.json</text>
     <text class="card-sub" x="120" y="50">케이스별 watcher · data · 실행</text>
   </g>
   <g transform="translate(580 808)">
-    <rect class="card data" width="240" height="76"/>
+    <rect rx="10" class="card data" width="240" height="76"/>
     <text class="card-title" x="120" y="28">telegram-ui/**/*.json</text>
     <text class="card-sub" x="120" y="50">문구 · 버튼 · template · manifest</text>
   </g>
   <g transform="translate(846 808)">
-    <rect class="card data" width="240" height="76"/>
+    <rect rx="10" class="card data" width="240" height="76"/>
     <text class="card-title" x="120" y="28">state.sqlite3</text>
     <text class="card-sub" x="120" y="50">jobs · observed · outbox · history</text>
   </g>
   <g transform="translate(1112 808)">
-    <rect class="card data" width="240" height="76"/>
+    <rect rx="10" class="card data" width="240" height="76"/>
     <text class="card-title" x="120" y="28">state/events</text>
     <text class="card-sub" x="120" y="50">종료 시점 Residual snapshot</text>
   </g>
