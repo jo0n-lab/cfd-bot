@@ -14,7 +14,8 @@ from cfd_bot.ui import DEFAULT_UI_DIR, UiCatalog, UiResourceError
 ROOT = Path(__file__).resolve().parents[1]
 TELEGRAM_RUNTIME = [
     path for path in (ROOT / 'cfd_bot').glob('*.py')
-    if path.name not in {'cli.py', 'gui.py'}
+    # These presentation adapters are never imported by the Telegram runtime.
+    if path.name not in {'cli.py', 'gui.py', 'web.py'}
 ]
 
 

@@ -114,18 +114,24 @@ class TicketEditor:
         event_frame.grid(row=11, column=0, columnspan=3, sticky='ew', pady=(12, 0))
         self.event_vars = self.event_checks(event_frame, list(EVENTS))
 
-        self.field(queue_tab, 0, 'role', '개별 작업 소속', choices={'alone': 'alone · 독립 케이스', 'child': 'child · 매크로 소속'})
+        role = self.field(queue_tab, 0, 'role', '개별 작업 소속', choices={'alone': 'alone · 독립 케이스', 'child': 'child · 매크로 소속'})
+        role.bind('<<ComboboxSelected>>', lambda _event: self.update_execution_visibility())
         self.field(queue_tab, 1, 'macro_ticket', '매크로 티켓 경로',
                    hint='child만 사용합니다. 현재 티켓 기준 상대 경로. 예: macro-batch.json')
-        self.common_execution = ttk.LabelFrame(queue_tab, text='매크로 공통 실행 설정', padding=10)
-        self.common_execution.grid(row=4, column=0, columnspan=3, sticky='ew', pady=10)
+        self.execution_source = self.field(queue_tab, 2, 'execution_source', '실행 설정 방식',
+                                          choices={'case': '케이스 설정 사용', 'ticket': '티켓에서 지정'})
+        self.execution_source.bind('<<ComboboxSelected>>', lambda _event: self.update_execution_visibility())
+        self.execution_note = ttk.Label(queue_tab, wraplength=650)
+        self.execution_note.grid(row=5, column=0, columnspan=3, sticky='w', pady=8)
+        self.common_execution = ttk.LabelFrame(queue_tab, text='실행 설정', padding=10)
+        self.common_execution.grid(row=6, column=0, columnspan=3, sticky='ew', pady=10)
         self.common_execution.columnconfigure(1, weight=1)
         self.field(self.common_execution, 0, 'macro_cores', '코어 수 (NP)')
         policy = self.field(self.common_execution, 1, 'macro_cpu_policy', 'CPU 배정',
                            choices={'auto': '자동 배정 (권장)', 'manual': '고급: CPU 직접 지정'},
                            hint='전체 소켓의 빈 코어를 자동 배정합니다. 작업 간 코어 중복은 금지하며, 부족하면 대기합니다.')
         policy.bind('<<ComboboxSelected>>', lambda _event: self.update_execution_visibility())
-        self.field(self.common_execution, 2, 'macro_command', '실행 명령', hint='예: ./Allrun · 공통 NP/CPU_SET은 child 실행 설정에 적용됩니다.')
+        self.field(self.common_execution, 2, 'macro_command', '실행 명령', hint='예: ./Allrun · 지정한 NP/CPU_SET을 실행 시 케이스에 적용합니다.')
         self.manual_execution = ttk.LabelFrame(self.common_execution, text='고급 수동 배정', padding=8)
         self.manual_execution.grid(row=6, column=0, columnspan=3, sticky='ew', pady=8)
         self.manual_execution.columnconfigure(1, weight=1)
@@ -135,11 +141,11 @@ class TicketEditor:
                   '*-template과 실행 중인 케이스를 제외합니다.\n'
                   'postProcessing이 있는 케이스도 포함하며 노란색으로 표시합니다.\n'
                   '행 순서대로 실행합니다. 제외할 행의 삭제 버튼을 누른 뒤 저장하면 큐에 등록됩니다.',
-                  wraplength=650).grid(row=5, column=0, columnspan=3, sticky='w', pady=12)
+                  wraplength=650).grid(row=7, column=0, columnspan=3, sticky='w', pady=12)
         self.scan_button = ttk.Button(queue_tab, text='하위 케이스 검색', command=self.scan_cases)
-        self.scan_button.grid(row=6, column=0, columnspan=3, sticky='w')
+        self.scan_button.grid(row=8, column=0, columnspan=3, sticky='w')
         self.case_rows = ttk.Frame(queue_tab)
-        self.case_rows.grid(row=7, column=0, columnspan=3, sticky='ew', pady=8)
+        self.case_rows.grid(row=9, column=0, columnspan=3, sticky='ew', pady=8)
         self.case_rows.columnconfigure(0, weight=1)
 
         ttk.Label(
@@ -389,16 +395,30 @@ class TicketEditor:
         self.update_execution_visibility()
 
     def update_execution_visibility(self):
+        v = self.values()
+        macro = v['task_type'] == 'macro'
+        child = not macro and v['role'] == 'child'
+        self.execution_source.configure(state='disabled' if macro or child else 'readonly')
+        self.execution_note.configure(text=(
+            '매크로의 모든 하위 케이스에 공통 적용합니다.' if macro else
+            '매크로 공통 실행 설정을 상속합니다. 변경은 부모 매크로 티켓에서 하세요.' if child else
+            '티켓에서 코어 수와 실행 명령을 지정할 수 있습니다. 케이스 설정 사용 시 기존 NP와 실행 설정을 유지합니다.'))
+        def set_enabled(parent):
+            for widget in parent.winfo_children():
+                if widget.winfo_class() in ('TEntry', 'TCombobox', 'TCheckbutton'):
+                    widget.configure(state='disabled' if child else
+                                     'readonly' if widget.winfo_class() == 'TCombobox' else 'normal')
+                set_enabled(widget)
+        set_enabled(self.common_execution)
         if self.variables['macro_cpu_policy'][0].get() == '고급: CPU 직접 지정':
             self.manual_execution.grid()
         else:
             self.manual_execution.grid_remove()
-        if self.variables['task_type'][0].get() == '매크로 작업':
+        if macro or child or v['execution_source'] == 'ticket':
             self.common_execution.grid()
-            self.residual_picker.configure(state='disabled')
         else:
             self.common_execution.grid_remove()
-            self.residual_picker.configure(state='normal')
+        self.residual_picker.configure(state='disabled' if macro else 'normal')
 
     def refresh_end_default(self):
         variable = self.variables['end_time'][0]

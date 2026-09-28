@@ -9,9 +9,10 @@
    - 같은 내용을 GitHub Issue로 등록하고 Issue 번호를 history 문서와 index에 연결한다.
    - 그 뒤 구현하고 현행 `docs/HLD.md`, `docs/LLD.md`, `docs/ARCHITECTURE.md`와 관련 그림을 최종 구조에 맞춘다.
 
-2. 모든 티켓 생성·편집·검증·저장·복제·삭제 로직은 `cfd-ticket-gui`와 Telegram이 같은 `cfd_bot.editor.TicketService` 및 domain helper를 사용한다.
-   - Telegram에는 버튼, callback, 대화 session 같은 Telegram UI adapter만 둔다.
-   - GUI와 Telegram에 같은 티켓 규칙을 중복 구현하지 않는다.
+2. 인터페이스나 사용자 기능을 변경하면 **Telegram · `cfd-ticket-gui` · web 세 인터페이스 모두에 같은 작업에서 적용한다.** 한 인터페이스에만 반영하고 완료하지 않는다.
+   - 티켓 생성·편집·검증·저장·복제·삭제·실행 설정과 실행 제어는 같은 `cfd_bot.editor.TicketService` 및 domain helper를 사용한다.
+   - 각 인터페이스에는 화면·버튼·callback·대화 session·HTTP 같은 UI adapter만 둔다. 티켓 규칙과 실행 정책을 UI별로 중복 구현하지 않는다.
+   - 세 인터페이스의 표시·입력·저장·실행 연결을 함께 검증하고, 환경상 검증하지 못한 부분은 명시한다.
 
 3. Telegram의 고정 문구와 버튼 라벨은 `telegram-ui/`의 메뉴·시나리오 JSON에서 관리한다. key를 바꾸면 `manifest.json`과 UI resource 테스트를 함께 갱신한다.
 

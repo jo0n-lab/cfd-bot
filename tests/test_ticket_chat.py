@@ -76,6 +76,22 @@ class TicketServiceTests(Environment):
                     self.service.save(draft['values'], self.name, self.name)
                 self.assertEqual(self.service.path(self.name).read_bytes(), before)
 
+    def test_running_single_ticket_rejects_execution_changes(self):
+        document = read_json(self.service.path(self.name))
+        document.update(resource_source='ticket', cpu_policy='auto', cores=2, command=['./Allrun'])
+        document.pop('cpu_set', None)
+        document['queue'] = dict(state='running', job_id='active-job')
+        self.service.path(self.name).write_text(json.dumps(document))
+        before = self.service.path(self.name).read_bytes()
+        for change in (dict(macro_cores='3'), dict(macro_command='./OtherRun'),
+                       dict(execution_source='case'), dict(macro_cpu_policy='manual', macro_cpu_set='0-1')):
+            with self.subTest(change=change):
+                draft = self.service.open(self.name)
+                draft['values'].update(change)
+                with self.assertRaisesRegex(ValueError, '계산 중에는 코어'):
+                    self.service.save(draft['values'], self.name, self.name)
+                self.assertEqual(self.service.path(self.name).read_bytes(), before)
+
     def test_submission_retry_keeps_request_id_and_source_files(self):
         draft = self.service.open(self.name)
         first, _ = self.service.save(draft['values'], self.name, self.name,
@@ -564,6 +580,48 @@ class TicketChatTests(Environment):
         accept_submissions(self.config, self.store)
         self.assertEqual(len(self.store.jobs()), 1)
         self.assertEqual(self.store.jobs()[0]['case_root'], str(roots[0]))
+
+    def test_child_execution_panel_displays_inherited_values_without_edit_buttons(self):
+        name = self.source()
+        document = read_json(self.service.path(name))
+        document.update(role='child', macro_ticket='macro-batch.json', resource_source='macro',
+                        cores=4, cpu_policy='auto')
+        document.pop('cpu_set', None)
+        self.service.path(name).write_text(json.dumps(document))
+        self.message('/tickets')
+        self.click('open', self.session()['choices'].index(name))
+        self.click('queue')
+        self.assertIn('매크로 실행 설정 상속', self.panel()['text'])
+        self.assertIn('NP: 4', self.panel()['text'])
+        callbacks = [b['callback_data'] for row in self.panel()['reply_markup']['inline_keyboard'] for b in row]
+        self.assertFalse(any(':field:macro_cores' in c or ':execsource:' in c for c in callbacks))
+
+    def test_single_execution_buttons_save_and_queue_explicit_resources(self):
+        self.new()
+        self.click('basic')
+        self.field('case_dir', str(self.case_root))
+        self.click('queue')
+        self.assertIn('케이스 설정 사용', self.panel()['text'])
+        self.click('execsource', 'ticket')
+        self.field('macro_cores', '3')
+        self.click('queue')
+        self.field('macro_command', './CustomRun')
+        self.click('review', 'save')
+        self.click('save')
+        filename = self.session()['draft']['current']
+        saved = load_case(self.service.path(filename))
+        self.assertEqual(saved['resource_source'], 'ticket')
+        self.assertEqual(saved['cores'], 3)
+        self.assertEqual(saved['command'], ['./CustomRun'])
+        self.assertEqual(saved['cpu_policy'], 'auto')
+        self.click('queue')
+        self.assertIn('NP: 3', self.panel()['text'])
+        self.click('card')
+        # Only enqueue, no scheduler or solver is started.
+        self.bot.ticket_ui.runner.request(filename)
+        accept_submissions(self.config, self.store)
+        self.assertEqual(self.store.jobs()[0]['case']['cores'], 3)
+        self.assertEqual(self.store.jobs()[0]['case']['command'], ['./CustomRun'])
 
     def test_manual_mapping_requires_advanced_mode_and_auto_clears_mapping(self):
         self.new('macro')

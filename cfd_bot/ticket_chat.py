@@ -331,10 +331,30 @@ class TicketChat:
 
     def queue(self, chat, user, s):
         v = self.draft(s)['values']
-        if v['task_type'] == 'macro':
-            automatic = v['macro_cpu_policy'] == 'auto'
-            rows = [[(self.t('queue.cores'), 'field', 'macro_cores')],
-                    [(self.t('queue.command'), 'field', 'macro_command')]]
+        macro = v['task_type'] == 'macro'
+        child = not macro and v['role'] == 'child'
+        explicit = macro or v.get('execution_source', 'case') == 'ticket'
+        rows = []
+        if not macro:
+            rows = [[(self.t('queue.alone'), 'role', 'alone'), (self.t('queue.child'), 'role', 'child')],
+                    [(self.t('queue.macro_path'), 'field', 'macro_ticket')]]
+        if not macro and not child:
+            rows.append([(self.t('queue.use_case' if explicit else 'queue.use_ticket'),
+                          'execsource', 'case' if explicit else 'ticket')])
+        automatic = v['macro_cpu_policy'] == 'auto'
+        unspecified = self.ui.text('strings.common.unspecified')
+        cpu_label = (self.t('queue.auto_label') if automatic else
+                     self.t('queue.manual_label', cpu_set=short(v['macro_cpu_set'] or unspecified)))
+        if (explicit or child):
+            text = self.t('queue.execution_body', cores=v['macro_cores'] or unspecified,
+                          cpu=cpu_label, command=short(v['macro_command'], 600))
+        else:
+            text = self.t('queue.case_body')
+        if child:
+            text = self.t('queue.inherited', macro=short(v['macro_ticket'] or unspecified)) + '\n\n' + text
+        if explicit and not child:
+            rows += [[(self.t('queue.cores'), 'field', 'macro_cores')],
+                     [(self.t('queue.command'), 'field', 'macro_command')]]
             if automatic:
                 rows.append([(self.t('queue.manual'), 'cpupolicy', 'manual')])
             else:
@@ -344,17 +364,13 @@ class TicketChat:
                              'strings.common.checked' if v['macro_cross_socket']
                              else 'strings.common.unchecked').strip()),
                            'toggle', 'macro_cross_socket')]]
+        if macro:
             rows.append([(self.t('queue.scan'), 'scan', None), (self.t('queue.members'), 'members', 0)])
-            unspecified = self.ui.text('strings.common.unspecified')
-            cpu_label = (self.t('queue.auto_label') if automatic else
-                         self.t('queue.manual_label', cpu_set=short(v['macro_cpu_set'] or unspecified)))
             text = self.t('queue.macro_body', cores=v['macro_cores'] or unspecified,
                           cpu=cpu_label, command=short(v['macro_command'], 600), count=len(v['cases']))
-        else:
+        elif not child:
             text = self.t('queue.single_body', role=v['role'],
-                          macro=short(v['macro_ticket'] or self.ui.text('strings.common.none')))
-            rows = [[(self.t('queue.alone'), 'role', 'alone'), (self.t('queue.child'), 'role', 'child')],
-                    [(self.t('queue.macro_path'), 'field', 'macro_ticket')]]
+                          macro=short(v['macro_ticket'] or self.ui.text('strings.common.none'))) + '\n\n' + text
         rows.append([(self.ui.text('strings.common.back'), 'card', None)])
         self.render(chat, user, s, text, rows, 'queue')
 
@@ -808,6 +824,14 @@ class TicketChat:
             d['values']['events'] = [event for event in EVENTS if event in events]
             d['dirty'] = True
             self.basic(chat, user, s)
+        elif op == 'execsource':
+            if arg not in ('case', 'ticket'): raise ValueError(self.t('errors.setting'))
+            d = self.draft(s)
+            if d['values']['task_type'] != 'single' or d['values']['role'] != 'alone':
+                raise ValueError(self.t('errors.setting'))
+            d['values']['execution_source'] = arg
+            d['dirty'] = True
+            self.queue(chat, user, s)
         elif op == 'cpupolicy':
             if arg not in ('auto', 'manual'): raise ValueError(self.t('errors.cpu_policy'))
             d = self.draft(s)

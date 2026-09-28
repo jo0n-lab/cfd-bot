@@ -41,7 +41,7 @@
   <rect x="287" y="105" width="630" height="840" rx="16" fill="#f5f3ff"/>
   <rect x="931" y="105" width="441" height="840" rx="16" fill="#fff7ed"/>
   <text class="lane-title" x="48" y="140">사용자 단</text>
-  <text class="lane-sub" x="48" y="162">Telegram · Ticket GUI · CLI</text>
+  <text class="lane-sub" x="48" y="162">Telegram · Web · GUI · CLI</text>
   <text class="lane-title" x="307" y="140">Telegram bot 단</text>
   <text class="lane-sub" x="307" y="162">router · monitor · queue · UI catalog · SQLite outbox</text>
   <text class="lane-title" x="951" y="140">ofps · OpenFOAM 단</text>

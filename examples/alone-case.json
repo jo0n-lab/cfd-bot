@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "task_type": "single",
+  "role": "alone",
+  "name": "my-case",
+  "case_dir": "/home/user/OpenFOAM/run/my-case",
+  "resource_source": "ticket",
+  "cores": 4,
+  "cpu_policy": "auto",
+  "allow_cross_socket": true,
+  "command": ["./Allrun"],
+  "preprocess": [{"command": ["./Allclean"]}],
+  "postprocess": [{"command": ["./Allpost"]}],
+  "watcher": {"logs": ["log.solver"]},
+  "residual_pattern": "plots/residual*.png",
+  "exports": []
+}

@@ -49,7 +49,7 @@
   <g transform="translate(372 170)">
     <rect rx="10" class="card user" width="250" height="84"/>
     <text class="card-title" x="125" y="29">운영자</text>
-    <text class="card-sub" x="125" y="51">Ticket GUI · CLI · JSON 관리</text>
+    <text class="card-sub" x="125" y="51">Web · GUI · CLI · JSON 관리</text>
     <text class="card-sub" x="125" y="69">systemd user service 운영</text>
   </g>
   <g transform="translate(778 170)">
@@ -107,7 +107,7 @@
     <rect rx="10" class="card domain" width="250" height="88"/>
     <text class="card-title" x="125" y="29">TicketService</text>
     <text class="card-sub" x="125" y="51">검증 · 저장 · 복제 · macro</text>
-    <text class="card-sub" x="125" y="69">Telegram과 GUI 공용</text>
+    <text class="card-sub" x="125" y="69">Telegram · GUI · Web 공용</text>
   </g>
   <g transform="translate(812 570)">
     <rect rx="10" class="card domain" width="250" height="88"/>

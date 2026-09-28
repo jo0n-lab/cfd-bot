@@ -20,7 +20,7 @@
     "./Allrun"
   ],
   "allow_cross_socket": true,
-  "residual_pattern": "validation/monitoring/preFlow/residuals.png",
+  "residual_pattern": "monitoring/residuals.png",
   "notifications": {
     "events": [
       "started",
@@ -31,15 +31,22 @@
   },
   "exports": [
     {
-      "name": "live-naoh",
-      "pattern": "validation/live/steady_coupled_naoh.png",
+      "name": "steady-naoh",
+      "pattern": "monitoring/steady_naoh.png",
+      "kind": "photo",
+      "max_files": 1,
+      "on": [],
+      "on_complete": false
+    },
+    {
+      "name": "residual-chem",
+      "pattern": "monitoring/residual_chem.png",
       "kind": "photo",
       "max_files": 1,
       "on": [],
       "on_complete": false
     }
   ],
-  "name": "TEMPLATE_A",
   "queue": {
     "state": "finished",
     "request_id": "0084bf61f84546ab9ab748c0f2dee59c",
@@ -48,5 +55,20 @@
     "reason": "",
     "job_id": "903898b3711f"
   },
-  "cpu_policy": "auto"
+  "cpu_policy": "auto",
+  "preprocess": [
+    {
+      "command": [
+        "./Allclean"
+      ]
+    }
+  ],
+  "postprocess": [
+    {
+      "command": [
+        "./Allpost"
+      ]
+    }
+  ],
+  "name": "STIRRED_TANK_TEMPLATE"
 }

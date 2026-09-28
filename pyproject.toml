@@ -12,6 +12,10 @@ dependencies = []
 [project.scripts]
 cfd-bot = "cfd_bot.cli:main"
 cfd-ticket-gui = "cfd_bot.gui:main"
+cfd-ticket-web = "cfd_bot.web:main"
 
 [tool.setuptools]
 packages = ["cfd_bot"]
+
+[tool.setuptools.package-data]
+cfd_bot = ["web_static/*", "web_static/downloads/*.zip"]

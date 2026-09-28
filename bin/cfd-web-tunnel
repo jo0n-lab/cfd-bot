@@ -1,0 +1,24 @@
+#!/bin/sh
+# Run this on the computer where the browser is open, not on the CFD server.
+set -eu
+if [ "$#" -lt 1 ]; then
+    printf 'Usage: %s user@server [local-port=8766] [server-port=8766] [ssh-options...]\n' "$0" >&2
+    exit 2
+fi
+tunnel_target=$1
+shift
+tunnel_local_port=${1:-8766}
+if [ "$#" -gt 0 ]; then shift; fi
+tunnel_server_port=${1:-8766}
+if [ "$#" -gt 0 ]; then shift; fi
+case "$tunnel_target" in ''|-*) printf 'Invalid SSH destination\n' >&2; exit 2;; esac
+for tunnel_port in "$tunnel_local_port" "$tunnel_server_port"; do
+    case "$tunnel_port" in ''|*[!0-9]*) printf 'Invalid TCP port\n' >&2; exit 2;; esac
+    if [ "${#tunnel_port}" -gt 5 ] || [ "$tunnel_port" -lt 1 ] || [ "$tunnel_port" -gt 65535 ]; then
+        printf 'TCP port must be 1..65535\n' >&2
+        exit 2
+    fi
+done
+printf 'Open http://127.0.0.1:%s after SSH connects. Keep this terminal open; Ctrl-C closes the tunnel.\n' "$tunnel_local_port"
+exec ssh -N -T -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 \
+    -L "127.0.0.1:$tunnel_local_port:127.0.0.1:$tunnel_server_port" "$@" "$tunnel_target"

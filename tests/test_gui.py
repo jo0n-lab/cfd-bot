@@ -54,6 +54,47 @@ class FormTests(unittest.TestCase):
         self.assertNotIn('progress', data['watcher'])
         self.assertEqual(self.loaded(data, 'new.json')['_root'], str(self.case))
 
+    def test_single_execution_override_roundtrip_and_return_to_case_settings(self):
+        from cfd_bot.execution import execution_case, apply_execution_settings
+        settings = self.case / 'Allrun'
+        original = '#!/bin/sh\nNP=99\nCPU_SET=0-98\n'
+        settings.write_text(original)
+        self.fields.update(execution_source='ticket', macro_cores='4', macro_command='./Allrun',
+                           macro_cpu_policy='auto', macro_cpu_set='0-98')
+        data = self.validate()
+        self.assertEqual(data['resource_source'], 'ticket')
+        self.assertNotIn('cpu_set', data)
+        case = self.loaded(data, 'alone-example.json')
+        execution = execution_case(case)
+        self.assertEqual(execution['cores'], 4)
+        self.assertNotIn('cpu_set', execution)
+        execution['cpu_set'] = '4-7'  # Allocation would be supplied by Scheduler.
+        apply_execution_settings(execution, self.root / 'job')
+        self.assertEqual(settings.read_text(), '#!/bin/sh\nNP=4\nCPU_SET=4-7\n')
+        self.assertEqual((self.root / 'job/case-settings-before/Allrun').read_text(), original)
+        reopened = form_values(data, self.tickets)
+        self.assertEqual(reopened['execution_source'], 'ticket')
+        self.assertEqual(reopened['macro_cores'], '4')
+        reopened['execution_source'] = 'case'
+        inherited = self.validate(reopened)
+        self.assertEqual(inherited['resource_source'], 'case')
+        self.assertNotIn('cores', inherited)
+        self.assertNotIn('command', inherited)
+
+    def test_single_explicit_execution_validates_core_count_and_manual_allocation(self):
+        self.fields.update(execution_source='ticket', macro_cpu_policy='manual', macro_cpu_set='2-3')
+        for count in ('', '0', '-1', '1.5'):
+            with self.subTest(count=count), self.assertRaisesRegex(ValueError, '코어 수'):
+                self.fields['macro_cores'] = count
+                self.validate()
+        self.fields['macro_cores'] = '2'
+        data = self.validate()
+        self.assertEqual(data['cpu_set'], '2-3')
+        self.assertEqual(data['resource_source'], 'ticket')
+        self.fields['macro_command'] = ''
+        with self.assertRaises(ValueError):
+            self.validate()
+
     def test_case_picker_defaults_to_openfoam_run_and_retains_selected_case(self):
         run = self.root / 'OpenFOAM/joon-dev/run'
         run.mkdir(parents=True)
@@ -268,6 +309,24 @@ class WidgetTests(unittest.TestCase):
         self.assertEqual(editor.case_entry.get(), str(self.case))
         self.assertEqual(editor.variables['name'][0].get(), 'case with spaces')
         self.assertEqual(editor.variables['residual_pattern'][0].get(), 'plots/residual*.png')
+
+    def test_single_execution_controls_save_and_child_inherits(self):
+        editor = self.editor
+        editor.case_entry.insert(0, str(self.case))
+        variable, choices = editor.variables['execution_source']
+        variable.set(choices['ticket'])
+        editor.update_execution_visibility()
+        self.assertTrue(editor.common_execution.grid_info())
+        editor.variables['macro_cores'][0].set('4')
+        editor.variables['macro_command'][0].set('./Allrun')
+        self.assertTrue(editor.save())
+        case = load_case(editor.current)
+        self.assertEqual((case['resource_source'], case['cores']), ('ticket', 4))
+        editor.set_form(dict(case, role='child', macro_ticket='macro-test.json', resource_source='macro'))
+        self.assertTrue(editor.common_execution.grid_info())
+        self.assertTrue(editor.execution_source.instate(['disabled']))
+        entries = [w for w in editor.common_execution.winfo_children() if w.winfo_class() == 'TEntry']
+        self.assertTrue(all(w.instate(['disabled']) for w in entries))
 
     def test_execution_button_tracks_running_and_idle_ticket(self):
         editor = self.editor

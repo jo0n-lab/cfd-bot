@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#0b2a5b">
+  <title>CFD · Control room</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a href="#overview" class="brand" aria-label="CFD 대시보드"><span class="brand-mark">C<span>F</span></span><span>CFD<span class="brand-sub">CONTROL ROOM</span></span></a>
+    <div class="workspace"><span class="online-dot"></span> Local workspace <span class="local-tag">LOCAL</span></div>
+    <div class="nav-label">WORKSPACE</div>
+    <nav aria-label="주 메뉴">
+      <a href="#overview" data-nav="overview"><span>◫</span> 대시보드</a>
+      <a href="#tickets" data-nav="tickets"><span>▤</span> 티켓 관리 <b id="ticket-count">–</b></a>
+      <a href="#queue" data-nav="queue"><span>≋</span> 작업 큐 <b id="queue-count">–</b></a>
+      <a href="#data" data-nav="data"><span>▧</span> 결과 · 요청 데이터</a>
+    </nav>
+    <div class="sidebar-bottom"><button data-action="client-downloads" class="sidebar-download">↓ PC 실행 프로그램</button><span class="online-dot"></span> Telegram · GUI와 상태 공유<p>OpenFOAM simulation workspace</p></div>
+  </aside>
+  <main>
+    <header class="topbar"><span>WORKSPACE <span class="slash">/</span> <span id="breadcrumb">대시보드</span></span><div><span id="sync-label">연결 중</span><button class="icon-button" data-action="refresh" title="상태 새로고침" aria-label="상태 새로고침">↻</button></div></header>
+    <div id="connection-error" class="notice danger" role="alert" hidden></div>
+    <div id="content" aria-live="polite"><div class="loading">로컬 작업 공간을 불러오는 중…</div></div>
+  </main>
+  <div id="toast" role="status" hidden></div>
+  <dialog id="modal" aria-labelledby="modal-title"><div class="dialog-head"><h2 id="modal-title"></h2><button data-action="close-modal" class="icon-button" aria-label="닫기">×</button></div><div id="modal-body"></div><div id="modal-actions"></div></dialog>
+</body>
+</html>

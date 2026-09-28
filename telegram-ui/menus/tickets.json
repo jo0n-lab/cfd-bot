@@ -37,15 +37,15 @@
       "hint": "현재 티켓 기준 상대 경로를 입력하세요. 예: macro-batch.json"
     },
     "macro_cores": {
-      "title": "공통 코어 수 (NP)",
+      "title": "코어 수 (NP)",
       "hint": "1 이상의 코어 수를 입력하세요."
     },
     "macro_cpu_set": {
-      "title": "공통 CPU 범위",
+      "title": "CPU 범위",
       "hint": "예: 0-23 또는 0-7,12-15"
     },
     "macro_command": {
-      "title": "공통 실행 명령",
+      "title": "실행 명령",
       "hint": "예: ./Allrun --foreground"
     },
     "preprocess": {
@@ -148,7 +148,7 @@
     "basic": "기본 설정",
     "rules": "종료·실패 판정",
     "exports": "요청 데이터",
-    "queue": "작업 큐 설정",
+    "queue": "실행 · 작업 큐 설정",
     "scripts": "전·후처리",
     "mode": "작업 종류 변경",
     "filename": "티켓 파일명",
@@ -198,11 +198,11 @@
     "overwrite": "덮어쓰기"
   },
   "queue": {
-    "cores": "공통 코어 수 (NP)",
-    "command": "공통 실행 명령",
+    "cores": "코어 수 (NP)",
+    "command": "실행 명령",
     "manual": "고급: CPU 직접 지정",
     "automatic": "자동 배정 사용 (권장)",
-    "cpu_set": "공통 CPU 범위",
+    "cpu_set": "CPU 범위",
     "cross_socket": "{mark} 여러 소켓/NUMA 허용",
     "scan": "하위 케이스 검색",
     "members": "선택 케이스 목록",
@@ -212,7 +212,12 @@
     "single_body": "개별 작업 소속: {role}\n매크로: {macro}",
     "alone": "alone · 독립 작업",
     "child": "child · 매크로 소속",
-    "macro_path": "매크로 상대 경로"
+    "macro_path": "매크로 상대 경로",
+    "use_case": "케이스 설정 사용",
+    "use_ticket": "티켓에서 실행 설정 지정",
+    "case_body": "실행 설정: 케이스 설정 사용\n기존 Allrun / config/*Run의 NP와 실행 설정을 사용합니다. 코어 수와 실행 명령을 바꾸려면 아래에서 티켓 지정을 선택하세요.",
+    "execution_body": "실행 설정\nNP: {cores}\nCPU: {cpu}\n명령: {command}\n자동 배정은 실행 직전에 빈 코어를 확인합니다. 코어가 부족하면 대기합니다.",
+    "inherited": "매크로 실행 설정 상속: {macro}\n변경은 부모 매크로 티켓에서 하세요."
   },
   "scripts": {
     "body": "전·후처리\n각 케이스 폴더에서 전처리 → 계산 → 정상 종료 후 후처리 순으로 실행합니다.\nAllclean은 기존 계산 결과를 정리합니다. 이어서 계산할 때는 전처리를 비우세요.\n\n전처리: {preprocess}\n후처리: {postprocess}",

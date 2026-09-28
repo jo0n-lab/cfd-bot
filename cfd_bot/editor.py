@@ -46,7 +46,7 @@ def script_commands(text, previous=()):
 
 
 def form_values(data, tickets_dir):
-    """Expose monitoring settings while retaining legacy execution configuration."""
+    """Expose shared ticket settings, retaining legacy case-based execution."""
     watcher = data.get('watcher', {})
     failure = watcher.get('failure', {})
     case_dir = data.get('case_dir', str(tickets_dir))
@@ -55,6 +55,7 @@ def form_values(data, tickets_dir):
         'task_type': data.get('task_type', 'single'),
         'role': data.get('role', 'alone'),
         'macro_ticket': data.get('macro_ticket', ''),
+        'execution_source': 'ticket' if data.get('resource_source') in ('ticket', 'macro') else 'case',
         'end_time': '' if data.get('end_time') is None else str(data['end_time']),
         'cases': deepcopy(data.get('cases', [])),
         'macro_cores': str(data.get('cores', '')),
@@ -95,7 +96,7 @@ def lines(text, *, strip=True):
 
 
 def form_document(values):
-    """Save shared execution intent and monitoring fields for both interfaces."""
+    """Save shared execution intent and monitoring fields for all interfaces."""
     case_dir = values['case_dir'].strip()
     if not case_dir:
         raise ValueError(load_ui().text('scenarios.diagnostics.editor.case_required'))
@@ -114,9 +115,18 @@ def form_document(values):
         data.pop('macro_ticket', None)
     if data['task_type'] == 'macro':
         data['cases'] = deepcopy(values.get('cases', []))
-        data.update(resource_source='macro',
+    else:
+        data.pop('cases', None)
+    execution_source = values.get('execution_source',
+                                  'ticket' if data.get('resource_source') in ('ticket', 'macro') else 'case')
+    if execution_source not in ('case', 'ticket'):
+        raise ValueError(load_ui().text('scenarios.diagnostics.config.resource_source'))
+    explicit = data['task_type'] == 'macro' or (data['role'] == 'alone' and execution_source == 'ticket')
+    if explicit:
+        data.update(resource_source='macro' if data['task_type'] == 'macro' else 'ticket',
                     cores=numeric(values.get('macro_cores', ''),
-                                  load_ui().text('scenarios.diagnostics.editor.macro_cores'),
+                                  load_ui().text('scenarios.diagnostics.editor.macro_cores' if data['task_type'] == 'macro'
+                                                 else 'scenarios.diagnostics.editor.cores'),
                                   integer=True, minimum=1),
                     cpu_policy=values.get('macro_cpu_policy', data.get('cpu_policy', 'manual' if data.get('cpu_set') else 'auto')),
                     command=shlex.split(values.get('macro_command', './Allrun')),
@@ -126,14 +136,16 @@ def form_document(values):
             data['allow_cross_socket'] = True
         else:
             data['cpu_set'] = values.get('macro_cpu_set', '').strip()
-    else:
-        data.pop('cases', None)
+    elif data['role'] == 'alone' and data.get('resource_source') in ('ticket', 'macro'):
+        data['resource_source'] = 'case'
+        for key in ('cores', 'command', 'cpu_set'):
+            data.pop(key, None)
+        data.update(cpu_policy='auto', allow_cross_socket=True)
     data['residual_pattern'] = values['residual_pattern'].strip()
     data.pop('name', None)
     if values['name'].strip():
         data['name'] = values['name'].strip()
-    # Existing tickets retain their configured duration and execution settings; new tickets
-    # never invent a command, CPU allocation, duration, or simulation target.
+    # Case-derived execution and duration remain unchanged on metadata-only saves.
     data.pop('simulation', None)
     watcher = data.setdefault('watcher', {})
     watcher.pop('log', None)
@@ -301,6 +313,9 @@ class TicketService:
                 if data['queue'].get('state') == 'running' and any(
                         data.get(stage, []) != saved.get(stage, []) for stage in DEFAULT_SCRIPTS):
                     raise ValueError(load_ui().text('scenarios.diagnostics.editor.running_scripts'))
+                from .execution import execution_settings
+                if data['queue'].get('state') == 'running' and execution_settings(data) != execution_settings(saved):
+                    raise ValueError(load_ui().text('scenarios.diagnostics.editor.running_execution'))
             if submit:
                 data['queue'] = dict(state='waiting', submit=True, request_id=request_id or uuid.uuid4().hex)
             else:
@@ -311,6 +326,9 @@ class TicketService:
                 parent = read_json(parent_path)
                 if parent.get('task_type') != 'macro':
                     raise ValueError(load_ui().text('scenarios.diagnostics.editor.macro_pointer'))
+                from .execution import execution_settings
+                if parent.get('resource_source') == 'macro' and execution_settings(data) != execution_settings(parent):
+                    raise ValueError(load_ui().text('scenarios.diagnostics.editor.child_execution'))
                 row = next((r for r in parent['cases'] if r['ticket'] == current), None)
                 if row is None:
                     raise ValueError(load_ui().text('scenarios.diagnostics.editor.child_from_macro'))

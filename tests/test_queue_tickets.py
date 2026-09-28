@@ -399,6 +399,21 @@ class QueueTicketTests(Environment):
         self.assertEqual(backup.read_bytes(), original)
         self.assertIn('# retained', settings.read_text())
 
+    def test_single_ticket_manual_resources_are_applied_by_worker(self):
+        root = self.case_dir('standalone')
+        settings = root / 'config/testRun'
+        settings.write_text('NP=99\nCPU_SET=0-98\n')
+        path = self.tickets / 'alone-case.json'
+        path.write_text(json.dumps(dict(version=1, case_dir=str(root), resource_source='ticket',
+                                        cores=1, cpu_set=self.cpu, command=['./Allrun'])))
+        execution = execution_case(load_case(path))
+        self.assertEqual(execution['cores'], 1)
+        self.assertEqual(execution['cpu_set'], self.cpu)
+        job = self.store.enqueue(execution)
+        self.store.update_job(job['id'], status='starting', claimed=time.time())
+        self.assertEqual(worker(self.store.root, job['id']), 0)
+        self.assertEqual(settings.read_text(), f'NP=1\nCPU_SET={self.cpu}\n')
+
     def test_new_submission_is_not_reported_as_an_old_finished_run(self):
         root = self.case_dir('again')
         path, data = self.macro([root])

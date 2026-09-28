@@ -117,14 +117,14 @@ def load_case(path):
         raise ConfigError(_message('task_type'))
     if c.setdefault('role', 'alone') not in ('alone', 'child'):
         raise ConfigError(_message('role'))
-    if c.get('resource_source', 'case') not in ('case', 'macro'):
+    if c.get('resource_source', 'case') not in ('case', 'ticket', 'macro'):
         raise ConfigError(_message('resource_source'))
     if c.get('cpu_policy', 'manual') not in ('auto', 'manual'):
         raise ConfigError(_message('cpu_policy'))
     automatic = c.get('cpu_policy') == 'auto'
     required = ('cores', 'command') if automatic else ('cores', 'cpu_set', 'command')
-    if c.get('resource_source') == 'macro' and not all(key in c for key in required):
-        raise ConfigError(_message('macro_required', fields=', '.join(required)))
+    if c.get('resource_source') in ('macro', 'ticket') and not all(key in c for key in required):
+        raise ConfigError(_message('execution_required', fields=', '.join(required)))
     if c['role'] == 'child':
         parent = c.get('macro_ticket')
         if not isinstance(parent, str) or not parent or Path(parent).is_absolute():

@@ -42,7 +42,7 @@
   <rect x="304" y="104" width="730" height="950" rx="16" fill="#f5f3ff"/>
   <rect x="1050" y="104" width="422" height="950" rx="16" fill="#fff7ed"/>
   <text class="lane-title" x="48" y="140">Interface</text>
-  <text class="lane-sub" x="48" y="162">Telegram · GUI · CLI</text>
+  <text class="lane-sub" x="48" y="162">Telegram · Web · GUI · CLI</text>
   <text class="lane-title" x="324" y="140">Application + Domain</text>
   <text class="lane-sub" x="324" y="162">dispatcher · monitor · scheduler · tickets · 판정</text>
   <text class="lane-title" x="1070" y="140">Infrastructure</text>
@@ -167,7 +167,7 @@
   <text class="flow-title" x="48" y="904">5. 상태·알림·편집 저장소</text>
   <g transform="translate(52 928)">
     <rect rx="10" class="card interface" width="200" height="76"/>
-    <text class="card-title" x="100" y="28">TicketChat / GUI</text>
+    <text class="card-title" x="100" y="28">Chat / GUI / Web</text>
     <text class="card-sub" x="100" y="50">공용 TicketService</text>
   </g>
   <g transform="translate(338 918)">

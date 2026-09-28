@@ -345,7 +345,9 @@ stateDiagram-v2
     cancelled --> [*]
 ```
 
-현재 `bot.json`은 `scheduler.enabled=false`이므로 큐 자동 시작은 꺼져 있습니다. 코드와 기존 실행 티켓은 유지되지만, GUI에서 새 티켓을 만들 때는 임의의 command나 CPU 배치를 생성하지 않습니다.
+큐 자동 시작 여부는 현재 `scheduler.enabled`와 SQLite의 `queue_paused` 값으로 결정합니다. 개별 티켓은 세 UI의 실행 설정에서 케이스 설정 사용 또는 티켓 지정(NP·명령·CPU 정책)을 선택합니다. `resource_source=ticket`은 기존 케이스 NP보다 우선하며 매크로는 `resource_source=macro` 공통 설정을 child에 적용합니다. 두 명시 설정 모두 같은 가용 코어 배정과 worker 설정 반영 경로를 사용합니다. Child에서는 상속값을 확인하고 부모 매크로에서 편집합니다. 구현 흐름은 [HLD 실행 설정 도식](HLD.md#3-시스템-컨텍스트)과 [변경 이력 / Issue #3](history/2026-09-28-single-ticket-execution.md)에 기록합니다.
+
+웹의 티켓 선택은 편집 데이터를 읽는 동작이므로 저장된 최신 `ofps` snapshot으로 버튼 상태를 구성하며 전체 프로세스 스캔을 실행하지 않습니다. `/api/run`은 사용자가 실제 실행을 요청한 시점에 fresh snapshot을 검사해 실행 중인 케이스를 차단합니다. 이 경계는 [Issue #4 변경 이력](history/2026-09-28-web-ticket-selection-latency.md)에 기록합니다.
 
 ## 8. 유즈케이스 5: `/clean`
 
@@ -374,6 +376,8 @@ Telegram Bot API는 과거 대화를 다시 나열하지 않으므로 bot이 기
 flowchart TD
     A[Telegram /tickets] --> CHAT[TicketChat session controller]
     B[cfd-ticket-gui] --> GUI[Tk form controller]
+    WEB[localhost browser] --> HTTP[WebApp HTTP adapter]
+    HTTP --> SERVICE
     CHAT --> SERVICE[공용 TicketService]
     GUI --> SERVICE
     SERVICE --> C[케이스 경로·로그·Residual 입력]
@@ -385,7 +389,7 @@ flowchart TD
     G --> I[선택 시 단일/macro queue 등록]
 ```
 
-두 편집기의 공통 책임:
+세 편집기의 공통 책임:
 
 - 케이스 경로, 표시 이름, 로그 목록, Residual PNG 경로 관리
 - `controlDict` 기반 정상 종료 안내, 실패 regex·표식, 알림 사건 관리
@@ -394,7 +398,36 @@ flowchart TD
 - `TicketService`와 같은 validator로 저장 전 검사
 - 단일 티켓 복제·삭제와 macro child 검색·발행
 
-Telegram 편집 초안은 사용자·대화별 SQLite session에 저장하고, GUI는 로컬 form state를 사용합니다. 두 경로 모두 같은 atomic JSON 저장 로직과 `ticket-patterns.json`을 사용합니다.
+Telegram 편집 초안은 사용자·대화별 SQLite session에 저장하고, GUI는 로컬 form state, 웹은 브라우저 메모리의 draft를 사용합니다. 세 경로 모두 같은 atomic JSON 저장 로직과 `ticket-patterns.json`을 사용합니다.
+
+### 9.1 웹 화면과 실행 흐름
+
+![웹 HLD/LLD](web-interface-design.svg)
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant W as Loopback WebApp
+    participant S as Shared TicketService / TicketRunner
+    participant Q as Existing Monitor / Scheduler
+    B->>W: form validate / save + revision
+    W->>S: fresh state + shared validation
+    S-->>B: atomic save result / updated revision
+    B->>W: run + saved revision
+    W->>S: fresh ofps + running guard + submission
+    Q->>Q: accept JSON submissions + allocate idle CPUs
+    Q->>Q: worker → preprocess → solver → postprocess
+    B->>W: refresh overview / request artifact
+    W-->>B: fresh state / declared case-local file
+```
+
+대시보드는 등록되지 않은 실행까지 표시하고 ofps 오류 시 마지막 snapshot임을 명시합니다. 티켓 화면은 폼·macro 하위 목록·일괄 삭제를, 작업 큐는 pause/resume와 queued 취소를 제공합니다. 결과 화면은 선언된 Residual/export만 미리보기·다운로드합니다. `GET /api/browse`는 파일 선택용 목록을 제공하며 파일 내용은 artifact API의 허용 범위를 거쳐야 합니다.
+
+웹은 기존 bot의 저장소를 공유하는 별도 user service입니다. 큐 컨트롤러와 알림 worker는 기존 bot 하나만 유지합니다. Telegram `/clean`처럼 채팅 메시지에 종속된 작업은 웹에서 Telegram에 부수 효과를 발생시키지 않습니다.
+
+원격 사용은 `ssh -L local-port:127.0.0.1:8766 user@server`로 같은 HTTP 연결을 전달합니다. 외부 PC의 localhost가 browser Origin이 되므로 별도 웹 공개나 Tailscale API 설정 없이 기존 SSH 인증과 포워딩 정책을 사용합니다.
+
+Windows/macOS 실행 프로그램은 이 연결을 더블클릭 동작으로 제공합니다. 기존 SSH config의 Host 선택 → SSH 연결 → 로컬 포트 열림 → 기본 브라우저의 순서이며, 기능 처리 자체는 서버 WebApp과 공용 도메인 서비스에 남습니다. 웹의 PC 실행 프로그램 메뉴에서 OS별 ZIP을 받을 수 있습니다.
 
 ## 10. 저장 데이터와 설정
 

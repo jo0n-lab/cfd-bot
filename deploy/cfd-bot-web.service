@@ -1,0 +1,14 @@
+[Unit]
+Description=CFD localhost web interface
+After=cfd-bot.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/joon/telegram/cfd_bot
+ExecStart=/usr/bin/python3 -m cfd_bot --config /home/joon/telegram/cfd_bot/bot.json web --port 8766
+Restart=on-failure
+RestartSec=3
+UMask=0077
+
+[Install]
+WantedBy=default.target

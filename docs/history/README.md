@@ -4,4 +4,10 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-09-28 | [웹 UI 블루 테마](2026-09-28-web-blue-theme.md) | [#5](https://github.com/jo0n-lab/cfd-bot/issues/5) |
+| 2026-09-28 | [웹 티켓 선택 지연 제거](2026-09-28-web-ticket-selection-latency.md) | [#4](https://github.com/jo0n-lab/cfd-bot/issues/4) |
+| 2026-09-28 | [개별 티켓 실행 설정 · 세 UI 동등 적용](2026-09-28-single-ticket-execution.md) | [#3](https://github.com/jo0n-lab/cfd-bot/issues/3) |
+| 2026-09-28 | [SSH config Host 선택](2026-09-28-ssh-config-host-selection.md) | [#2](https://github.com/jo0n-lab/cfd-bot/issues/2) |
+| 2026-09-28 | [SSH 실행기 단순화](2026-09-28-simple-ssh-launcher.md) | [#2](https://github.com/jo0n-lab/cfd-bot/issues/2) |
+| 2026-09-28 | [localhost 웹 UI](2026-09-28-localhost-web.md) | [#2](https://github.com/jo0n-lab/cfd-bot/issues/2) |
 | 2026-09-28 | [`ofps` 단일 실행 파일 통합](2026-09-28-ofps-single-entry.md) | [#1](https://github.com/jo0n-lab/cfd-bot/issues/1) |

@@ -15,7 +15,7 @@
 - `controlDict.endTime`과 로그의 최종 `Time`을 사용한 정상 종료 판정
 - 등록 티켓의 Residual PNG와 요청 데이터 전송
 - SQLite FIFO 큐, CPU 충돌 검사, 독립 worker를 통한 계산 실행
-- Telegram과 GUI에서 같은 티켓 검증·저장 로직 사용
+- Telegram·GUI·localhost 웹에서 같은 티켓 검증·저장·실행 요청 로직 사용
 - Telegram 표시 문구와 버튼을 메뉴·시나리오별 JSON 리소스로 관리
 
 ## 2. 설계 원칙
@@ -49,10 +49,33 @@ Telegram에 표시하는 고정 문구, 버튼, 명령 설명과 템플릿은 `t
 
 ## 3. 시스템 컨텍스트
 
+티켓 실행 설정은 세 인터페이스에서 같은 도메인으로 연결합니다. 독립 티켓의 기본 `case` 모드는 기존 케이스 설정을 사용하고, `ticket` 모드는 사용자가 명시한 NP·실행 명령을 우선합니다. 매크로 하위 티켓의 실행 설정은 부모에서 편집합니다.
+
+편집 화면을 여는 읽기 동작은 Monitor가 저장한 최근 snapshot을 사용해 즉시 표시합니다. 실제 실행 요청은 별도의 fresh `ofps` 검사를 통과해야 하므로 편집 성능과 중복 실행 방지를 분리합니다.
+
+```mermaid
+flowchart LR
+    UI[Telegram / cfd-ticket-gui / web 실행 설정] --> SERVICE[공유 TicketService]
+    SERVICE --> CASE[case: 기존 케이스 설정]
+    SERVICE --> TICKET[ticket: 개별 NP / 명령]
+    SERVICE --> MACRO[macro: 공통 설정 → child 상속]
+    CASE --> EXEC[execution_case]
+    TICKET --> EXEC
+    MACRO --> EXEC
+    EXEC --> CPU[가용 코어 배정 / 중복 금지]
+    CPU --> WORKER[실행 설정 적용 → worker]
+```
+
 ```mermaid
 flowchart LR
     USER[Telegram 사용자] <--> TG[Telegram Bot API]
     ADMIN[운영자] --> GUI[Ticket GUI / CLI]
+    ADMIN --> BROWSER[localhost browser]
+    BROWSER --> WEB[Loopback HTTP UI adapter]
+    WEB --> SHARED[TicketService / TicketRunner]
+    SHARED --> TICKETS
+    WEB --> DB
+    WEB --> OFPS
 
     TG <--> BOT[CFD bot service]
     GUI --> TICKETS[tickets/*.json]
@@ -89,6 +112,9 @@ flowchart TB
     OFPS[ofps process scanner]
     SQLITE[(state.sqlite3)]
     FILES[tickets · telegram-ui · case files]
+    WEB[Separate localhost web service] --> FILES
+    WEB <--> SQLITE
+    WEB --> OFPS
 
     POLL <--> SQLITE
     MON <--> SQLITE
@@ -104,6 +130,18 @@ flowchart TB
 ```
 
 서비스 프로세스 안에는 Telegram polling, Monitor, Notification delivery 세 흐름이 있습니다. Scheduler는 Monitor 주기에서 실행됩니다. 계산 worker는 봇 재시작과 분리된 새 세션으로 시작하며 SQLite를 통해 상태를 공유합니다.
+
+### 4.1 localhost 웹 경계
+
+![localhost 웹 HLD와 LLD](web-interface-design.svg)
+
+`cfd-bot-web.service`는 별도 loopback HTTP 프로세스입니다. browser form을 공용 `TicketService`/`TicketRunner`에 연결하고 기존 ticket JSON·SQLite·패턴 템플릿을 사용합니다. Web은 Monitor·Scheduler·Delivery를 기동하지 않습니다. 실제 실행 및 Telegram 알림은 기존 `cfd-bot.service`의 책임입니다.
+
+외부 브라우저는 일반 SSH local forwarding으로 서버의 loopback 포트에 접근합니다. `외부 localhost:임의포트 → SSH 채널 → 서버 127.0.0.1:8766`이며 Tailscale 전용 기능이나 추가 네트워크 바인딩은 필요 없습니다. 브라우저가 보낸 loopback Host와 Origin 검증은 전달 후에도 유지됩니다.
+
+Windows CMD/PowerShell 및 macOS app launcher는 사용자 PC의 SSH 연결과 브라우저 열기를 담당합니다. 서버의 business logic을 복제하지 않습니다. 사용자 SSH config와 Include의 명시적 Host 별칭을 목록으로 보여 주고 선택한 별칭으로 연결합니다. 접속 설정 해석은 OpenSSH에 맡기며 별도 설정 저장 기능은 두지 않습니다. 로컬 전달 포트가 열리면 브라우저를 엽니다.
+
+웹은 대시보드, 티켓 편집, 큐, 요청 데이터의 네 화면을 제공합니다. UI는 외부 asset/CDN 의존성 없이 정적 파일로 제공하며 작은 화면에서는 목록과 편집 폼을 세로로 배치합니다. localhost Host/Origin 검증, mutation CSRF token, CSP, 선언된 case 내부 artifact만 제공하는 경로 검증을 적용합니다.
 
 ## 5. 주요 유즈케이스
 

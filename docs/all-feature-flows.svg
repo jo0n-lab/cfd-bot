@@ -42,7 +42,7 @@
   <rect x="294" y="104" width="800" height="1780" rx="16" fill="#f5f3ff"/>
   <rect x="1110" y="104" width="462" height="1780" rx="16" fill="#fff7ed"/>
   <text class="lane-title" x="48" y="140">사용자·운영자</text>
-  <text class="lane-sub" x="48" y="162">Telegram · Ticket GUI · CLI</text>
+  <text class="lane-sub" x="48" y="162">Telegram · Web · GUI · CLI</text>
   <text class="lane-title" x="314" y="140">cfd-bot</text>
   <text class="lane-sub" x="314" y="162">router · UI catalog · monitor · queue · outbox · ticket service</text>
   <text class="lane-title" x="1130" y="140">외부 시스템·케이스</text>
@@ -173,13 +173,13 @@
   <text class="flow-title" x="48" y="836">5. 티켓 생성·편집·복제·삭제·macro 구성</text>
   <g transform="translate(52 856)">
     <rect rx="10" class="card user" width="190" height="92"/>
-    <text class="card-title" x="95" y="27">/tickets · /cancel · GUI</text>
+    <text class="card-title" x="95" y="27">/tickets · GUI · Web</text>
     <text class="card-sub" x="95" y="49">초안 · 폴더/파일 선택</text>
     <text class="card-sub" x="95" y="68">단일 · macro · 일괄 삭제</text>
   </g>
   <g transform="translate(330 856)">
     <rect rx="10" class="card bot" width="205" height="92"/>
-    <text class="card-title" x="102.5" y="27">TicketChat / GUI</text>
+    <text class="card-title" x="102.5" y="27">Chat / GUI / Web</text>
     <text class="card-sub" x="102.5" y="49">화면·입력 session</text>
     <text class="card-sub" x="102.5" y="68">오래된 버튼·편집 충돌 차단</text>
   </g>

@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "case_dir": "/tmp/akita_ext-split-steady/A_Q1p67em6_N4",
+  "cpu_policy": "manual",
+  "allow_cross_socket": true,
+  "watcher": {
+    "logs": [
+      "log.foamRun.preFlow",
+      "log.foamRun.fixedFlowSteadySpecies"
+    ],
+    "failure": {
+      "patterns": [
+        "failed phase:",
+        "FOAM FATAL"
+      ],
+      "updated_files": [
+        "FAILED_CASES.md"
+      ],
+      "include_openfoam_defaults": true
+    }
+  },
+  "preprocess": [],
+  "postprocess": [],
+  "task_type": "single",
+  "command": [
+    "./Allrun"
+  ],
+  "cores": 48,
+  "cpu_set": "0-23,26-49",
+  "role": "alone",
+  "end_time": 3000.0,
+  "residual_pattern": "monitoring/residual*.png",
+  "notifications": {
+    "events": [
+      "started",
+      "succeeded",
+      "failed",
+      "interrupted"
+    ]
+  },
+  "exports": [
+    {
+      "name": "steady-naoh",
+      "pattern": "monitoring/steady_naoh.png",
+      "kind": "photo",
+      "max_files": 1,
+      "on": [],
+      "on_complete": false
+    }
+  ],
+  "queue": {
+    "state": "finished",
+    "submit": false,
+    "request_id": "4560d4a97d174427bbbed8af73b44217",
+    "result": "failed",
+    "updated_at": 1790576784.8823998,
+    "reason": "명령 종료 코드 1",
+    "job_id": "474f24f8772d"
+  },
+  "name": "akita_ext N4 frozen flow"
+}

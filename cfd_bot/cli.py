@@ -23,6 +23,8 @@ def parser():
     check.add_argument('--mpi-probe', action='store_true', help='MPI 1개 프로세스로 foamRun -help 실행 확인 (--execution-env 필요)')
     commands.add_parser('identify', help='Telegram /start 요청의 user_id/chat_id 조회 (메시지 전송 없음)')
     commands.add_parser('gui', help='케이스 티켓을 항목별 입력 폼으로 편집')
+    web = commands.add_parser('web', help='localhost 웹 UI (기존 봇의 티켓·상태·큐 공유)')
+    web.add_argument('--port', type=int, default=8766, help='localhost 포트 (기본 8766)')
     status = commands.add_parser('status', help='현재 프로세스, 관리 중인 계산과 큐')
     status.add_argument('--json', action='store_true')
     commands.add_parser('queue', help='대기/실행 중인 계산 목록')
@@ -110,7 +112,10 @@ def main(argv=None):
                 print('Telegram에서 이 봇에 /start를 보낸 후 다시 실행하세요.')
             return 0
         store = Store(config['state_dir'])
-        if args.command == 'status':
+        if args.command == 'web':
+            from .web import serve as serve_web
+            serve_web(config, store, args.port)
+        elif args.command == 'status':
             snap = snapshot(config['ofps_command'])
             snap['at'] = time.time()
             from .tickets import sync_ticket_states

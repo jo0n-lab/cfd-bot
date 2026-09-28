@@ -12,6 +12,15 @@ from .config import cpu_set
 from .ui import load_ui
 
 
+EXECUTION_DEFAULTS = dict(resource_source='case', cores=1, command=None,
+                          cpu_policy='manual', cpu_set=None, allow_cross_socket=False)
+
+
+def execution_settings(case):
+    """Comparable execution intent, excluding monitoring data and runtime state."""
+    return {key: case.get(key, default) for key, default in EXECUTION_DEFAULTS.items()}
+
+
 def openfoam_environment(bashrc, environment):
     """Load the configured OpenFOAM environment without a login shell or eval."""
     ui = load_ui()
@@ -98,8 +107,8 @@ def execution_case(case):
             parts = shlex.split(match[2], comments=True)
             if len(parts) == 1 and not any(c in parts[0] for c in '$`();'):
                 settings[match[1]] = parts[0]
-    # Allrun can reset affinity itself: its actual resource settings take priority.
-    common = case.get('resource_source') == 'macro'
+    # Explicit ticket/macro intent takes priority and is applied before launch.
+    common = case.get('resource_source') in ('macro', 'ticket')
     automatic = case.get('cpu_policy') == 'auto'
     cpus = case.get('cpu_set') if common else settings.get('CPU_SET', case.get('cpu_set'))
     if not cpus and not automatic:
@@ -130,13 +139,13 @@ def execution_case(case):
 
 
 def apply_execution_settings(case, job_folder):
-    """Make known Allrun assignments agree with the admitted macro allocation.
+    """Make known Allrun assignments agree with the admitted allocation.
 
     Keep exact source backups in the job folder. Only NP/CPU_SET assignments
     are replaced; shell snippets are never evaluated to discover settings.
     """
     ui = load_ui(case.get('_ui_dir'))
-    if case.get('resource_source') != 'macro' and case.get('cpu_policy') != 'auto':
+    if case.get('resource_source') not in ('macro', 'ticket') and case.get('cpu_policy') != 'auto':
         return
     root = Path(case['_root'])
     sources = [root / 'Allrun'] + sorted((root / 'config').glob('*Run'))

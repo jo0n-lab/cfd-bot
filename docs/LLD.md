@@ -33,6 +33,37 @@ stateDiagram-v2
     postprocessing --> failed
 ```
 
+### 1.3 localhost web process
+
+`cli.web → web.serve → WebServer(ThreadingHTTPServer)`는 `127.0.0.1:8766`에 바인딩합니다. HTTP 요청별 thread는 기존 도메인 서비스만 호출하며 별도 Scheduler나 Telegram client를 생성하지 않습니다. JSON 변경은 `ticket_lock`과 revision, DB 변경은 기존 SQLite transaction/CAS를 사용합니다. `SNAPSHOT_LOCK`은 프로세스 내부 lock이며 웹과 봇의 별도 process는 각각 독립적인 읽기 스캔을 수행합니다.
+
+![웹 프로세스와 요청 흐름](web-interface-design.svg)
+
+| API | 연결 서비스 / 동작 |
+|---|---|
+| GET bootstrap | CSRF token, 공용 패턴, 기본 파일 선택 위치 |
+| GET overview | fresh snapshot, `sync_ticket_states`, 실제 실행 목록 |
+| GET ticket | `TicketService.open` + 저장된 최신 snapshot의 `TicketRunner.state`; 편집 선택 시 `ofps`를 실행하지 않음 |
+| POST new / duplicate / validate / save | `TicketService`와 기존 폼 변환·검증, revision 비교, 원자적 저장 |
+| POST delete/preview → delete | 실행 상태 갱신, macro 자식 포함 삭제 계획·revision, `delete_many` |
+| POST run | fresh snapshot + `TicketRunner.request`, 멱등 submission flag |
+| POST discover / patterns / exports/validate | 공용 `discover_cases`, `PatternLibrary`, `validate_export` |
+| POST queue | `queue_paused`, queued 상태에 한정한 `update_job(expected=...)` |
+| GET cases / detail / artifacts / file | 등록 케이스, 로그·ETA, 공용 artifact matcher, 허용된 파일 stream |
+| GET browse / control | 서버 파일 선택 목록, 기본 OpenFOAM run 디렉토리, `control_times` |
+
+Browser는 미저장 draft를 메모리에 보관하며 10초 현황 갱신 시 폼을 재생성하지 않습니다. 저장 요청에는 기존 revision과 request id를 보내고 성공 후 새 revision을 수신합니다. 새 macro 저장 시 queue 등록을 먼저 확인하며, 저장 후 실행은 공용 저장 완료 뒤 실행 요청을 보냅니다. 현재 계산 중인 티켓은 실행할 수 없고 요청 데이터 같은 메타데이터 변경은 기존 service 규칙에 따릅니다.
+
+티켓 선택은 읽기 동작이므로 Bot Monitor와 최근 overview가 SQLite에 기록한 snapshot으로 실행 버튼 상태를 계산합니다. 이 경로는 `ofps`를 새로 실행하지 않습니다. `/api/run`과 실행 상태 명시적 새로고침은 fresh snapshot을 다시 검사하므로 선택 화면의 snapshot이 갱신 직전이어도 중복 실행은 허용되지 않습니다. Telegram 카드와 GUI의 편집 열기도 같은 cached-state 정책을 사용합니다.
+
+HTTP는 localhost Host와 같은 Origin/Fetch-Site를 확인하고 POST에 application/json 및 CSRF token을 요구합니다. body는 2 MiB로 제한하고 정적 asset은 allowlist만 제공합니다. artifact는 요청 시마다 선언된 export/Residual 목록을 다시 구한 뒤 case 내부 경로 및 열린 descriptor 경로를 검증합니다. 이미지만 inline, 나머지는 attachment로 내려보내고 49 MiB를 초과하는 파일은 거부합니다. 요청 로그에는 method/path/status만 남깁니다.
+
+SSH `-L`의 외부 local port는 backend port와 다를 수 있으므로 Host는 `localhost`, `127.0.0.1`, `[::1]` 및 유효 TCP port 조합을 허용합니다. Origin은 그 요청 Host와 일치해야 합니다. `bin/cfd-web-tunnel`은 브라우저 PC의 IPv4 loopback에만 local port를 열며 `ExitOnForwardFailure`로 포트 충돌을 즉시 알립니다. 테스트 fixture는 별도 TCP forwarder를 통해 전체 브라우저 흐름을 검증합니다.
+
+`clients/build.py`는 Windows CMD+PowerShell, macOS .app/.command를 재현 가능한 ZIP으로 생성합니다. ZIP 안의 macOS entrypoint 실행 권한과 PowerShell 5.1용 UTF-8 BOM을 보존합니다. 설정 GUI와 저장 파일은 사용하지 않습니다. 사용자 config와 Include를 읽어 중복·와일드카드·부정 패턴을 제외한 Host 목록을 만들고 번호를 선택받습니다. Windows는 PowerShell, macOS는 ssh-hosts.sh가 이름만 열거합니다. 선택한 별칭을 그대로 ssh argv에 전달하여 User·Port·IdentityFile·ProxyJump는 기존 OpenSSH 해석을 사용합니다. 로컬 전달 포트가 열리면 브라우저를 엽니다. 연결 창을 종료하면 자신이 시작한 SSH 프로세스를 종료합니다. `/downloads/`는 두 생성 ZIP만 allowlist로 제공합니다.
+
+실행 시 `web.serve()`는 `state/web.log`에 회전 로그 handler를 설치합니다(5 MiB, backup 3개). method/path/status만 기록하고 HTTP body·CSRF·SSH 인증 정보는 기록하지 않습니다. 종료 시 handler를 해제합니다.
+
 ## 2. 시작과 설정 검증
 
 `config.load_bot()`의 처리 순서는 다음과 같습니다.
@@ -265,6 +296,10 @@ worker는 다음 순서로 동작합니다.
 ### 10.2 macro 티켓
 
 macro는 ordered child 목록과 공통 실행 설정을 가집니다. `tickets.publish_macro()`는 child 파일을 먼저 stage하고 macro를 마지막에 원자적으로 저장하며 실패 시 rollback합니다. 실행 중 child의 실행 설정은 변경할 수 없지만 요청 데이터와 감시 설정은 갱신할 수 있습니다.
+
+독립 티켓도 세 UI에서 `execution_source=case|ticket`과 공통 실행 폼 필드(NP·명령·CPU 배정)를 사용합니다. `form_values` / `form_document`는 기존 `macro_*` 폼 키를 호환 유지하고 명시 지정일 때 JSON의 `resource_source=ticket`을 저장합니다. `config.load_case`는 `ticket`과 `macro`에 NP·명령 및 수동 모드의 CPU 범위를 요구합니다. `execution_case`는 두 출처 모두 케이스 내부 NP보다 티켓 값을 우선하며 `apply_execution_settings`는 할당된 NP/CPU_SET을 실행 전에 반영하고 원본을 백업합니다. `case` 모드로 되돌리면 명시 실행 값을 제거하고 자동 CPU 배정과 기존 케이스 NP를 사용합니다. 기존 case 티켓의 메타데이터만 저장할 때는 실행 설정을 보존합니다.
+
+Child의 실행 설정은 세 UI에서 상속값으로 표시합니다. 저장 시 `TicketService`가 매크로 설정과 일치하는지 검증합니다. 실행 중인 독립 티켓은 `execution_settings` 비교로 실행 출처·NP·명령·CPU 정책·범위·소켓 허용 변경을 거절합니다. 요청 데이터와 감시 설정 변경에는 이 제한을 적용하지 않습니다. 모든 인터페이스 변경은 세 adapter와 관련 검증을 함께 갱신합니다(저장소 `AGENTS.md`).
 
 ### 10.3 편집기 공유 계층
 
