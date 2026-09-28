@@ -1,9 +1,22 @@
 __pycache__/
 *.py[cod]
 .venv/
+
+# Local credentials and secret overrides
 .env
+.env.*
+*.env
+*.token
+*.secret
+.secrets/
+secrets/
+.git-credentials
+.netrc
+
+# Machine-specific bot configuration and runtime state
 /bot.json
 state/
+
 *.egg-info/
 build/
 dist/
