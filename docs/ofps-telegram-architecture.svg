@@ -60,7 +60,7 @@
   </g>
   <g transform="translate(982 220)">
     <rect rx="10" class="card foam" width="330" height="64"/>
-    <text class="card-title" x="165" y="27">기존 ofps 실행</text>
+    <text class="card-title" x="165" y="27">통합 bin/ofps 스캔</text>
     <text class="card-sub" x="165" y="47">활성 CASE · PID · CPU affinity</text>
   </g>
   <g transform="translate(610 220)">

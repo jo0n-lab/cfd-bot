@@ -302,10 +302,10 @@
 
   <line class="rule" x1="48" y1="1594" x2="1548" y2="1594"/>
   <!-- 9. cli -->
-  <text class="flow-title" x="48" y="1626">9. CLI와 ofps wrapper 운영 기능</text>
+  <text class="flow-title" x="48" y="1626">9. CLI와 통합 ofps 운영 기능</text>
   <g transform="translate(52 1646)">
     <rect rx="10" class="card user" width="190" height="104"/>
-    <text class="card-title" x="95" y="25">CLI / extended ofps</text>
+    <text class="card-title" x="95" y="25">CLI / 단일 bin/ofps</text>
     <text class="card-sub" x="95" y="47">check · status · queue</text>
     <text class="card-sub" x="95" y="65">enqueue · cancel · pause/resume</text>
     <text class="card-sub" x="95" y="83">monitor · gui · identify</text>
@@ -329,7 +329,7 @@
     <text class="card-title" x="195" y="25">ofps · OpenFOAM env · SQLite</text>
     <text class="card-sub" x="195" y="47">--status · --json · --queue</text>
     <text class="card-sub" x="195" y="65">--enqueue CASE · --bot</text>
-    <text class="card-sub" x="195" y="83">기존 ofps option은 legacy로 전달</text>
+    <text class="card-sub" x="195" y="83">scan · watch · check 내장</text>
   </g>
   <path class="arrow" d="M242 1698H330"/>
   <path class="arrow" d="M535 1698H574"/>

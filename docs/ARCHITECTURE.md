@@ -47,7 +47,7 @@ flowchart LR
 
     subgraph OFPS[ofps 단]
         ADAPTER[processes.snapshot parser]
-        LEGACY[기존 ofps]
+        SCANNER[bin/ofps 통합 프로세스 스캐너]
         PROC["/proc 프로세스 계보"]
     end
 
@@ -67,9 +67,10 @@ flowchart LR
 
     POLL --> ADAPTER
     MON --> ADAPTER
-    ADAPTER --> LEGACY
+    ADAPTER --> SCANNER
     ADAPTER --> PROC
-    LEGACY --> SOLVER
+    SCANNER --> PROC
+    SOLVER --> PROC
 
     MON --> PARSE
     PARSE --> CONTROL
@@ -151,7 +152,7 @@ Telegram bot의 adapter는 `ofps` 출력에 다음 처리를 추가합니다.
 - 여러 MPI rank의 CPU affinity 합집합으로 실제 코어 수와 CPU 목록 계산
 - 동일 프로세스 PID 재사용을 구분하는 boot ID·start tick identity 저장
 
-저장소의 `bin/ofps` wrapper는 기존 동작을 그대로 전달하면서 다음 bot 명령도 제공합니다.
+실행 파일은 저장소의 `bin/ofps` 하나입니다. `/home/joon/.local/bin/ofps` symlink와 `bot.json.ofps_command`가 같은 파일을 가리킵니다. 이 파일은 일반 scan, `--watch`, `--check`를 직접 수행하고 bot 확장 option만 Python CLI로 연결합니다. 별도 legacy scanner와 fallback은 없습니다. 확장 option은 다음과 같습니다.
 
 ```text
 --status  --json  --queue  --enqueue CASE  --bot
@@ -165,7 +166,7 @@ sequenceDiagram
     participant T as Telegram API
     participant B as Bot dispatcher
     participant P as processes.snapshot
-    participant O as 기존 ofps
+    participant O as bin/ofps 통합 스캐너
     participant C as tickets/*.json
 
     U->>T: /stat

@@ -60,7 +60,7 @@ flowchart LR
     UI[telegram-ui/**/*.json] --> BOT
 
     BOT --> OFPS[ofps]
-    OFPS --> PROC[/proc 및 실행 프로세스]
+    OFPS --> PROC[/proc 및 실행 프로세스/]
     BOT --> CASE[OpenFOAM 케이스\ncontrolDict · 로그 · 결과 파일]
     BOT <--> DB[(SQLite state/outbox)]
 ```
@@ -150,6 +150,7 @@ Residual은 봇이 생성하지 않고 케이스가 만든 최신 PNG를 전송�
 ## 7. 배포 구조
 
 - 단일 호스트의 systemd user service로 실행합니다.
+- `~/.local/bin/ofps`는 저장소의 자체 완결형 `bin/ofps`를 가리키며 별도 legacy scanner 없이 process scan과 확장 명령을 모두 제공합니다.
 - bot token은 `bot.json`이 아니라 권한 제한된 EnvironmentFile에서 읽습니다.
 - `DaemonLock`이 같은 state directory를 사용하는 daemon 중복 실행을 차단합니다.
 - `KillMode=process`로 bot만 재시작해도 이미 시작한 worker와 solver process group은 유지합니다.
@@ -176,6 +177,7 @@ Residual은 봇이 생성하지 않고 케이스가 만든 최신 PNG를 전송�
 
 - [LLD.md](LLD.md): 모듈, DB, 상태 전이, 함수 단위 흐름
 - [ARCHITECTURE.md](ARCHITECTURE.md): 전체 구성과 유즈케이스별 sequence/flow chart
+- [history/README.md](history/README.md): 변경 전·후 HLD/LLD와 GitHub Issue 연결
 - [ofps-telegram-architecture.svg](ofps-telegram-architecture.svg): 한 장짜리 아키텍처 그림
 - [all-feature-flows.svg](all-feature-flows.svg): 전체 사용자·백그라운드·운영 기능 플로우
 - [../README.md](../README.md): 설치·설정·사용 방법

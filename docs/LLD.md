@@ -130,7 +130,9 @@ Bot.fresh_runs()
 
 ## 6. 프로세스 snapshot
 
-`processes.snapshot()`은 `ofps_command`를 최대 45초 실행하고 출력 계약을 검사합니다. `parse_snapshot()`은 `ENGINE`, `CASE`, `SUPERVISOR`와 process table을 case root별로 묶습니다.
+`processes.snapshot()`은 `ofps_command`를 최대 45초 실행하고 출력 계약을 검사합니다. 현재 명령 `/home/joon/.local/bin/ofps`는 저장소의 자체 완결형 `bin/ofps`를 가리키며, 이 파일이 `/proc` scan을 직접 수행합니다. 별도 scanner subprocess나 fallback은 없습니다. `parse_snapshot()`은 `ENGINE`, `CASE`, `SUPERVISOR`와 process table을 case root별로 묶습니다.
+
+`bin/ofps`는 일반 scan, `--watch`, `--check`를 내장 Bash scanner로 처리하고 bot 확장 option은 같은 파일의 argv 분기에서 `python3 -m cfd_bot`으로 연결합니다. scan 결과는 한 번 캡처한 뒤 stdout 출력과 snapshot·티켓 상태 동기화에 함께 사용하며, 동기화 실패가 CPU 검사 종료코드를 바꾸지 않습니다.
 
 후처리 단계:
 

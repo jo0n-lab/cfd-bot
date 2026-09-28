@@ -2,6 +2,7 @@ from copy import deepcopy
 import json
 import os
 from pathlib import Path
+import subprocess
 import time
 from unittest.mock import patch
 
@@ -421,26 +422,45 @@ class QueueTicketTests(Environment):
         sync_ticket_states(self.config, self.store, {'cases': {}})
         self.assertEqual(read_json(path)['cases'][0]['state'], 'waiting')
 
-    def test_ofps_wrapper_updates_json_without_changing_cpu_check_result(self):
-        import subprocess
-        import sys
+    def test_integrated_ofps_updates_json_without_changing_cpu_check_result(self):
         path, macro = self.macro([self.case_dir('observed')])
-        fake = self.root / 'ofps-legacy'
-        fake.write_text('#!/bin/sh\n'
-                        'echo "ENGINE: OpenFOAM"\n'
-                        f'echo "CASE: {macro["cases"][0]["case_dir"]}"\n'
-                        'echo "BLOCKED: overlap"\nexit 4\n')
-        fake.chmod(0o755)
         config = self.root / 'queue-bot.json'
         config.write_text(json.dumps(dict(version=1, state_dir=str(self.store.root),
                                          case_globs=[str(self.tickets / '*.json')])))
-        env = dict(os.environ, OFPS_LEGACY=str(fake), CFD_BOT_CONFIG=str(config))
+        env = dict(os.environ, CFD_BOT_CONFIG=str(config))
         wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'
-        result = subprocess.run([sys.executable, str(wrapper), '--check', self.cpu],
-                                env=env, capture_output=True, text=True, timeout=10)
+        case_root = macro['cases'][0]['case_dir']
+        solver = subprocess.Popen(
+            ['taskset', '-c', self.cpu, 'bash', '-c',
+             'cd "$1" && exec -a simpleFoam sleep 30', 'ofps-test', case_root],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            for _ in range(100):
+                cmdline = Path(f'/proc/{solver.pid}/cmdline')
+                if cmdline.exists() and b'simpleFoam' in cmdline.read_bytes():
+                    break
+                time.sleep(0.01)
+            result = subprocess.run([str(wrapper), '--check', self.cpu], env=env,
+                                    capture_output=True, text=True, timeout=10)
+        finally:
+            solver.terminate()
+            solver.wait(timeout=5)
         self.assertEqual(result.returncode, 4, result.stderr)
-        self.assertIn('BLOCKED: overlap', result.stdout)
+        self.assertIn('BLOCKED: overlaps PID', result.stderr)
         self.assertEqual(read_json(path)['cases'][0]['state'], 'running')
+
+    def test_integrated_ofps_has_no_legacy_scanner_dependency(self):
+        wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'
+        source = wrapper.read_text()
+        self.assertTrue(os.access(wrapper, os.X_OK))
+        self.assertTrue(source.startswith('#!/usr/bin/env bash\n'))
+        self.assertNotIn('OFPS_LEGACY', source)
+        self.assertNotIn('ofps-legacy', source)
+        result = subprocess.run([str(wrapper), '--help'], capture_output=True,
+                                text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('--check CPU_SET', result.stdout)
+        self.assertIn('--status', result.stdout)
 
     def test_queued_ticket_rename_keeps_the_same_job(self):
         root = self.case_dir('renamed')

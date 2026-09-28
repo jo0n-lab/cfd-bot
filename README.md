@@ -361,7 +361,7 @@ python3 -m cfd_bot monitor --once
 python3 -m cfd_bot gui
 ```
 
-기존 스캐너는 `/home/joon/.local/bin/ofps-legacy`로 보존하고 `/home/joon/.local/bin/ofps`를 이 저장소의 `bin/ofps`에 연결합니다. 확장 명령은 `--status`, `--json`, `--queue`, `--enqueue`, `--bot`을 추가하고 기존 옵션은 원본 `ofps`로 전달합니다.
+`/home/joon/.local/bin/ofps`는 저장소의 자체 완결형 `bin/ofps`에 연결합니다. 이 단일 실행 파일이 `/proc` 프로세스 scan, `--watch`, `--check`와 `--status`, `--json`, `--queue`, `--enqueue`, `--bot` 확장 명령을 모두 처리합니다. 별도 `ofps-legacy`, `OFPS_LEGACY` 환경 변수나 vendor fallback은 사용하지 않습니다. 설치 후 `readlink -f ~/.local/bin/ofps`가 이 저장소의 `bin/ofps`를 가리키는지 확인합니다.
 
 ## 6. 서비스
 
