@@ -160,3 +160,19 @@ def queue_text(store, enabled=True, ui=None):
         lines.append(detail)
     lines.append(ui.text('menus.queue.estimate_notice'))
     return '\n'.join(lines)
+
+
+def macro_queue_text(macros, ui=None):
+    """Render live macro summaries produced by the shared run view helper."""
+    ui = ui or load_ui()
+    if not macros:
+        return ''
+    lines = ['', ui.text('menus.queue.macro_title')]
+    for macro in macros:
+        lines.append(ui.text(
+            'menus.queue.macro_line', name=macro['name'], completed=macro['completed'],
+            target=macro['target'], elapsed=duration(macro['elapsed_seconds'], ui),
+            remaining=duration(macro['remaining_seconds'], ui),
+            progress=f"{macro['progress']:.0%}",
+            active=macro.get('active_case') or ui.text('strings.common.unavailable')))
+    return '\n'.join(lines)

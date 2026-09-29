@@ -24,6 +24,8 @@
 
 현재 실행 중인 계산은 watcher DB가 아니라 요청 시 새로 실행한 `ofps` snapshot으로 판단합니다. `/stat`과 백그라운드 Monitor가 같은 `processes.snapshot()` 경로를 사용하며, `SNAPSHOT_LOCK`으로 동시 프로세스 스캔을 직렬화합니다.
 
+application에서 `ofps`를 호출할 때는 `CFD_BOT_OFPS_MANAGED=1`을 전달합니다. 이 호출에서는 `bin/ofps`가 프로세스 scan만 수행하고, 상태를 소유한 service가 티켓 JSON과 SQLite를 한 번만 반영합니다. `/stat`은 표시와 무관한 티켓 기록을 기다리지 않으며 같은 service의 Monitor가 상태를 반영합니다. 터미널에서 직접 실행하는 `ofps`, `ofps --watch`, `ofps --check`는 기존처럼 자체 상태 동기화를 수행합니다.
+
 ### 2.2 티켓은 관측의 전제 조건이 아님
 
 티켓이 없는 케이스도 `ofps`에서 발견되면 자동 감시합니다. 티켓은 이름, 로그 순서, 실패 패턴, Residual, 요청 데이터와 선택적 실행 설정을 추가합니다.
@@ -42,6 +44,8 @@
 ### 2.4 상태 변경과 Telegram 전송 분리
 
 Monitor와 worker는 알림을 SQLite outbox에 먼저 저장합니다. 전송 thread가 Telegram API를 호출하고 실패하면 지수 backoff로 재시도합니다. `event_key + chat_id` unique key로 같은 사건의 중복 발송을 막습니다.
+
+Telegram callback 확인은 짧은 worker에서 보내고 dispatcher는 동시에 요청 처리를 시작합니다. Telegram API의 callback 확인 왕복이 실제 화면 응답 앞에 직렬로 놓이지 않습니다.
 
 ### 2.5 표시 리소스와 동작 코드 분리
 
@@ -141,7 +145,9 @@ flowchart TB
 
 Windows CMD/PowerShell 및 macOS app launcher는 사용자 PC의 SSH 연결과 브라우저 열기를 담당합니다. 서버의 business logic을 복제하지 않습니다. 사용자 SSH config와 Include의 명시적 Host 별칭을 목록으로 보여 주고 선택한 별칭으로 연결합니다. 접속 설정 해석은 OpenSSH에 맡기며 별도 설정 저장 기능은 두지 않습니다. 로컬 전달 포트가 열리면 브라우저를 엽니다.
 
-웹은 대시보드, 티켓 편집, 큐, 요청 데이터의 네 화면을 제공합니다. UI는 외부 asset/CDN 의존성 없이 정적 파일로 제공하며 작은 화면에서는 목록과 편집 폼을 세로로 배치합니다. localhost Host/Origin 검증, mutation CSRF token, CSP, 선언된 case 내부 artifact만 제공하는 경로 검증을 적용합니다.
+웹은 대시보드, 티켓 편집, 큐, 요청 데이터의 네 화면을 제공합니다. UI는 외부 asset/CDN 의존성 없이 정적 파일로 제공하며 작은 화면에서는 목록과 편집 폼을 세로로 배치합니다. 실행 현황 자동 갱신은 동일 실행의 마지막 유효 ETA·진행률을 유지하고 기존 카드 DOM을 갱신해, 로그 동시 기록이나 polling 때문에 진행 표시가 사라지지 않게 합니다. localhost Host/Origin 검증, mutation CSRF token, CSP, 선언된 case 내부 artifact만 제공하는 경로 검증을 적용합니다.
+
+실행 이력과 큐의 결과 데이터 연결은 작업에 저장된 과거 case snapshot이 아니라 현재 조회되는 티켓 JSON registry를 case directory로 매칭해 결정합니다. 추적 가능한 종료 이력과 실제 `running` 작업만 결과 요청 데이터로 이동합니다. 실행 중인 매크로는 매크로 JSON의 현재 하위 `job_id`를 SQLite 작업과 결합해 완료 수·전체 수·경과 시간·예상 잔여 시간·전체 진행률을 세 UI에 제공합니다.
 
 ## 5. 주요 유즈케이스
 
@@ -161,7 +167,17 @@ SSH, tmux, systemd, `nohup`, 외부 스크립트 등 실행 주체와 관계없�
 
 `티켓 선택 → SQLite queued → 실행 환경 확인 → CPU 자동/수동 배정 → ofps --check → worker → 전처리 → solver → 종료 판정 → 후처리 → 알림`
 
-한 케이스에는 동시에 하나의 활성 job만 존재할 수 있습니다. 매크로 티켓은 child를 지정 순서대로 원자적으로 등록합니다.
+한 케이스에는 동시에 하나의 활성 job만 존재할 수 있습니다. 매크로 검색은 지정 루트의 직계 하위 폴더 중 바로 아래에 `Allrun`이 있는 폴더만 대상으로 하며, 매크로 티켓은 선택한 child를 지정 순서대로 원자적으로 등록합니다.
+
+Telegram·cfd-ticket-gui·web은 대기 작업의 개별 선택, 전체 선택, 전체 해제와 선택 취소를 제공합니다. 선택 취소는 공용 domain helper를 거쳐 한 SQLite transaction에서 실행되며, 그 사이 시작된 작업은 유지하고 결과에 상태 변경 항목으로 표시합니다. 티켓 관리도 세 인터페이스에서 전체 선택과 전체 해제를 별도 동작으로 제공합니다.
+
+```mermaid
+flowchart LR
+    UI[세 UI의 큐 다중 선택] --> DOMAIN[cancel_queued_jobs]
+    DOMAIN --> TX[SQLite transaction]
+    TX -->|still queued| CANCEL[cancelled]
+    TX -->|state changed| KEEP[유지 + unavailable]
+```
 
 ### 5.4 데이터 요청
 

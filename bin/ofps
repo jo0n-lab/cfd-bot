@@ -639,7 +639,8 @@ scan_and_sync()
     local snapshot_file="$scratch_dir/snapshot.txt" scan_status=0
     scan_once "$records_file" > "$snapshot_file" || scan_status=$?
     cat "$snapshot_file"
-    if grep -Eq '^(ENGINE: |No active )' "$snapshot_file"; then
+    if [[ ${CFD_BOT_OFPS_MANAGED:-0} != 1 ]] \
+        && grep -Eq '^(ENGINE: |No active )' "$snapshot_file"; then
         sync_ticket_state "$snapshot_file" || true
     fi
     return "$scan_status"

@@ -744,7 +744,7 @@ class TicketChat:
             else: selected.append(name)
             self.bulk_list(chat, user, s, s['bulk_page'])
         elif op == 'ball':
-            s['bulk_selected'] = list(dict.fromkeys(s['bulk_selected'] + s['bulk_choices']))
+            s['bulk_selected'] = self.service.listing()
             self.bulk_list(chat, user, s, s['bulk_page'])
         elif op == 'bnone':
             s['bulk_selected'] = []

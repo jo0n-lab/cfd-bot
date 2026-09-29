@@ -13,7 +13,7 @@ import threading
 from pathlib import Path
 from unittest.mock import patch
 
-from cfd_bot.config import load_bot
+from cfd_bot.config import load_bot, load_case
 from cfd_bot.tickets import atomic_json
 from cfd_bot.web import WebApp, WebServer
 
@@ -37,7 +37,8 @@ class Forwarder(socketserver.BaseRequestHandler):
 def main():
     with tempfile.TemporaryDirectory(prefix='cfd-web-fixture-') as directory:
         root = Path(directory)
-        for name in ('demo', 'new-case', 'copy-case', 'batch/alpha', 'batch/beta', 'batch/skip-template'):
+        for name in ('demo', 'new-case', 'copy-case', 'queue-one', 'queue-two',
+                     'batch/alpha', 'batch/beta', 'batch/skip-template', 'batch/group/deep'):
             case = root / name
             (case / 'system').mkdir(parents=True)
             (case / 'system/controlDict').write_text('startTime 0; stopAt endTime; endTime 2500;')
@@ -54,6 +55,13 @@ def main():
         atomic_json(app.service.path('alone-demo.json'), dict(version=1, name='Demo steady flow',
                     case_dir=str(root / 'demo'), residual_pattern='residual.png', cpu_policy='auto',
                     command=['./Allrun'], watcher=dict(log='log.solver')))
+        tracked = app.store.enqueue(load_case(app.service.path('alone-demo.json')))
+        app.store.update_job(tracked['id'], status='succeeded', started=1, finished=2)
+        untracked = app.store.enqueue(dict(name='Deleted ticket case', _root=str(root / 'new-case'),
+                                           command=['./Allrun'], watcher={}))
+        app.store.update_job(untracked['id'], status='failed', started=2, finished=3)
+        for name in ('queue-one', 'queue-two'):
+            app.store.enqueue(dict(name=name, _root=str(root / name), command=['./Allrun'], watcher={}))
         with patch('cfd_bot.ticket_run.snapshot', return_value={'cases': {}, 'raw': 'No active jobs'}):
             server = WebServer(app, 0)
             forwarder = socketserver.ThreadingTCPServer(('127.0.0.1', 0), Forwarder)

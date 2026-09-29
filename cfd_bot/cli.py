@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .config import ConfigError, cases_for, load_bot
 from .processes import DaemonLock, snapshot
+from .queue_control import cancel_queued_jobs
 from .report import queue_text
 from .storage import Store
 
@@ -31,7 +32,7 @@ def parser():
     enqueue = commands.add_parser('enqueue', help='등록된 케이스를 FIFO 큐에 추가')
     enqueue.add_argument('case', help='케이스 디렉터리 또는 ofps.json 경로')
     cancel = commands.add_parser('cancel', help='대기 중인 작업만 취소')
-    cancel.add_argument('job')
+    cancel.add_argument('job', nargs='+')
     commands.add_parser('pause', help='새 계산의 자동 시작 일시 정지')
     commands.add_parser('resume', help='자동 시작 재개 (scheduler.enabled=true 필요)')
     monitor = commands.add_parser('monitor', help='Telegram 없이 상태 수집/큐 실행; 알림은 보관')
@@ -145,10 +146,11 @@ def main(argv=None):
             job = store.enqueue(case)
             print(f"대기 큐 등록: {job['id']} · {case['name']}")
         elif args.command == 'cancel':
-            job = store.update_job(args.job, expected=('queued',), status='cancelled', finished=time.time())
-            if job is None:
+            result = cancel_queued_jobs(store, args.job)
+            if not result['cancelled']:
                 raise ValueError('대기 중인 작업만 취소할 수 있습니다.')
-            print('대기 취소: ' + args.job)
+            print(f"대기 취소: {len(result['cancelled'])}개" +
+                  (f" · 상태 변경 {len(result['unavailable'])}개 제외" if result['unavailable'] else ''))
         elif args.command in ('pause', 'resume'):
             store.put('queue_paused', args.command == 'pause')
             print('큐 일시 정지' if args.command == 'pause' else '큐 재개 (scheduler.enabled 설정 적용)')

@@ -360,8 +360,8 @@ def load_bot(path):
     return b
 
 
-def cases_for(bot):
-    tickets = tickets_for(bot)
+def cases_for(bot, tickets=None):
+    tickets = tickets_for(bot) if tickets is None else tickets
     for case in tickets:
         case['_ui_dir'] = bot['_ui_dir']
     macros = {c['_config']: c for c in tickets if c['task_type'] == 'macro'}

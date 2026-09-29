@@ -47,12 +47,15 @@ stateDiagram-v2
 | POST new / duplicate / validate / save | `TicketService`와 기존 폼 변환·검증, revision 비교, 원자적 저장 |
 | POST delete/preview → delete | 실행 상태 갱신, macro 자식 포함 삭제 계획·revision, `delete_many` |
 | POST run | fresh snapshot + `TicketRunner.request`, 멱등 submission flag |
-| POST discover / patterns / exports/validate | 공용 `discover_cases`, `PatternLibrary`, `validate_export` |
-| POST queue | `queue_paused`, queued 상태에 한정한 `update_job(expected=...)` |
+| POST discover / patterns / exports/validate | 매크로 루트의 직계 하위 폴더와 그 바로 아래 `Allrun`만 검사하는 공용 `discover_cases`, `PatternLibrary`, `validate_export` |
+| POST queue | `queue_paused`, 단일/다중 선택을 한 transaction에서 처리하는 `cancel_queued_jobs` / `Store.cancel_queued` |
 | GET cases / detail / artifacts / file | 등록 케이스, 로그·ETA, 공용 artifact matcher, 허용된 파일 stream |
+| GET overview | 현재 티켓 registry로 job 추적 가능 여부를 계산하고, 현재 macro child job ID만 집계한 진행 현황 반환 |
 | GET browse / control | 서버 파일 선택 목록, 기본 OpenFOAM run 디렉토리, `control_times` |
 
-Browser는 미저장 draft를 메모리에 보관하며 10초 현황 갱신 시 폼을 재생성하지 않습니다. 저장 요청에는 기존 revision과 request id를 보내고 성공 후 새 revision을 수신합니다. 새 macro 저장 시 queue 등록을 먼저 확인하며, 저장 후 실행은 공용 저장 완료 뒤 실행 요청을 보냅니다. 현재 계산 중인 티켓은 실행할 수 없고 요청 데이터 같은 메타데이터 변경은 기존 service 규칙에 따릅니다.
+Browser는 미저장 draft를 메모리에 보관하며 10초 현황 갱신 시 폼을 재생성하지 않습니다. 대시보드는 live/queue/history 구조가 같으면 기존 실행 카드 DOM의 수치와 progress 속성만 갱신합니다. 새 응답의 ETA가 `unknown`으로 잠깐 비더라도 동일 실행이고 진행 수치가 후퇴하지 않으면 직전 유효 ETA·progress를 유지합니다. `logs.estimate`는 64 KiB 이하의 동시 기록 꼬리에서는 이미 파싱한 완전한 Time/ClockTime 표본을 사용하고, 이를 넘는 실제 backlog와 missing log에서는 live rate를 보류합니다. 다단계 로그에서 `End` 뒤 새 `Time`이 나오면 이전 단계 success match를 비워 다음 단계의 속도 표본을 독립적으로 수집합니다. 저장 요청에는 기존 revision과 request id를 보내고 성공 후 새 revision을 수신합니다. 새 macro 저장 시 queue 등록을 먼저 확인하며, 저장 후 실행은 공용 저장 완료 뒤 실행 요청을 보냅니다. 현재 계산 중인 티켓은 실행할 수 없고 요청 데이터 같은 메타데이터 변경은 기존 service 규칙에 따릅니다.
+
+`run_views.tracking_registry`는 현재 실제로 존재하고 load된 티켓 JSON만 case root로 색인합니다. `job_view`는 이 registry에서 `trackable`, `case_id`, `ticket`을 만든다. 종료 이력은 `trackable=true`일 때 결과 화면으로 이동하고, active queue는 추가로 `status=running`일 때만 이동합니다. `running_macro_views`는 macro의 현재 `cases[].job_id`와 일치하는 작업만 사용하며 완료 child 수에 현재 solver progress를 더해 전체 progress를 계산합니다. ETA는 현재 child의 log rate와 남은 queued child의 설정 시간 또는 개별 최근 성공 이력을 순서대로 합산합니다. 개별 이력이 없으면 같은 매크로에서 최근 완료된 성공 child 최대 5개의 중앙 실행 시간을 fallback으로 쓰고, 그래도 추정 불가한 항목이 있으면 전체 잔여 시간을 알 수 없음으로 둡니다.
 
 티켓 선택은 읽기 동작이므로 Bot Monitor와 최근 overview가 SQLite에 기록한 snapshot으로 실행 버튼 상태를 계산합니다. 이 경로는 `ofps`를 새로 실행하지 않습니다. `/api/run`과 실행 상태 명시적 새로고침은 fresh snapshot을 다시 검사하므로 선택 화면의 snapshot이 갱신 직전이어도 중복 실행은 허용되지 않습니다. Telegram 카드와 GUI의 편집 열기도 같은 cached-state 정책을 사용합니다.
 
@@ -121,7 +124,7 @@ scenarios/run.json    + completion           → scenarios.run.completion
 
 ### 4.1 인증
 
-`Bot.handle()`은 update의 `from.id`와 `chat.id`가 각각 `allowed_user_ids`, `chat_ids`에 포함될 때만 처리합니다. callback은 거절 이유를 `answerCallbackQuery`로 돌려줍니다.
+`Bot.handle()`은 update의 `from.id`와 `chat.id`가 각각 `allowed_user_ids`, `chat_ids`에 포함될 때만 처리합니다. callback은 짧은 daemon worker에서 `answerCallbackQuery`를 보내며 dispatcher는 API 응답을 기다리지 않고 action을 처리합니다. 거절된 callback도 같은 경로로 이유를 돌려줍니다.
 
 ### 4.2 명령 routing
 
@@ -146,8 +149,8 @@ scenarios/run.json    + completion           → scenarios.run.completion
 ```text
 Bot.fresh_runs()
   → processes.snapshot(ofps_command)
-  → snapshot.at 저장
-  → tickets.sync_ticket_states()
+  → 응답용 snapshot.at 부여
+  → ticket catalog 1회 load
   → Bot.active_runs(snapshot)
   → report.compact_status(run)
 ```
@@ -158,12 +161,13 @@ Bot.fresh_runs()
 - 시작 시각은 snapshot 관측 시각에서 supervisor/solver의 최대 elapsed를 빼서 계산합니다.
 - CPU 수와 위치는 티켓 설정값이 아니라 `ofps`가 관측한 affinity 합집합을 사용합니다.
 - scan 오류는 빈 목록으로 위장하지 않고 상태 수집 오류를 표시합니다.
+- `/stat` 표시에 필요하지 않은 ticket JSON queue state 기록은 기다리지 않습니다. 같은 service의 Monitor tick이 `sync_ticket_states()`를 수행합니다.
 
 ## 6. 프로세스 snapshot
 
-`processes.snapshot()`은 `ofps_command`를 최대 45초 실행하고 출력 계약을 검사합니다. 현재 명령 `/home/joon/.local/bin/ofps`는 저장소의 자체 완결형 `bin/ofps`를 가리키며, 이 파일이 `/proc` scan을 직접 수행합니다. 별도 scanner subprocess나 fallback은 없습니다. `parse_snapshot()`은 `ENGINE`, `CASE`, `SUPERVISOR`와 process table을 case root별로 묶습니다.
+`processes.snapshot()`은 `CFD_BOT_OFPS_MANAGED=1` 환경으로 `ofps_command`를 최대 45초 실행하고 출력 계약을 검사합니다. 현재 명령 `/home/joon/.local/bin/ofps`는 저장소의 자체 완결형 `bin/ofps`를 가리키며, 이 파일이 `/proc` scan을 직접 수행합니다. 별도 scanner subprocess나 fallback은 없습니다. `parse_snapshot()`은 `ENGINE`, `CASE`, `SUPERVISOR`와 process table을 case root별로 묶습니다.
 
-`bin/ofps`는 일반 scan, `--watch`, `--check`를 내장 Bash scanner로 처리하고 bot 확장 option은 같은 파일의 argv 분기에서 `python3 -m cfd_bot`으로 연결합니다. scan 결과는 한 번 캡처한 뒤 stdout 출력과 snapshot·티켓 상태 동기화에 함께 사용하며, 동기화 실패가 CPU 검사 종료코드를 바꾸지 않습니다.
+`bin/ofps`는 일반 scan, `--watch`, `--check`를 내장 Bash scanner로 처리하고 bot 확장 option은 같은 파일의 argv 분기에서 `python3 -m cfd_bot`으로 연결합니다. standalone 호출은 scan 결과를 stdout과 snapshot·티켓 상태 동기화에 함께 사용하며, 동기화 실패가 CPU 검사 종료코드를 바꾸지 않습니다. managed 호출은 stdout만 반환하고 상태를 소유한 application service가 필요할 때 `sync_ticket_states()`를 실행합니다. 이 함수는 catalog를 한 번 읽고, job을 case root별로 묶으며, 모든 `observed:*` 값을 한 SQLite 연결에서 조회합니다.
 
 후처리 단계:
 
@@ -272,7 +276,7 @@ stateDiagram-v2
     postprocessing --> failed
 ```
 
-DB의 partial unique index가 한 `case_root`의 `queued|starting|running|postprocessing` 중복을 차단합니다. `Store.update_job(expected=...)`는 compare-and-swap처럼 stale action을 거부합니다.
+DB의 partial unique index가 한 `case_root`의 `queued|starting|running|postprocessing` 중복을 차단합니다. `Store.update_job(expected=...)`는 compare-and-swap처럼 stale action을 거부합니다. `Store.cancel_queued(ids)`는 중복 제거된 선택 전체를 한 `BEGIN IMMEDIATE` transaction에서 검사해 여전히 `queued`인 작업만 취소하고 나머지는 `unavailable`로 반환합니다.
 
 ### 9.3 실행 phase
 

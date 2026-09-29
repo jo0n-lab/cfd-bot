@@ -137,13 +137,10 @@ def discover_cases(root, observed, end_time=None):
     if not root.is_dir():
         raise ValueError(ui.text('scenarios.diagnostics.tickets.root_missing'))
     rows, skipped = [], []
-    for folder, dirs, files in os.walk(root, followlinks=False):
-        dirs[:] = sorted(d for d in dirs if not d.endswith('-template')
-                         and not d.startswith('.') and not (Path(folder) / d).is_symlink())
-        case = Path(folder)
-        if case == root or 'Allrun' not in files:
+    for case in sorted(root.iterdir(), key=lambda path: path.name):
+        if (not case.is_dir() or case.is_symlink() or case.name.startswith('.')
+                or case.name.endswith('-template') or not (case / 'Allrun').is_file()):
             continue
-        dirs[:] = []  # A discovered case owns its descendants.
         if str(case) in observed:
             skipped.append((str(case), ui.text('scenarios.diagnostics.tickets.discovery_running')))
             continue
@@ -295,18 +292,23 @@ def publish_macro(path, data, previous=None, *, request_id=None, locked=False):
     return macro
 
 
-def sync_ticket_states(config, store, snapshot):
+def sync_ticket_states(config, store, snapshot, tickets=None):
     """Publish known states after a successful scan; absence alone is not success."""
     ui = load_ui(config.get('_ui_dir'))
     from .config import cases_for, tickets_for
     from .storage import LIVE
-    cases = cases_for(config)
+    tickets = tickets_for(config) if tickets is None else tickets
+    cases = cases_for(config, tickets)
     jobs = store.jobs()
+    jobs_by_root = {}
+    for job in jobs:
+        jobs_by_root.setdefault(job['case_root'], []).append(job)
+    observed = store.get_many('observed:' + case['_root'] for case in cases)
     states = {}
     for case in cases:
         path = Path(case['_config'])
-        runs = [j for j in jobs if j['case_root'] == case['_root']]
-        external = store.get('observed:' + case['_root'])
+        runs = list(jobs_by_root.get(case['_root'], ()))
+        external = observed.get('observed:' + case['_root'])
         if external:
             runs.append(external)
         pending = [r for r in runs if r['status'] in (*LIVE, 'queued')]
@@ -339,7 +341,7 @@ def sync_ticket_states(config, store, snapshot):
             if queue != old:
                 data['queue'] = dict(queue, updated_at=time.time())
                 atomic_json(path, data)
-    for macro in (t for t in tickets_for(config) if t['task_type'] == 'macro'):
+    for macro in (ticket for ticket in tickets if ticket['task_type'] == 'macro'):
         path = Path(macro['_config'])
         with ticket_lock(path.parent):
             data = read_json(path)

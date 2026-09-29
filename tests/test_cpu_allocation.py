@@ -10,7 +10,7 @@ from cfd_bot.config import ConfigError, cpu_set
 from cfd_bot.cpu_allocation import occupied_cpus, select_cpus, topology
 from cfd_bot.execution import execution_case
 from cfd_bot.jobs import Scheduler
-from cfd_bot.processes import check_cpus
+from cfd_bot.processes import check_cpus, snapshot
 from tests.test_core import Environment
 
 
@@ -182,6 +182,16 @@ class AutomaticSchedulerTests(Environment):
         self.assertFalse(safe)
         self.assertIn('CPU overlap', report)
         self.assertEqual(run.call_args.args[0], ['ofps', '--check', '0-7', '--allow-cross-socket'])
+        self.assertEqual(run.call_args.kwargs['env']['CFD_BOT_OFPS_MANAGED'], '1')
+
+    def test_application_snapshot_disables_embedded_ofps_state_sync(self):
+        with patch('cfd_bot.processes.subprocess.run') as run:
+            run.return_value.returncode = 0
+            run.return_value.stdout = 'No active OpenFOAM or Basilisk calculations found.\n'
+            run.return_value.stderr = ''
+            result = snapshot(['ofps'])
+        self.assertEqual(result['cases'], {})
+        self.assertEqual(run.call_args.kwargs['env']['CFD_BOT_OFPS_MANAGED'], '1')
 
     def test_allocation_and_final_check_failures_keep_job_queued(self):
         job = self.store.enqueue(self.case)
