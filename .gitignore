@@ -22,6 +22,8 @@ secrets/
 # Machine-specific bot configuration and runtime state
 /bot.json
 state/
+/tickets/*.json
+/tickets/.tickets.lock
 
 *.egg-info/
 build/

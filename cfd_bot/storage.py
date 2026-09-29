@@ -79,6 +79,22 @@ class Store:
             row = db.execute('SELECT body FROM kv WHERE key=?', (key,)).fetchone()
         return json.loads(row[0]) if row else default
 
+    def get_many(self, keys):
+        """Read many kv values through one SQLite connection."""
+        keys = list(dict.fromkeys(keys))
+        if not keys:
+            return {}
+        found = {}
+        with self.connect() as db:
+            # Stay comfortably below SQLite builds with the legacy 999-variable limit.
+            for start in range(0, len(keys), 500):
+                batch = keys[start:start + 500]
+                rows = db.execute(
+                    'SELECT key, body FROM kv WHERE key IN (%s)' % ','.join('?' for _ in batch),
+                    batch).fetchall()
+                found.update((row['key'], json.loads(row['body'])) for row in rows)
+        return found
+
     def put(self, key, value):
         with self.connect() as db:
             db.execute('INSERT OR REPLACE INTO kv VALUES (?,?)', (key, json.dumps(value)))
@@ -196,6 +212,28 @@ class Store:
             db.execute('UPDATE jobs SET status=?, body=? WHERE id=?',
                        (job['status'], json.dumps(job), jid))
         return job
+
+    def cancel_queued(self, job_ids, finished=None):
+        """Cancel the selected jobs still queued, atomically returning stale ids."""
+        ids = list(dict.fromkeys(job_ids))
+        cancelled, unavailable = [], []
+        finished = time.time() if finished is None else finished
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            for jid in ids:
+                row = db.execute('SELECT body FROM jobs WHERE id=?', (jid,)).fetchone()
+                if row is None:
+                    unavailable.append(jid)
+                    continue
+                job = json.loads(row[0])
+                if job['status'] != 'queued':
+                    unavailable.append(jid)
+                    continue
+                job.update(status='cancelled', finished=finished)
+                db.execute('UPDATE jobs SET status=?, body=? WHERE id=?',
+                           (job['status'], json.dumps(job), jid))
+                cancelled.append(jid)
+        return dict(cancelled=cancelled, unavailable=unavailable)
 
     def event(self, key, chats, payload):
         with self.connect() as db:

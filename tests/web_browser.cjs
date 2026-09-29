@@ -50,7 +50,51 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
       return;
     }
     await page.screenshot({path:'/tmp/cfd-web-dashboard.png',fullPage:true});
+    const trackedHistory=page.locator('section.panel').filter({hasText:'최근 실행 이력'});
+    assert.equal(await trackedHistory.locator('.status.running').filter({hasText:'추적 가능'}).count(),1);
+    assert.equal(await trackedHistory.locator('.status.invalid').filter({hasText:'티켓 없음'}).count(),1);
+    const trackedRow=trackedHistory.locator('tr').filter({hasText:'Demo steady flow'});
+    await trackedRow.locator('[data-action="job-detail"]').click();
+    assert.equal(await page.locator('#modal-body [data-action="case-data"]').count(),1);
+    await page.locator('#modal-body [data-action="case-data"]').click();
+    await page.locator('#data-result .detail-grid').waitFor();
+    assert.equal(await page.locator('#data-result').getByText('Demo steady flow').count()>0,true);
+    await page.locator('[data-nav="overview"]').click();
+    const missingRow=page.locator('section.panel').filter({hasText:'최근 실행 이력'}).locator('tr').filter({hasText:'Deleted ticket case'});
+    assert.equal(await missingRow.locator('[data-action="case-data"]').count(),0);
+    await missingRow.locator('[data-action="job-detail"]').click();
+    assert.equal(await page.locator('#modal-body').getByText(/티켓 JSON/).count(),1);
+    await page.locator('#modal-actions [data-action="close-modal"]').click();
+    let flickerRound=0;
+    await page.route('**/api/overview',async route=>{
+      const response=await route.fetch();
+      const state=await response.json();
+      flickerRound+=1;
+      state.at=(state.at||Date.now()/1000)+flickerRound;
+      state.live=[{
+        id:'flicker-case',name:'Flicker Case',case_dir:fixture.root+'/demo',status:'running',
+        started:state.at-120,actual_cores:4,actual_cpu_list:'0-3',registered:false,
+        owner:'test',time:40+flickerRound,
+        estimate:flickerRound===1
+          ?{target:100,progress:.4,remaining_seconds:185,basis:'recent_log_rate'}
+          :{target:100,progress:null,remaining_seconds:null,basis:'unknown'}
+      }];
+      await route.fulfill({response,json:state});
+    });
+    await page.evaluate(()=>refresh());
+    await page.locator('[data-run-key="flicker-case"]').waitFor();
+    await page.evaluate(()=>document.querySelector('[data-run-key="flicker-case"] progress').dataset.identity='kept');
+    await page.evaluate(()=>refresh());
+    assert.equal(await page.locator('[data-run-key="flicker-case"] progress').getAttribute('data-identity'),'kept');
+    assert.equal(await page.locator('[data-run-key="flicker-case"] progress').getAttribute('value'),'0.4');
+    assert.equal(await page.locator('[data-run-key="flicker-case"] [data-run-remaining]').textContent(),'3분');
+    await page.unroute('**/api/overview');
+    await page.evaluate(()=>refresh());
     await page.locator('[data-nav="tickets"]').click();
+    await page.locator('[data-action="select-all-tickets"]').click();
+    assert.equal(await page.locator('.ticket-row input:checked').count(),await page.locator('.ticket-row input').count());
+    await page.locator('[data-action="clear-ticket-selection"]').click();
+    assert.equal(await page.locator('.ticket-row input:checked').count(),0);
     await page.locator('[data-action="open-ticket"]').first().click();
     await page.locator('#f-name').waitFor();
     await page.locator('#f-name').fill('Browser edited');
@@ -131,6 +175,14 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     await page.locator('[data-action="resume-queue"]').waitFor();
     await page.locator('[data-action="resume-queue"]').click();
     await page.locator('[data-action="pause-queue"]').waitFor();
+    await page.locator('[data-action="select-all-queue"]').click();
+    assert.equal(await page.locator('[data-queue-select]:checked').count(),2);
+    await page.locator('[data-action="clear-queue-selection"]').click();
+    assert.equal(await page.locator('[data-queue-select]:checked').count(),0);
+    await page.locator('[data-action="select-all-queue"]').click();
+    await page.locator('[data-action="cancel-selected-jobs"]').click();
+    await page.locator('[data-action="confirm-modal"]').click();
+    await page.waitForFunction(()=>document.querySelectorAll('[data-queue-select]').length===0);
     await page.setViewportSize({width:390,height:844});
     await page.locator('[data-nav="tickets"]').click();
     await page.locator('[data-action="open-ticket"]').filter({hasText:'Browser edited'}).click();
@@ -138,6 +190,6 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     await page.screenshot({path:'/tmp/cfd-web-mobile.png',fullPage:true});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
     assert.deepEqual(errors,[]);
-    console.log('Browser checks passed: single execution settings, edit, file picker, exports, clone/delete, macro discovery/order/queue, data preview, queue pause/resume, mobile.');
+    console.log('Browser checks passed: ticket and queue select all/clear, bulk queue cancel, single execution settings, edit, file picker, exports, clone/delete, macro discovery/order/queue, data preview, queue pause/resume, mobile.');
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});

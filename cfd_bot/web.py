@@ -21,6 +21,8 @@ from .control import control_times
 from .editor import TicketService, case_browser_start, validate_export
 from .logs import estimate, recent_case_log
 from .patterns import PatternLibrary
+from .queue_control import cancel_queued_jobs
+from .run_views import job_view, running_macro_views, tracking_registry
 from .storage import Store
 from .ticket_run import TicketRunner
 from .tickets import discover_cases, has_postprocessing, sync_ticket_states
@@ -59,22 +61,18 @@ class WebApp:
                                  error=str(exc)))
         return rows
 
-    @staticmethod
-    def job_view(job):
-        return dict(id=job['id'], name=job['case']['name'], case_dir=job['case_root'],
-                    **{key: job.get(key) for key in ('status', 'created', 'started', 'finished',
-                                                    'reason', 'actual_cores', 'actual_cpu_list')})
-
     def overview(self):
         error = None
         try:
             snap = self.fresh()
         except (ValueError, OSError) as exc:
             snap, error = self.store.get('snapshot', {}), str(exc)
+        cases = list(self.bot.cases().values())
+        registry = tracking_registry(cases)
         live = []
         for run in self.bot.active_runs(snap):
             case = run['case']
-            item = self.job_view(run)
+            item = job_view(run, registry)
             item.update(case_id=case_id(case), registered=run['registered'], owner=run['owner'])
             if run['registered']:
                 telemetry, _ = recent_case_log(case)
@@ -83,10 +81,19 @@ class WebApp:
                                             self.store.runtime_history(case, run.get('actual_cores')))
             live.append(item)
         jobs = self.store.jobs()
-        return dict(at=snap.get('at'), error=error, live=live, tickets=self.ticket_rows(),
-                    queue=[self.job_view(j) for j in jobs if j['status'] in
+        tickets = self.ticket_rows()
+        macros = [ticket for ticket in tickets if ticket.get('task_type') == 'macro']
+        macro_documents = []
+        for row in macros:
+            try:
+                macro_documents.append(load_case(self.service.path(row['filename'])))
+            except (OSError, ValueError):
+                continue
+        return dict(at=snap.get('at'), error=error, live=live, tickets=tickets,
+                    live_macros=running_macro_views(macro_documents, cases, jobs, self.store),
+                    queue=[job_view(j, registry) for j in jobs if j['status'] in
                            ('queued', 'starting', 'running', 'postprocessing')],
-                    history=[self.job_view(j) for j in reversed(jobs) if j['status'] not in
+                    history=[job_view(j, registry) for j in reversed(jobs) if j['status'] not in
                              ('queued', 'starting', 'running', 'postprocessing')][:100],
                     paused=self.store.get('queue_paused', False),
                     scheduler_enabled=self.config['scheduler']['enabled'],
@@ -115,7 +122,7 @@ class WebApp:
                                'errors', 'missing', 'residuals')}, log=str(path),
                     estimate=estimate(case, telemetry, elapsed,
                                       self.store.runtime_history(case, (run or {}).get('actual_cores'))),
-                    latest=self.job_view(run) if run else None,
+                    latest=job_view(run, tracking_registry(self.bot.cases().values())) if run else None,
                     history=self.store.runtime_history(case)[:10])
 
     def artifact_paths(self, cid, source):
@@ -280,14 +287,14 @@ class WebApp:
             action = data['action']
             if action in ('pause', 'resume'):
                 self.store.put('queue_paused', action == 'pause')
-            elif action == 'cancel':
-                result = self.store.update_job(data['id'], expected=('queued',),
-                                               status='cancelled', finished=time.time())
-                if result is None:
+                return dict(ok=True)
+            if action in ('cancel', 'cancel_many'):
+                ids = [data['id']] if action == 'cancel' else data.get('ids', [])
+                result = cancel_queued_jobs(self.store, ids, ui=self.bot.ui)
+                if action == 'cancel' and not result['cancelled']:
                     raise ValueError('대기 중인 작업만 취소할 수 있습니다. 상태를 새로고침하세요.')
-            else:
-                raise ValueError('알 수 없는 큐 동작입니다.')
-            return dict(ok=True)
+                return result
+            raise ValueError('알 수 없는 큐 동작입니다.')
         raise LookupError('없는 API입니다.')
 
 

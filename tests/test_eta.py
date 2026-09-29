@@ -97,6 +97,16 @@ class RecentLogEtaTests(Environment):
                 self.assertEqual(estimate(self.case, telemetry, 0)['remaining_seconds'], remaining)
                 self.assertEqual(telemetry['rate_samples'][0][0], first)
 
+    def test_new_stage_does_not_reapply_previous_end_match(self):
+        self.log.write_text(
+            'Time = 10\nExecutionTime = 2 s ClockTime = 2 s\nEnd\n'
+            'Time = 20\nExecutionTime = 4 s ClockTime = 4 s\n'
+            'Time = 30\nExecutionTime = 6 s ClockTime = 6 s\n')
+        telemetry = finish_log(self.log, watcher=self.case['watcher'])
+        self.assertFalse(telemetry['ended'])
+        self.assertEqual(telemetry['rate_samples'], [[20, 4], [30, 6]])
+        self.assertEqual(estimate(self.case, telemetry, 0)['remaining_seconds'], 14)
+
     def test_rounded_and_duplicate_clock_values_need_positive_elapsed_time(self):
         telemetry = self.telemetry([(1, 0), (2, 0), (3, 0)])
         self.assertIsNone(estimate(self.case, telemetry, 0)['remaining_seconds'])
@@ -203,3 +213,10 @@ class RecentLogEtaTests(Environment):
                 result = estimate(self.case, dict(telemetry, **status), 10)
                 self.assertIsNone(result['remaining_seconds'])
                 self.assertNotEqual(result['basis'], 'recent_log_rate')
+
+    def test_small_concurrent_write_backlog_keeps_complete_live_samples(self):
+        telemetry = self.telemetry([(10, 2), (20, 4), (30, 6)])
+        result = estimate(self.case, dict(telemetry, backlog=315), 10)
+        self.assertEqual(result['basis'], 'recent_log_rate')
+        self.assertEqual(result['remaining_seconds'], 14)
+        self.assertAlmostEqual(result['progress'], 20 / 90)

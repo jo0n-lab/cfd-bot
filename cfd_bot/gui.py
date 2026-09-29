@@ -2,8 +2,11 @@
 from copy import deepcopy
 from pathlib import Path
 
+from .artifacts import export_files, residual_files
 from .patterns import DEFAULT_NAME, PatternLibrary
 from .control import control_times
+from .queue_control import cancel_queued_jobs
+from .run_views import job_view, running_macro_views, tracking_registry
 from .tickets import STATES, discover_cases, has_postprocessing, ticket_name
 
 # Keep the form helpers importable here for existing integrations.
@@ -38,6 +41,14 @@ class TicketEditor:
         self.variables, self.texts = {}, {}
         self.exports = []
         self.source = {}
+        self.queue_window = None
+        self.queue_listbox = None
+        self.queue_jobs = []
+        self.queue_store = None
+        self.queue_config = None
+        self.queue_result_listbox = None
+        self.queue_result_jobs = []
+        self.queue_registry = {}
         self.pattern_library = PatternLibrary(self.tickets_dir.parent / 'ticket-patterns.json')
         root.title('CFD bot ticket editor')
         root.geometry('1120x820')
@@ -60,10 +71,15 @@ class TicketEditor:
         scroll.pack(side='right', fill='y')
         self.listbox.configure(yscrollcommand=scroll.set)
         self.listbox.bind('<<ListboxSelect>>', self.open_selected)
+        ticket_selection = ttk.Frame(left)
+        ticket_selection.pack(fill='x', pady=(0, 8))
+        ttk.Button(ticket_selection, text='전체 선택', command=self.select_all_tickets).pack(side='left', fill='x', expand=True)
+        ttk.Button(ticket_selection, text='전체 해제', command=self.clear_ticket_selection).pack(side='left', fill='x', expand=True, padx=(6, 0))
         ttk.Button(left, text='새 티켓', command=self.new).pack(fill='x')
         ttk.Button(left, text='선택 복제', command=self.duplicate).pack(fill='x', pady=(6, 0))
         ttk.Button(left, text='목록 새로고침', command=self.refresh).pack(fill='x', pady=6)
         ttk.Button(left, text='선택 삭제', command=self.delete).pack(fill='x')
+        ttk.Button(left, text='작업 큐 관리', command=self.open_queue_manager).pack(fill='x', pady=(6, 0))
 
         ttk.Label(right, text='케이스 설정', font=('TkDefaultFont', 15, 'bold')).pack(anchor='w')
         ttk.Label(right, text='감시할 케이스와 요청 시 받을 데이터를 등록하세요.').pack(anchor='w', pady=(4, 12))
@@ -137,12 +153,12 @@ class TicketEditor:
         self.manual_execution.columnconfigure(1, weight=1)
         self.field(self.manual_execution, 0, 'macro_cpu_set', 'CPU 범위', hint='고정 배정이 필요한 경우만 사용하세요. 실행 전 ofps 검사 필수.')
         self.check(self.manual_execution, 1, 'macro_cross_socket', '여러 소켓/NUMA에 걸친 CPU 범위 허용')
-        ttk.Label(queue_tab, text='매크로: 기본 설정의 Case directory를 상위 폴더로 지정하고 검색하세요.\n'
-                  '*-template과 실행 중인 케이스를 제외합니다.\n'
+        ttk.Label(queue_tab, text='매크로: Case directory의 직계 하위 폴더만 검색합니다.\n'
+                  '각 폴더 바로 아래에 Allrun이 있어야 하며, *-template과 실행 중인 케이스는 제외합니다.\n'
                   'postProcessing이 있는 케이스도 포함하며 노란색으로 표시합니다.\n'
                   '행 순서대로 실행합니다. 제외할 행의 삭제 버튼을 누른 뒤 저장하면 큐에 등록됩니다.',
                   wraplength=650).grid(row=7, column=0, columnspan=3, sticky='w', pady=12)
-        self.scan_button = ttk.Button(queue_tab, text='하위 케이스 검색', command=self.scan_cases)
+        self.scan_button = ttk.Button(queue_tab, text='직계 하위 케이스 검색', command=self.scan_cases)
         self.scan_button.grid(row=8, column=0, columnspan=3, sticky='w')
         self.case_rows = ttk.Frame(queue_tab)
         self.case_rows.grid(row=9, column=0, columnspan=3, sticky='ew', pady=8)
@@ -836,6 +852,194 @@ class TicketEditor:
             self.update_execution_button()
         Thread(target=work, daemon=True).start()
         self.root.after(100, finish)
+
+    def select_all_tickets(self):
+        if self.listbox.size():
+            self.listbox.selection_set(0, 'end')
+
+    def clear_ticket_selection(self):
+        self.listbox.selection_clear(0, 'end')
+
+    def open_queue_manager(self):
+        if self.queue_window is not None and self.queue_window.winfo_exists():
+            self.refresh_queue_manager()
+            self.queue_window.lift()
+            return
+        try:
+            from .config import load_bot
+            from .storage import Store
+            self.queue_config = load_bot(self.bot_config)
+            self.queue_store = Store(self.queue_config['state_dir'])
+        except (OSError, ValueError) as exc:
+            self.messagebox.showerror('작업 큐 열기 실패', str(exc), parent=self.root)
+            return
+        window = self.tk.Toplevel(self.root)
+        self.queue_window = window
+        window.title('CFD bot 작업 큐')
+        window.geometry('840x720')
+        window.minsize(660, 540)
+        window.transient(self.root)
+        frame = self.ttk.Frame(window, padding=12)
+        frame.pack(fill='both', expand=True)
+        self.ttk.Label(frame, text='작업 큐와 실행 이력', font=('TkDefaultFont', 14, 'bold')).pack(anchor='w')
+        self.queue_macro_status = self.tk.StringVar(value='실행 중인 매크로 없음')
+        self.ttk.Label(frame, textvariable=self.queue_macro_status, wraplength=790).pack(
+            anchor='w', pady=(5, 10))
+        self.ttk.Label(frame, text='대기 작업 선택', font=('TkDefaultFont', 11, 'bold')).pack(anchor='w')
+        self.ttk.Label(frame, text='Ctrl / Shift 또는 아래 전체 선택 버튼으로 여러 작업을 선택하세요.').pack(
+            anchor='w', pady=(4, 10))
+        listing = self.ttk.Frame(frame)
+        listing.pack(fill='x')
+        self.queue_listbox = self.tk.Listbox(listing, exportselection=False, selectmode='extended', height=7)
+        self.queue_listbox.pack(side='left', fill='both', expand=True)
+        scroll = self.ttk.Scrollbar(listing, command=self.queue_listbox.yview)
+        scroll.pack(side='right', fill='y')
+        self.queue_listbox.configure(yscrollcommand=scroll.set)
+        controls = self.ttk.Frame(frame)
+        controls.pack(fill='x', pady=(10, 0))
+        self.ttk.Button(controls, text='전체 선택', command=self.select_all_queue).pack(side='left')
+        self.ttk.Button(controls, text='전체 해제', command=self.clear_queue_selection).pack(side='left', padx=6)
+        self.ttk.Button(controls, text='선택 취소', command=self.cancel_queue_selection).pack(side='left')
+        self.ttk.Button(controls, text='새로고침', command=self.refresh_queue_manager).pack(side='right')
+        self.ttk.Label(frame, text='계산 중 · 실행 이력', font=('TkDefaultFont', 11, 'bold')).pack(
+            anchor='w', pady=(14, 4))
+        self.ttk.Label(frame, text='[추적 가능]으로 표시된 계산 중 작업과 실행 이력만 결과 데이터를 열 수 있습니다.').pack(
+            anchor='w', pady=(0, 6))
+        results = self.ttk.Frame(frame)
+        results.pack(fill='both', expand=True)
+        self.queue_result_listbox = self.tk.Listbox(results, exportselection=False, height=9)
+        self.queue_result_listbox.pack(side='left', fill='both', expand=True)
+        result_scroll = self.ttk.Scrollbar(results, command=self.queue_result_listbox.yview)
+        result_scroll.pack(side='right', fill='y')
+        self.queue_result_listbox.configure(yscrollcommand=result_scroll.set)
+        self.queue_result_listbox.bind('<Double-Button-1>', self.open_queue_result_data)
+        self.ttk.Button(frame, text='결과 요청 데이터 열기', command=self.open_queue_result_data).pack(
+            anchor='e', pady=(8, 0))
+        self.queue_status = self.tk.StringVar()
+        self.ttk.Label(frame, textvariable=self.queue_status).pack(anchor='w', pady=(10, 0))
+        self.refresh_queue_manager()
+
+    def refresh_queue_manager(self):
+        if self.queue_listbox is None or not self.queue_listbox.winfo_exists():
+            return
+        selected = {self.queue_jobs[index]['id'] for index in self.queue_listbox.curselection()
+                    if index < len(self.queue_jobs)}
+        self.queue_jobs = self.queue_store.jobs(('queued',))
+        self.queue_listbox.delete(0, 'end')
+        for index, job in enumerate(self.queue_jobs):
+            self.queue_listbox.insert('end', f"{index + 1}. {job['case']['name']} · {job['id']} · {job['case_root']}")
+            if job['id'] in selected:
+                self.queue_listbox.selection_set(index)
+        self.queue_status.set(f'대기 작업 {len(self.queue_jobs)}개')
+        from .config import cases_for, tickets_for
+        cases = cases_for(self.queue_config)
+        self.queue_registry = tracking_registry(cases)
+        jobs = self.queue_store.jobs()
+        selected_result = None
+        if self.queue_result_listbox is not None and self.queue_result_listbox.curselection():
+            index = self.queue_result_listbox.curselection()[0]
+            if index < len(self.queue_result_jobs):
+                selected_result = self.queue_result_jobs[index]['id']
+        allowed = [job for job in jobs if job['status'] == 'running' or job['status'] not in
+                   ('queued', 'starting', 'running', 'postprocessing')]
+        self.queue_result_jobs = [job_view(job, self.queue_registry) for job in reversed(allowed)][:100]
+        self.queue_result_listbox.delete(0, 'end')
+        for index, item in enumerate(self.queue_result_jobs):
+            tracking = '추적 가능' if item['trackable'] else '티켓 없음'
+            self.queue_result_listbox.insert(
+                'end', f"[{tracking}] {item['name']} · {item['status']} · {item['case_dir']}")
+            if item['id'] == selected_result:
+                self.queue_result_listbox.selection_set(index)
+        macros = running_macro_views(
+            [ticket for ticket in tickets_for(self.queue_config) if ticket['task_type'] == 'macro'],
+            cases, jobs, self.queue_store)
+        if macros:
+            summaries = []
+            for macro in macros:
+                remaining = self._queue_duration(macro['remaining_seconds'])
+                summaries.append(f"{macro['name']}: {macro['completed']}/{macro['target']} · "
+                                 f"경과 {self._queue_duration(macro['elapsed_seconds'])} · 남은 시간 {remaining}")
+            self.queue_macro_status.set('실행 중인 매크로\n' + '\n'.join(summaries))
+        else:
+            self.queue_macro_status.set('실행 중인 매크로 없음')
+
+    @staticmethod
+    def _queue_duration(seconds):
+        if seconds is None:
+            return '알 수 없음'
+        seconds = max(0, int(seconds))
+        hours, rest = divmod(seconds, 3600)
+        minutes, seconds = divmod(rest, 60)
+        return f'{hours}시간 {minutes}분' if hours else f'{minutes}분 {seconds}초'
+
+    def open_queue_result_data(self, _event=None):
+        indexes = self.queue_result_listbox.curselection() if self.queue_result_listbox is not None else ()
+        if len(indexes) != 1:
+            self.queue_status.set('결과 데이터를 열 작업 하나를 선택하세요.')
+            return
+        item = self.queue_result_jobs[indexes[0]]
+        if not item['trackable']:
+            self.queue_status.set('현재 조회되는 티켓 JSON이 없어 결과 데이터를 추적할 수 없습니다.')
+            return
+        record = self.queue_registry.get(item['case_dir'])
+        if record is None:
+            self.queue_status.set('티켓 목록이 변경되었습니다. 새로고침하세요.')
+            return
+        case = record['case']
+        lines = []
+        if case.get('residual_pattern'):
+            try:
+                paths = [entry['path'] for entry in residual_files(case)]
+                lines.append('Residual · ' + case['residual_pattern'])
+                lines.extend('  ' + str(path) for path in paths)
+            except (OSError, ValueError) as exc:
+                lines.append('Residual · ' + str(exc))
+        for export in case['exports']:
+            try:
+                paths = export_files(case, export)
+                lines.append(f"{export['name']} · {export['pattern']}")
+                lines.extend('  ' + str(path) for path in paths)
+            except (OSError, ValueError) as exc:
+                lines.append(f"{export['name']} · {exc}")
+        if not lines:
+            lines.append('티켓에 Residual 또는 요청 데이터 경로가 없습니다.')
+        window = self.tk.Toplevel(self.queue_window)
+        window.title('결과 요청 데이터 · ' + case['name'])
+        window.geometry('760x480')
+        frame = self.ttk.Frame(window, padding=12)
+        frame.pack(fill='both', expand=True)
+        self.ttk.Label(frame, text=case['name'], font=('TkDefaultFont', 14, 'bold')).pack(anchor='w')
+        self.ttk.Label(frame, text=case['_root'], wraplength=720).pack(anchor='w', pady=(3, 10))
+        listing = self.tk.Listbox(frame)
+        listing.pack(fill='both', expand=True)
+        for line in lines:
+            listing.insert('end', line)
+
+    def select_all_queue(self):
+        if self.queue_listbox is not None and self.queue_listbox.size():
+            self.queue_listbox.selection_set(0, 'end')
+
+    def clear_queue_selection(self):
+        if self.queue_listbox is not None:
+            self.queue_listbox.selection_clear(0, 'end')
+
+    def cancel_queue_selection(self):
+        indexes = list(self.queue_listbox.curselection()) if self.queue_listbox is not None else []
+        ids = [self.queue_jobs[index]['id'] for index in indexes]
+        if not ids:
+            self.queue_status.set('취소할 대기 작업을 하나 이상 선택하세요.')
+            return
+        if not self.messagebox.askyesno('선택 작업 취소', f'선택한 대기 작업 {len(ids)}개를 취소할까요?',
+                                        parent=self.queue_window):
+            return
+        try:
+            result = cancel_queued_jobs(self.queue_store, ids)
+        except (OSError, ValueError) as exc:
+            self.messagebox.showerror('작업 취소 실패', str(exc), parent=self.queue_window)
+            return
+        self.refresh_queue_manager()
+        self.queue_status.set(f"선택 취소 완료: {len(result['cancelled'])}개 · "
+                              f"이미 시작/변경 {len(result['unavailable'])}개")
 
     def delete(self):
         names = [self.files[index].name for index in self.listbox.curselection()]

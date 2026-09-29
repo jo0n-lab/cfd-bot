@@ -9,6 +9,14 @@ from .ui import load_ui
 
 
 SNAPSHOT_LOCK = threading.Lock()
+MANAGED_SCAN_ENV = 'CFD_BOT_OFPS_MANAGED'
+
+
+def managed_scan_environment():
+    """Tell the integrated ofps that its caller owns state reconciliation."""
+    env = os.environ.copy()
+    env[MANAGED_SCAN_ENV] = '1'
+    return env
 
 
 def identity(pid):
@@ -171,7 +179,8 @@ def snapshot(command):
     # The daemon monitor and a Telegram /stat request can arrive together.
     # Run only one ofps scan at a time so its process walk/output cannot race.
     with SNAPSHOT_LOCK:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=45)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=45,
+                                env=managed_scan_environment())
     if result.returncode:
         raise RuntimeError(f'ofps exited {result.returncode}: {result.stderr[-1000:]}')
     if not result.stdout.strip():
@@ -188,7 +197,8 @@ def check_cpus(command, case):
     args = command + ['--check', case['cpu_set']]
     if case.get('allow_cross_socket'):
         args.append('--allow-cross-socket')
-    result = subprocess.run(args, capture_output=True, text=True, timeout=45)
+    result = subprocess.run(args, capture_output=True, text=True, timeout=45,
+                            env=managed_scan_environment())
     return result.returncode == 0, (result.stdout + result.stderr)[-3000:]
 
 

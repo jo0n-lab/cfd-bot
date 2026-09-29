@@ -91,11 +91,11 @@ flowchart LR
 
 서비스 안에서는 세 흐름이 동시에 동작합니다.
 
-1. 메인 루프는 Telegram `getUpdates` long polling으로 명령과 버튼을 처리합니다.
+1. 메인 루프는 Telegram `getUpdates` long polling으로 명령과 버튼을 처리합니다. 버튼 callback 확인은 별도 짧은 worker가 보내므로 실제 action은 확인 API 왕복을 기다리지 않습니다.
 2. Monitor thread는 기본 5초마다 `ofps`를 실행하고 감지된 모든 케이스의 로그 상태를 갱신합니다.
 3. Notification thread는 1초마다 SQLite outbox를 확인하고 미전송 알림을 재시도합니다.
 
-메인 루프의 `/stat` 조회와 Monitor의 주기 조회가 겹치면 `SNAPSHOT_LOCK`이 한 번에 하나의 `ofps`만 실행시킵니다.
+메인 루프의 `/stat` 조회와 Monitor의 주기 조회가 겹치면 `SNAPSHOT_LOCK`이 한 번에 하나의 `ofps` scan만 실행시킵니다. application 호출은 `CFD_BOT_OFPS_MANAGED=1`로 scanner 내부 상태 동기화를 생략합니다. `/stat`은 즉시 표시하고, Monitor가 성공한 snapshot을 티켓 JSON과 SQLite에 반영합니다.
 
 ## 3. 계층별 기능
 
@@ -105,7 +105,7 @@ flowchart LR
 |---|---|---|
 | `/stat` | 현재 계산 확인 | `ofps` 즉시 scan에 나온 실행을 케이스당 한 줄로 수신 |
 | `/data` | 등록 케이스와 데이터 종류 선택 | 상세 상태, Residual PNG, contour, CSV, 로그 등 요청 파일 수신 |
-| `/queue` | 큐 확인·일시 정지·재개·대기 취소 | FIFO 작업 상태와 예상 대기시간 확인 |
+| `/queue` | 큐 확인·일시 정지·재개·개별/전체 선택·전체 해제·선택 대기 취소 | FIFO 작업 상태와 예상 대기시간 확인 |
 | `/clean` | 현재 bot 대화 정리 | 봇이 추적한 사용자·봇 메시지 삭제 |
 | `/start`, `/help` | 명령 확인 | 사용 가능한 명령 안내 |
 | `cfd-ticket-gui` | 케이스 감시 규칙과 요청 데이터를 편집 | `tickets/*.json` 생성·검증·수정 |
@@ -127,6 +127,7 @@ flowchart LR
 | `config.py` | `bot.json`과 티켓 schema 검증, 경로 이탈 방지 |
 | `ui.py` | `telegram-ui` namespace 로딩, format 검증, manifest 필수 키 검사, catalog 캐시 |
 | `report.py` | compact `/stat`, 상세·완료·queue 문구 렌더링 |
+| `run_views.py` | 현재 티켓 기반 작업 추적 여부와 실행 중 매크로 진행률·ETA 공용 집계 |
 | `control.py` | 안전한 `controlDict` 읽기와 시작·종료값 추출 |
 | `execution.py`, `cpu_allocation.py` | OpenFOAM 환경 검증, 실행 설정 적용, CPU topology 기반 자동 배정 |
 | `tickets.py` | 티켓 상태 동기화, macro child 발행, 제출 수락 |
@@ -173,11 +174,11 @@ sequenceDiagram
     T->>B: update 전달
     B->>B: user_id와 chat_id 허용 목록 검사
     B->>P: 즉시 snapshot 요청
-    P->>O: ofps 실행
+    P->>O: CFD_BOT_OFPS_MANAGED=1로 ofps 실행
     O-->>P: ENGINE, CASE, SUPERVISOR, process 표
     P->>P: 경로 resolve, owner·CPU 집계
     P-->>B: 모든 활성 케이스
-    B->>C: 같은 case_dir 티켓 검색
+    B->>C: 표시용 catalog 1회 load
     alt 티켓 있음
         B->>B: 티켓 이름 사용, 상세 버튼 추가
     else 티켓 없음
@@ -347,6 +348,8 @@ stateDiagram-v2
 
 큐 자동 시작 여부는 현재 `scheduler.enabled`와 SQLite의 `queue_paused` 값으로 결정합니다. 개별 티켓은 세 UI의 실행 설정에서 케이스 설정 사용 또는 티켓 지정(NP·명령·CPU 정책)을 선택합니다. `resource_source=ticket`은 기존 케이스 NP보다 우선하며 매크로는 `resource_source=macro` 공통 설정을 child에 적용합니다. 두 명시 설정 모두 같은 가용 코어 배정과 worker 설정 반영 경로를 사용합니다. Child에서는 상속값을 확인하고 부모 매크로에서 편집합니다. 구현 흐름은 [HLD 실행 설정 도식](HLD.md#3-시스템-컨텍스트)과 [변경 이력 / Issue #3](history/2026-09-28-single-ticket-execution.md)에 기록합니다.
 
+큐 다중 취소는 세 UI가 공용 `cancel_queued_jobs`를 호출하고 `Store.cancel_queued`가 한 transaction에서 처리합니다. 선택 후 이미 시작된 작업은 그대로 두고 `unavailable`로 돌려 부분 상태 변화를 사용자에게 알립니다. 작업 큐와 티켓 관리 모두 개별 선택, 전체 선택, 전체 해제를 제공하며 Telegram 선택은 페이지 이동 중에도 유지됩니다.
+
 웹의 티켓 선택은 편집 데이터를 읽는 동작이므로 저장된 최신 `ofps` snapshot으로 버튼 상태를 구성하며 전체 프로세스 스캔을 실행하지 않습니다. `/api/run`은 사용자가 실제 실행을 요청한 시점에 fresh snapshot을 검사해 실행 중인 케이스를 차단합니다. 이 경계는 [Issue #4 변경 이력](history/2026-09-28-web-ticket-selection-latency.md)에 기록합니다.
 
 ## 8. 유즈케이스 5: `/clean`
@@ -396,7 +399,7 @@ flowchart TD
 - `/data`에서 요청할 파일 등록
 - 실패 패턴 template 저장과 재사용
 - `TicketService`와 같은 validator로 저장 전 검사
-- 단일 티켓 복제·삭제와 macro child 검색·발행
+- 단일 티켓 복제·삭제와 macro 직계 child 검색·발행. 검색은 매크로 루트의 직계 하위 폴더 중 바로 아래에 `Allrun`이 있는 폴더로 제한한다.
 
 Telegram 편집 초안은 사용자·대화별 SQLite session에 저장하고, GUI는 로컬 form state, 웹은 브라우저 메모리의 draft를 사용합니다. 세 경로 모두 같은 atomic JSON 저장 로직과 `ticket-patterns.json`을 사용합니다.
 
@@ -421,7 +424,7 @@ sequenceDiagram
     W-->>B: fresh state / declared case-local file
 ```
 
-대시보드는 등록되지 않은 실행까지 표시하고 ofps 오류 시 마지막 snapshot임을 명시합니다. 티켓 화면은 폼·macro 하위 목록·일괄 삭제를, 작업 큐는 pause/resume와 queued 취소를 제공합니다. 결과 화면은 선언된 Residual/export만 미리보기·다운로드합니다. `GET /api/browse`는 파일 선택용 목록을 제공하며 파일 내용은 artifact API의 허용 범위를 거쳐야 합니다.
+대시보드는 등록되지 않은 실행까지 표시하고 ofps 오류 시 마지막 snapshot임을 명시합니다. 증가 중인 로그의 작은 미처리 꼬리는 이미 파싱한 완전한 표본을 무효화하지 않으며, 다단계 로그가 `End` 뒤 새 `Time`으로 진행하면 이전 단계 성공 match를 해제합니다. 동일 실행에서 일시적으로 비어 온 ETA·진행률은 직전 유효값으로 안정화합니다. 10초 polling에서 실행·큐·이력 구조가 같으면 카드 DOM을 유지한 채 수치만 갱신합니다. 티켓 화면은 폼·macro 하위 목록·전체 선택·전체 해제·일괄 삭제를, 작업 큐는 pause/resume와 queued 다중 선택 취소를 제공합니다. 현재 티켓 JSON과 case directory가 일치하는 실행 이력은 추적 가능으로 표시해 결과 화면에 연결하고, active queue에서는 실제 계산 중인 행만 같은 링크를 활성화합니다. 실행 중인 매크로는 현재 child job ID 기준 완료/목표·경과·ETA·진행률을 표시합니다. 결과 화면은 선언된 Residual/export만 미리보기·다운로드합니다. `GET /api/browse`는 파일 선택용 목록을 제공하며 파일 내용은 artifact API의 허용 범위를 거쳐야 합니다.
 
 웹은 기존 bot의 저장소를 공유하는 별도 user service입니다. 큐 컨트롤러와 알림 worker는 기존 bot 하나만 유지합니다. Telegram `/clean`처럼 채팅 메시지에 종속된 작업은 웹에서 Telegram에 부수 효과를 발생시키지 않습니다.
 

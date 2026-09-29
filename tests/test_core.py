@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -11,13 +12,14 @@ from unittest.mock import patch
 
 from cfd_bot.artifacts import export_files, freeze_exports
 from cfd_bot.bot import Bot, case_id, deliver
-from cfd_bot.config import ConfigError, load_bot, load_case
+from cfd_bot.config import ConfigError, load_bot, load_case, tickets_for
 from cfd_bot.jobs import Scheduler, terminal_event, worker
 from cfd_bot.logs import (estimate, finish_log, read_log, recent_case_log,
                           recent_log, select_case_log, start_cursor)
 from cfd_bot.monitor import Monitor, observation
 from cfd_bot.outcomes import decide
 from cfd_bot.processes import DaemonLock, identity, parse_snapshot
+from cfd_bot.queue_control import cancel_queued_jobs
 from cfd_bot.report import render_run
 from cfd_bot.storage import Store
 from cfd_bot.telegram import Telegram, TelegramError, chunks
@@ -282,6 +284,23 @@ class StoreTests(Environment):
         j = self.claim()
         self.assertIsNone(self.store.update_job(j['id'], expected=('queued',), status='cancelled'))
         self.assertEqual(self.store.job(j['id'])['status'], 'starting')
+
+    def test_bulk_cancel_updates_all_queued_jobs_and_reports_stale_selection(self):
+        first = self.store.enqueue(self.case)
+        self.store.update_job(first['id'], status='succeeded')
+        second = self.store.enqueue(self.case, request_key='second')
+        stale = self.store.update_job(second['id'], status='starting')
+        self.store.update_job(stale['id'], status='cancelled')
+        third = self.store.enqueue(self.case, request_key='third')
+
+        result = cancel_queued_jobs(
+            self.store, [first['id'], third['id'], third['id'], stale['id'], 'missing-job'])
+
+        self.assertEqual(result['cancelled'], [third['id']])
+        self.assertEqual(result['unavailable'], [first['id'], stale['id'], 'missing-job'])
+        self.assertEqual(self.store.job(third['id'])['status'], 'cancelled')
+        with self.assertRaisesRegex(ValueError, '하나 이상 선택'):
+            cancel_queued_jobs(self.store, [])
 
     def test_outbox_per_recipient_dedup_and_retry(self):
         self.store.event('done', [20, 30], dict(kind='text', text='done'))
@@ -618,6 +637,42 @@ class FakeAPI:
 
 
 class BotTests(Environment):
+    def test_fresh_stat_reads_ticket_catalog_once_without_state_write(self):
+        snap = dict(raw='No active OpenFOAM calculations found.\n', cases={})
+        bot = Bot(self.config, self.store, FakeAPI())
+        with patch('cfd_bot.bot.process_snapshot', return_value=snap), \
+                patch('cfd_bot.bot.tickets_for', wraps=tickets_for) as catalog:
+            current, runs, error = bot.fresh_runs()
+        self.assertEqual(catalog.call_count, 1)
+        self.assertEqual(runs, [])
+        self.assertIsNone(error)
+        self.assertIn('at', current)
+        self.assertIsNone(self.store.get('snapshot'))
+
+    def test_callback_dispatch_does_not_wait_for_acknowledgement(self):
+        class BlockingAckAPI(FakeAPI):
+            def __init__(self):
+                super().__init__()
+                self.ack_started = threading.Event()
+                self.release_ack = threading.Event()
+
+            def call(self, method, payload):
+                super().call(method, payload)
+                if method == 'answerCallbackQuery':
+                    self.ack_started.set()
+                    self.release_ack.wait(2)
+
+        api = BlockingAckAPI()
+        bot = Bot(self.config, self.store, api)
+        update = dict(update_id=2, callback_query=dict(
+            id='slow-ack', data='home', message=dict(chat=dict(id=20)),
+            **{'from': dict(id=10)}))
+        bot.handle(update)
+        self.assertTrue(api.ack_started.wait(1))
+        self.assertTrue(api.messages)
+        self.assertFalse(api.release_ack.is_set())
+        api.release_ack.set()
+
     def test_stat_is_compact_and_has_only_case_selection_button(self):
         snap = dict(raw='ENGINE: noisy raw output', cases={self.case['_root']: dict(
             owner='SSH 10.0.0.2 · pts/3', actual_cores=4,
@@ -754,6 +809,53 @@ class BotTests(Environment):
             self.store.update_job(j['id'], status='succeeded')
             bot.handle(update)
         self.assertEqual(len(self.store.jobs()), 1)
+
+    def test_queue_multi_select_all_clear_and_cancel_selected(self):
+        api = FakeAPI()
+        bot = Bot(self.config, self.store, api)
+        jobs = []
+        for index in range(3):
+            root = self.root / f'queued-{index}'
+            root.mkdir()
+            case = dict(self.case, _root=str(root), name=f'queued {index}')
+            jobs.append(self.store.enqueue(case))
+
+        bot.dispatch(20, 'qselect', 'queue-select')
+        bot.dispatch(20, 'qall', 'queue-all')
+        self.assertEqual(self.store.get(bot.queue_selection_key(20)), [job['id'] for job in jobs])
+        bot.dispatch(20, 'qnone', 'queue-none')
+        self.assertEqual(self.store.get(bot.queue_selection_key(20)), [])
+        bot.dispatch(20, 'qall', 'queue-all-again')
+        bot.dispatch(20, 'qcancel', 'queue-review')
+        self.store.update_job(jobs[-1]['id'], status='starting')
+        bot.dispatch(20, 'qcancelyes', 'queue-confirm')
+
+        self.assertEqual([self.store.job(job['id'])['status'] for job in jobs],
+                         ['cancelled', 'cancelled', 'starting'])
+        self.assertIn('선택 취소 완료: 2개 · 이미 시작/변경 1개', api.messages[-1][1])
+
+    def test_queue_result_buttons_exist_only_for_current_ticket_cases(self):
+        api = FakeAPI()
+        bot = Bot(self.config, self.store, api)
+        tracked = self.store.enqueue(self.case)
+        self.store.update_job(tracked['id'], status='running', started=time.time())
+        other_root = self.root / 'untracked'
+        other_root.mkdir()
+        untracked = self.store.enqueue(dict(self.case, _root=str(other_root), name='untracked'))
+        self.store.update_job(untracked['id'], status='running', started=time.time())
+
+        bot.dispatch(20, 'queue', 'queue-running')
+        buttons = [item for row in api.messages[-1][2]['inline_keyboard'] for item in row]
+        result_buttons = [item for item in buttons if item['text'].startswith('결과 요청 데이터')]
+        self.assertEqual([item['callback_data'] for item in result_buttons],
+                         ['case:' + case_id(self.case)])
+
+        self.store.update_job(tracked['id'], status='succeeded', finished=time.time())
+        bot.dispatch(20, 'queue', 'queue-history')
+        buttons = [item for row in api.messages[-1][2]['inline_keyboard'] for item in row]
+        recent = [item for item in buttons if item['text'].startswith('최근 결과')]
+        self.assertEqual([item['callback_data'] for item in recent],
+                         ['case:' + case_id(self.case)])
 
     def test_case_menu_and_old_enqueue_button_cannot_run_an_active_case(self):
         api = FakeAPI()

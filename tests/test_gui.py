@@ -7,10 +7,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from cfd_bot.config import load_case
+from cfd_bot.config import load_bot, load_case
 from cfd_bot.gui import TEMPLATE, TicketEditor, form_document, form_values, validate_document
 from cfd_bot.editor import TicketService, case_browser_start
 from cfd_bot.patterns import DEFAULT_NAME, DEFAULT_RULES, PatternLibrary
+from cfd_bot.storage import Store
 
 
 class FormTests(unittest.TestCase):
@@ -309,6 +310,41 @@ class WidgetTests(unittest.TestCase):
         self.assertEqual(editor.case_entry.get(), str(self.case))
         self.assertEqual(editor.variables['name'][0].get(), 'case with spaces')
         self.assertEqual(editor.variables['residual_pattern'][0].get(), 'plots/residual*.png')
+
+    def test_ticket_and_queue_select_all_clear_and_bulk_cancel(self):
+        editor = self.editor
+        editor.listbox.insert('end', 'one.json', 'two.json')
+        editor.select_all_tickets()
+        self.assertEqual(editor.listbox.curselection(), (0, 1))
+        editor.clear_ticket_selection()
+        self.assertEqual(editor.listbox.curselection(), ())
+
+        editor.bot_config.write_text(json.dumps(dict(
+            version=1, state_dir='state', cases=[],
+            telegram=dict(allowed_user_ids=[10], chat_ids=[20]),
+            scheduler=dict(enabled=True))))
+        store = Store(load_bot(editor.bot_config)['state_dir'])
+        jobs = []
+        for index in range(2):
+            root = self.folder / f'queued-{index}'
+            root.mkdir()
+            jobs.append(store.enqueue(dict(name=f'queue {index}', _root=str(root), command=['./Allrun'])))
+        editor.open_queue_manager()
+        self.root.update()
+        self.assertEqual(editor.queue_listbox.size(), 2)
+        editor.select_all_queue()
+        self.assertEqual(editor.queue_listbox.curselection(), (0, 1))
+        editor.clear_queue_selection()
+        self.assertEqual(editor.queue_listbox.curselection(), ())
+        editor.queue_listbox.selection_set(0, 'end')
+        with patch('tkinter.messagebox.askyesno', return_value=True):
+            editor.cancel_queue_selection()
+        self.assertEqual([store.job(job['id'])['status'] for job in jobs], ['cancelled', 'cancelled'])
+        self.assertEqual(editor.queue_listbox.size(), 0)
+        self.assertEqual(editor.queue_result_listbox.size(), 2)
+        editor.queue_result_listbox.selection_set(0)
+        editor.open_queue_result_data()
+        self.assertIn('티켓 JSON', editor.queue_status.get())
 
     def test_single_execution_controls_save_and_child_inherits(self):
         editor = self.editor

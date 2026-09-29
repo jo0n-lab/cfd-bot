@@ -7,6 +7,7 @@ from pathlib import Path
 from .control import control_times
 
 RATE_POINTS = 21  # At most the latest 20 measured progress intervals.
+LIVE_BACKLOG_TOLERANCE = 64 * 1024
 NUM = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?'
 TIME = re.compile(r'^\s*(?:\[\d+\]\s*)?Time\s*=\s*(' + NUM + r')\s*s?\s*$')
 RESIDUAL = re.compile(r'Solving for ([\w.]+),\s*Initial residual = (' + NUM +
@@ -51,6 +52,10 @@ def feed(state, line, watcher=None):
         if math.isfinite(value):
             if state.get('ended'):
                 state['rate_samples'] = []
+                # A later Time record starts another solver stage.  Do not let
+                # the previous stage's End match immediately re-finish every
+                # line in the new stage and clear its rate samples forever.
+                state['success_matches'] = {}
             # A restarted solver in the same log begins a new segment.
             if 'time' in state and value < state['time']:
                 state.pop('first_time', None)
@@ -229,7 +234,12 @@ def estimate(case, telemetry, elapsed, history=None):
                       expected_seconds=expected,
                       basis='configured_seconds' if remaining > 0 else 'configured_overrun')
         return result
-    if telemetry.get('missing') or telemetry.get('backlog', 0):
+    # A solver can append another partial record between stat() and read().  A
+    # small tail does not invalidate the complete Time/ClockTime pairs already
+    # parsed.  Keep rejecting a genuinely lagging cursor so old samples are not
+    # presented as a current live rate.
+    if (telemetry.get('missing')
+            or telemetry.get('backlog', 0) > LIVE_BACKLOG_TOLERANCE):
         telemetry = {}
     control = control_times(case)
     if control and control['stop_at'] != 'endTime':

@@ -4,6 +4,11 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-09-29 | [Telegram 응답 지연 제거](2026-09-29-telegram-response-latency.md) | [#10](https://github.com/jo0n-lab/cfd-bot/issues/10) |
+| 2026-09-29 | [결과 데이터 추적 링크와 실행 중인 매크로 진행 현황](2026-09-29-trackable-results-and-live-macros.md) | [#9](https://github.com/jo0n-lab/cfd-bot/issues/9) |
+| 2026-09-28 | [작업 큐 다중 선택 취소와 전체 선택·해제](2026-09-28-bulk-queue-cancellation.md) | [#8](https://github.com/jo0n-lab/cfd-bot/issues/8) |
+| 2026-09-28 | [매크로 직계 하위 케이스 검색](2026-09-28-macro-direct-child-discovery.md) | [#7](https://github.com/jo0n-lab/cfd-bot/issues/7) |
+| 2026-09-28 | [웹 진행 현황 ETA·진행바 깜박임 제거](2026-09-28-web-progress-flicker.md) | [#6](https://github.com/jo0n-lab/cfd-bot/issues/6) |
 | 2026-09-28 | [웹 UI 블루 테마](2026-09-28-web-blue-theme.md) | [#5](https://github.com/jo0n-lab/cfd-bot/issues/5) |
 | 2026-09-28 | [웹 티켓 선택 지연 제거](2026-09-28-web-ticket-selection-latency.md) | [#4](https://github.com/jo0n-lab/cfd-bot/issues/4) |
 | 2026-09-28 | [개별 티켓 실행 설정 · 세 UI 동등 적용](2026-09-28-single-ticket-execution.md) | [#3](https://github.com/jo0n-lab/cfd-bot/issues/3) |

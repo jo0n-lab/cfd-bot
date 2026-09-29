@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1260" height="850" viewBox="0 0 1260 850" role="img" aria-labelledby="title desc">
 <title id="title">localhost 웹 UI HLD와 LLD</title>
-<desc id="desc">웹, Telegram, GUI가 공용 TicketService와 TicketRunner, 티켓 JSON과 SQLite를 사용하고 기존 bot만 계산 큐를 실행한다. 웹 저장, 실행, 데이터 요청의 검증 경계를 표시한다.</desc>
+<desc id="desc">웹, Telegram, GUI가 공용 TicketService, TicketRunner와 실행 추적 view를 사용한다. 현재 티켓 기반 결과 데이터 연결과 실행 중 매크로 진행 집계를 포함한다.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#79968f"/></marker></defs>
 <style>text{font-family:DejaVu Sans,Noto Sans CJK KR,sans-serif;fill:#203c40}.title{font-size:25px;font-weight:700}.sub{font-size:12px;fill:#6c8587}.label{font-size:15px;font-weight:600}.small{font-size:12px}.green{fill:#127867}.line{fill:none;stroke:#79968f;stroke-width:2;marker-end:url(#arrow)}.box{fill:#fff;stroke:#dce7e4;stroke-width:1.5}.lane{fill:#f0f6f3;stroke:#cce1d7}.badge{fill:#e2f1e9}</style>
 <rect width="1260" height="850" fill="#f6f8f8"/>
 <text class="title" x="40" y="48">CFD · localhost web interface</text>
-<text class="sub" x="40" y="74">HLD / LLD · Shared domain services, one execution controller · 2026-09-28 · Issues #2 / #3</text>
+<text class="sub" x="40" y="74">HLD / LLD · Shared domain services, one execution controller · 2026-09-29 · Issues #2 / #3 / #9</text>
 <text class="label green" x="40" y="116">HLD — 프로세스와 데이터 소유권</text>
 <rect class="box" x="40" y="140" width="235" height="95" rx="10"/>
 <text class="label" x="58" y="168">Windows / Mac / Browser</text><text class="small" x="58" y="193">Host 선택 → SSH → localhost</text><text class="sub" x="58" y="217">미저장 draft는 브라우저 메모리</text>
@@ -28,7 +28,7 @@
 <path stroke="#e0e8e5" d="M40 501H1220M40 562H1220M40 623H1220M40 684H1220"/>
 <text class="small" x="63" y="536">티켓 선택 / 폼 편집 / 저장 / 삭제</text><path class="line" d="M297 531H352"/><text class="small" x="375" y="536">TicketService · cached snapshot · revision</text><path class="line" d="M790 531H842"/><text class="small" x="863" y="536">즉시 편집 · 원자적 JSON · child 발행</text>
 <text class="small" x="63" y="597">저장 후 실행 / 실행 버튼</text><path class="line" d="M297 592H352"/><text class="small" x="375" y="597">fresh ofps → running guard → TicketRunner</text><path class="line" d="M790 592H842"/><text class="small" x="863" y="597">submission flag → 기존 bot의 큐</text>
-<text class="small" x="63" y="658">현황 갱신 / 큐 제어</text><path class="line" d="M297 653H352"/><text class="small" x="375" y="658">fresh snapshot / pause·resume / queued CAS</text><path class="line" d="M790 653H842"/><text class="small" x="863" y="658">실제 실행 상태 / 공유 SQLite</text>
+<text class="small" x="63" y="658">현황·이력 / 큐 제어</text><path class="line" d="M297 653H352"/><text class="small" x="375" y="658">run_views 추적 판정 · macro 집계 · queued CAS</text><path class="line" d="M790 653H842"/><text class="small" x="863" y="658">현재 티켓 링크 / child 진행률 / SQLite</text>
 <text class="small" x="63" y="719">Residual / 요청 데이터 조회</text><path class="line" d="M297 714H352"/><text class="small" x="375" y="719">선언된 pattern + inside() + descriptor 확인</text><path class="line" d="M790 714H842"/><text class="small" x="863" y="719">이미지 preview / 안전한 download</text>
 <rect class="badge" x="40" y="786" width="1180" height="36" rx="6"/>
 <text class="small" x="58" y="809">공통 원칙: 같은 티켓·실행 정책  ·  실행 중 중복 실행 금지  ·  요청 데이터 편집 허용  ·  자동 refresh가 미저장 폼을 덮어쓰지 않음</text>

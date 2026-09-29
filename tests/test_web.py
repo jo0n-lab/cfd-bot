@@ -181,8 +181,50 @@ class WebTests(Environment):
         self.post('/api/queue', dict(action='cancel', id=jobs[0]['id']))
         self.assertEqual(self.store.job(jobs[0]['id'])['status'], 'cancelled')
 
+    def test_queue_bulk_cancel_returns_cancelled_and_stale_selections(self):
+        jobs = []
+        for index in range(3):
+            root = self.root / f'web-queue-{index}'
+            root.mkdir()
+            jobs.append(self.store.enqueue(dict(self.case, _root=str(root), name=f'queue {index}')))
+        self.store.update_job(jobs[-1]['id'], status='starting')
+
+        result = self.post('/api/queue', dict(
+            action='cancel_many', ids=[jobs[0]['id'], jobs[1]['id'], jobs[-1]['id'], 'missing']))
+
+        self.assertEqual(result['cancelled'], [jobs[0]['id'], jobs[1]['id']])
+        self.assertEqual(result['unavailable'], [jobs[-1]['id'], 'missing'])
+        self.assertEqual(self.store.job(jobs[0]['id'])['status'], 'cancelled')
+        self.assertEqual(self.store.job(jobs[-1]['id'])['status'], 'starting')
+        self.assertEqual(self.request('/api/queue', dict(action='cancel_many', ids=[]))[0], 400)
+        self.assertEqual(self.request('/api/queue', dict(action='cancel_many', ids='not-a-list'))[0], 400)
+
+    def test_overview_tracks_only_jobs_with_a_current_ticket_json(self):
+        tracked_case = load_case(self.app.service.path(self.name))
+        tracked_history = self.store.enqueue(tracked_case)
+        self.store.update_job(tracked_history['id'], status='succeeded', started=time.time() - 10,
+                              finished=time.time())
+        untracked_root = self.root / 'ticket-was-deleted'
+        untracked_root.mkdir()
+        untracked_case = dict(tracked_case, name='ticket was deleted', _root=str(untracked_root))
+        untracked_history = self.store.enqueue(untracked_case)
+        self.store.update_job(untracked_history['id'], status='failed', started=time.time() - 5,
+                              finished=time.time())
+        running = self.store.enqueue(tracked_case)
+        self.store.update_job(running['id'], status='running', started=time.time() - 2)
+
+        overview = self.get('/api/overview')
+        history = {item['id']: item for item in overview['history']}
+        active = {item['id']: item for item in overview['queue']}
+
+        self.assertTrue(history[tracked_history['id']]['trackable'])
+        self.assertEqual(history[tracked_history['id']]['case_id'], case_id(tracked_case))
+        self.assertFalse(history[untracked_history['id']]['trackable'])
+        self.assertIsNone(history[untracked_history['id']]['case_id'])
+        self.assertTrue(active[running['id']]['trackable'])
+
     def test_macro_discovery_publish_children_and_shared_settings(self):
-        for name in ('one', 'two', 'skip-template', 'running'):
+        for name in ('one', 'two', 'skip-template', 'running', 'group/deep'):
             root = self.root / 'batch' / name
             root.mkdir(parents=True)
             (root / 'Allrun').write_text('#!/bin/sh\nexit 0\n')

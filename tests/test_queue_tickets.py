@@ -72,6 +72,19 @@ class QueueTicketTests(Environment):
         rows, _ = discover_cases(self.parent, {}, end_time=20)
         self.assertIn(str(done), [r['case_dir'] for r in rows])
 
+    def test_discovery_only_checks_direct_child_directories(self):
+        direct = self.case_dir('direct')
+        nested = self.case_dir('group/nested')
+        self.case_dir('.hidden')
+        self.case_dir('ignored-template')
+        (self.parent / 'Allrun').write_text('#!/bin/sh\n')
+        (self.parent / 'linked').symlink_to(nested, target_is_directory=True)
+
+        rows, skipped = discover_cases(self.parent, {})
+
+        self.assertEqual([row['case_dir'] for row in rows], [str(direct)])
+        self.assertEqual(skipped, [])
+
     def test_postprocessing_cases_without_end_time_are_selectable_and_publishable(self):
         unknown = self.case_dir('a-unknown', post=10)
         (unknown / 'system/controlDict').unlink()
@@ -452,7 +465,9 @@ class QueueTicketTests(Environment):
         try:
             for _ in range(100):
                 cmdline = Path(f'/proc/{solver.pid}/cmdline')
-                if cmdline.exists() and b'simpleFoam' in cmdline.read_bytes():
+                cwd = Path(f'/proc/{solver.pid}/cwd')
+                if (cmdline.exists() and cmdline.read_bytes().split(b'\0', 1)[0] == b'simpleFoam'
+                        and cwd.resolve() == Path(case_root)):
                     break
                 time.sleep(0.01)
             result = subprocess.run([str(wrapper), '--check', self.cpu], env=env,
@@ -476,6 +491,25 @@ class QueueTicketTests(Environment):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('--check CPU_SET', result.stdout)
         self.assertIn('--status', result.stdout)
+
+    def test_managed_ofps_scan_skips_embedded_ticket_sync(self):
+        wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'
+        marker = self.root / 'python-called'
+        fake_python = self.root / 'fake-python'
+        fake_python.write_text('#!/bin/sh\nprintf called > "$CFD_BOT_TEST_MARKER"\n')
+        fake_python.chmod(0o700)
+        env = dict(os.environ, CFD_BOT_OFPS_MANAGED='1', CFD_BOT_PYTHON=str(fake_python),
+                   CFD_BOT_TEST_MARKER=str(marker))
+        result = subprocess.run([str(wrapper)], env=env, capture_output=True,
+                                text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(marker.exists())
+
+    def test_ticket_state_sync_loads_catalog_once(self):
+        self.macro([self.case_dir('single-load')])
+        with patch('cfd_bot.config.tickets_for', wraps=tickets_for) as catalog:
+            sync_ticket_states(self.config, self.store, {'cases': {}})
+        self.assertEqual(catalog.call_count, 1)
 
     def test_queued_ticket_rename_keeps_the_same_job(self):
         root = self.case_dir('renamed')

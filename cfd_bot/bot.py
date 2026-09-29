@@ -6,15 +6,18 @@ import time
 from pathlib import Path
 
 from .artifacts import MAX_DOCUMENT, export_files, residual_files
-from .config import cases_for
+from .config import cases_for, tickets_for
 from .monitor import Monitor
 from .processes import DaemonLock, snapshot as process_snapshot
-from .report import compact_status, queue_text, render_run
+from .queue_control import cancel_queued_jobs
+from .run_views import case_id_for_root, running_macro_views, tracking_registry
+from .report import compact_status, macro_queue_text, queue_text, render_run
 from .telegram import Telegram, TelegramError, chunks
 from .texts import load_text
 from .ui import load_ui
 
 LOG = logging.getLogger(__name__)
+QUEUE_PAGE = 8
 
 
 def button(text, data):
@@ -26,7 +29,7 @@ def keyboard(rows):
 
 
 def case_id(case):
-    return hashlib.sha256(case['_root'].encode()).hexdigest()[:12]
+    return case_id_for_root(case['_root'])
 
 
 def elapsed_seconds(value):
@@ -72,11 +75,12 @@ class Bot:
         self._remember(chat, result)
         return result
 
-    def active_runs(self, snapshot=None):
+    def active_runs(self, snapshot=None, cases=None):
         """Translate the current ofps snapshot directly; watcher state is irrelevant."""
         snapshot = snapshot if snapshot is not None else (self.store.get('snapshot') or {})
         runs = []
-        registered = {case['_root']: case for case in self.cases().values()}
+        cases = self.cases().values() if cases is None else cases
+        registered = {case['_root']: case for case in cases}
         observed_at = snapshot.get('at', time.time())
         for root, record in snapshot.get('cases', {}).items():
             case = registered.get(root)
@@ -104,14 +108,45 @@ class Bot:
         try:
             snap = process_snapshot(self.config['ofps_command'])
             snap['at'] = time.time()
-            self.store.put('snapshot', snap)
-            from .tickets import sync_ticket_states
-            sync_ticket_states(self.config, self.store, snap)
-            return snap, self.active_runs(snap), None
+            tickets = tickets_for(self.config)
+            cases = cases_for(self.config, tickets)
+            return snap, self.active_runs(snap, cases), None
         except (OSError, RuntimeError) as exc:
             snap = {'at': time.time(), 'cases': {}}
             return snap, [], {'message': self.ui.text('strings.common.technical_error',
                                                      type=type(exc).__name__, error=exc)}
+
+    @staticmethod
+    def queue_selection_key(chat, user=None):
+        return f'queue-selection:{chat}:{chat if user is None else user}'
+
+    def queue_selection(self, chat, user=None):
+        jobs = self.store.jobs(('queued',))
+        available = {job['id'] for job in jobs}
+        selected = [jid for jid in self.store.get(self.queue_selection_key(chat, user), []) if jid in available]
+        self.store.put(self.queue_selection_key(chat, user), selected)
+        return jobs, selected
+
+    def show_queue_selection(self, chat, page=0, notice='', user=None):
+        jobs, selected = self.queue_selection(chat, user)
+        page = max(0, min(int(page), max(0, (len(jobs) - 1) // QUEUE_PAGE)))
+        visible = jobs[page * QUEUE_PAGE:(page + 1) * QUEUE_PAGE]
+        rows = [[button(self.ui.text('strings.common.checked' if job['id'] in selected
+                                     else 'strings.common.unchecked') + job['case']['name'],
+                        'qtoggle:' + job['id'])] for job in visible]
+        navigation = []
+        if page:
+            navigation.append(button(self.ui.text('menus.queue.previous'), f'qpage:{page - 1}'))
+        if (page + 1) * QUEUE_PAGE < len(jobs):
+            navigation.append(button(self.ui.text('menus.queue.next'), f'qpage:{page + 1}'))
+        if navigation:
+            rows.append(navigation)
+        rows += [[button(self.ui.text('menus.queue.select_all'), 'qall'),
+                  button(self.ui.text('menus.queue.clear_all'), 'qnone')],
+                 [button(self.ui.text('menus.queue.cancel_many', count=len(selected)), 'qcancel')],
+                 [button(self.ui.text('menus.queue.back'), 'queue')]]
+        text = self.ui.text('menus.queue.selection_title', selected=len(selected), total=len(jobs))
+        self.send(chat, (notice + '\n\n' if notice else '') + text, keyboard(rows))
 
     def status(self, snap=None, runs=None, error=None):
         snap = snap if snap is not None else self.store.get('snapshot')
@@ -132,13 +167,25 @@ class Bot:
         return '\n'.join(lines)
 
     def status_keyboard(self, runs=None):
-        by_root = {case['_root']: (cid, case) for cid, case in self.cases().items()}
         rows = []
         for run in self.active_runs() if runs is None else runs:
-            item = by_root.get(run['case_root'])
-            if item:
-                rows.append([button(item[1]['name'], 'detail:' + item[0])])
+            if run.get('registered', True):
+                case = run['case']
+                rows.append([button(case['name'], 'detail:' + case_id(case))])
         return keyboard(rows) if rows else None
+
+    def acknowledge_callback(self, callback_id, text=None):
+        payload = {'callback_query_id': callback_id}
+        if text:
+            payload['text'] = text
+        try:
+            self.api.call('answerCallbackQuery', payload)
+        except TelegramError as exc:
+            LOG.warning('Telegram callback acknowledgement failed: %s', exc)
+
+    def start_callback_ack(self, callback_id, text=None):
+        threading.Thread(target=self.acknowledge_callback, args=(callback_id, text),
+                         daemon=True).start()
 
     def show_cases(self, chat, page=0):
         cases = list(self.cases().items())
@@ -198,13 +245,12 @@ class Bot:
         # Both sender and destination must be explicitly allowed, including in groups.
         if sender not in self.config['telegram']['allowed_user_ids'] or chat not in self.config['telegram']['chat_ids']:
             if callback:
-                self.api.call('answerCallbackQuery', {'callback_query_id': callback['id'],
-                                                      'text': self.ui.text('menus.home.unauthorized')})
+                self.start_callback_ack(callback['id'], self.ui.text('menus.home.unauthorized'))
             return
         if type(message.get('message_id')) is int:
             self.store.remember_message(chat, message['message_id'], message.get('date'))
         if callback:
-            self.api.call('answerCallbackQuery', {'callback_query_id': callback['id']})
+            self.start_callback_ack(callback['id'])
         if self.ticket_ui is None:
             from .ticket_chat import TicketChat
             self.ticket_ui = TicketChat(self)
@@ -219,11 +265,12 @@ class Bot:
                       '/clean': 'clean', '/queue': 'queue', '/cases': 'cases:0',
                       '/data': 'cases:0'}.get(name, 'home')
         try:
-            self.dispatch(chat, action, str(update['update_id']))
+            self.dispatch(chat, action, str(update['update_id']), sender)
         except (ValueError, OSError) as exc:
             self.send(chat, self.ui.text('menus.home.request_failed', error=str(exc)))
 
-    def dispatch(self, chat, action, request_key):
+    def dispatch(self, chat, action, request_key, user=None):
+        actor = chat if user is None else user
         if action == 'home':
             spec = self.ui.value('menus.home.keyboard')
             rows = [[button(item['text'], item['action']) for item in row] for row in spec]
@@ -249,23 +296,89 @@ class Bot:
             if action != 'queue':
                 self.store.put('queue_paused', action == 'pause')
             enabled = self.config['scheduler']['enabled'] and not self.store.get('queue_paused', False)
+            cases = list(self.cases().values())
+            registry = tracking_registry(cases)
+            jobs = self.store.jobs()
+            macros = running_macro_views(
+                [ticket for ticket in tickets_for(self.config) if ticket['task_type'] == 'macro'],
+                cases, jobs, self.store)
             rows = [[button(self.ui.text('menus.queue.add'), 'cases:0'),
                      button(self.ui.text('menus.queue.edit_tickets'), 'tickets')]]
             rows.append([button(self.ui.text('menus.queue.resume') if self.store.get('queue_paused', False)
                                 else self.ui.text('menus.queue.pause'),
                                 'resume' if self.store.get('queue_paused', False) else 'pause')])
+            if self.store.jobs(('queued',)):
+                rows.append([button(self.ui.text('menus.queue.multi_select'), 'qselect')])
             rows += [[button(self.ui.text('menus.queue.cancel_case', case_name=j['case']['name']),
                              'cancel:' + j['id'])]
                      for j in self.store.jobs(('queued',))[:20]]
-            self.send(chat, queue_text(self.store, enabled, self.ui), keyboard(rows))
+            rows += [[button(self.ui.text('menus.queue.result_data', case_name=j['case']['name']),
+                             'case:' + registry[j['case_root']]['case_id'])]
+                     for j in jobs if j['status'] == 'running' and j['case_root'] in registry]
+            recent = [j for j in reversed(jobs) if j['status'] not in
+                      ('queued', 'starting', 'running', 'postprocessing')
+                      and j['case_root'] in registry][:5]
+            rows += [[button(self.ui.text('menus.queue.recent_result', case_name=j['case']['name']),
+                             'case:' + registry[j['case_root']]['case_id'])] for j in recent]
+            text = queue_text(self.store, enabled, self.ui) + macro_queue_text(macros, self.ui)
+            self.send(chat, text, keyboard(rows))
+            return
+        if action == 'qselect':
+            self.store.put(self.queue_selection_key(chat, actor), [])
+            self.show_queue_selection(chat, user=actor)
+            return
+        if action == 'qback':
+            self.show_queue_selection(chat, user=actor)
+            return
+        if action.startswith('qpage:'):
+            self.show_queue_selection(chat, int(action.split(':', 1)[1]), user=actor)
+            return
+        if action.startswith('qtoggle:'):
+            jid = action.split(':', 1)[1]
+            jobs, selected = self.queue_selection(chat, actor)
+            if jid not in {job['id'] for job in jobs}:
+                self.show_queue_selection(chat, notice=self.ui.text('menus.queue.cancel_unavailable'), user=actor)
+                return
+            selected.remove(jid) if jid in selected else selected.append(jid)
+            self.store.put(self.queue_selection_key(chat, actor), selected)
+            self.show_queue_selection(chat, user=actor)
+            return
+        if action in ('qall', 'qnone'):
+            jobs, _ = self.queue_selection(chat, actor)
+            self.store.put(self.queue_selection_key(chat, actor),
+                           [job['id'] for job in jobs] if action == 'qall' else [])
+            self.show_queue_selection(chat, user=actor)
+            return
+        if action == 'qcancel':
+            jobs, selected = self.queue_selection(chat, actor)
+            if not selected:
+                raise ValueError(self.ui.text('scenarios.diagnostics.queue.selection_required'))
+            names = {job['id']: job['case']['name'] for job in jobs}
+            preview = '\n'.join(names[jid] for jid in selected[:30])
+            if len(selected) > 30:
+                preview += '\n…'
+            self.send(chat, self.ui.text('menus.queue.cancel_many_confirm', count=len(selected), names=preview),
+                      keyboard([[button(self.ui.text('menus.queue.cancel_many', count=len(selected)),
+                                        'qcancelyes'),
+                                 button(self.ui.text('strings.common.cancel'), 'qback')]]))
+            return
+        if action == 'qcancelyes':
+            selected = self.store.get(self.queue_selection_key(chat, actor), [])
+            result = cancel_queued_jobs(self.store, selected, ui=self.ui)
+            self.store.put(self.queue_selection_key(chat, actor), [])
+            notice = self.ui.text('menus.queue.cancel_many_result',
+                                  cancelled=len(result['cancelled']),
+                                  unavailable=len(result['unavailable']))
+            self.show_queue_selection(chat, notice=notice, user=actor)
             return
         parts = action.split(':')
         if parts[0] == 'cases':
             self.show_cases(chat, int(parts[1]))
             return
         if parts[0] == 'cancel' and len(parts) == 2:
-            job = self.store.update_job(parts[1], expected=('queued',), status='cancelled', finished=time.time())
-            self.send(chat, self.ui.text('menus.queue.cancelled' if job else 'menus.queue.cancel_unavailable'))
+            result = cancel_queued_jobs(self.store, [parts[1]], ui=self.ui)
+            self.send(chat, self.ui.text('menus.queue.cancelled' if result['cancelled']
+                                         else 'menus.queue.cancel_unavailable'))
             return
         if len(parts) < 2:
             raise ValueError(self.ui.text('menus.home.unknown_button'))
