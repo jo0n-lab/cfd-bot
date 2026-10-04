@@ -10,7 +10,7 @@ FIELDS = {
     'case_name', 'status', 'case_root', 'run_id', 'owner', 'cores', 'cpu_list',
     'started_at', 'finished_at', 'elapsed', 'simulation_time', 'clock_time',
     'eta', 'progress', 'return_code', 'reason', 'observed', 'log_path',
-    'residuals', 'errors', 'tail', 'postprocess_errors'
+    'residuals', 'errors', 'tail', 'postprocess_errors', 'monitor_errors'
 }
 
 def _validate(name, template):

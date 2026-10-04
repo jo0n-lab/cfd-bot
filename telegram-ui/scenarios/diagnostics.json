@@ -14,10 +14,12 @@
     "rank_mismatch": "케이스 NP가 CPU_SET의 CPU 수와 맞지 않습니다.",
     "allrun_missing": "케이스에 Allrun 파일이 없습니다.",
     "detached_allrun": "Allrun이 분리 실행됩니다. 완료까지 대기하는 실행 명령을 지정하세요.",
-    "settings_escape": "공통 실행 설정 파일이 케이스 밖을 가리킵니다: {path}"
+    "settings_escape": "공통 실행 설정 파일이 케이스 밖을 가리킵니다: {path}",
+    "process_core_invalid": ".process-core는 케이스 내부의 일반 파일이어야 합니다: {path}"
   },
   "editor": {
     "script_command": "전·후처리 실행 명령을 확인하세요.",
+    "monitor_command": "모니터링 CPU를 할당하려면 모니터링 스크립트를 입력하세요.",
     "integer": "정수",
     "number": "숫자",
     "numeric": "{label}: {minimum} 이상의 {kind}를 입력하세요.",
@@ -35,7 +37,7 @@
     "duplicate_case": "Case directory: {ticket}에 이미 등록된 케이스입니다. 복제본에는 다른 케이스 디렉터리를 지정하세요.",
     "changed": "다른 편집기에서 티켓이 변경되었습니다. 다시 열어 최신 설정을 확인하세요.",
     "exists": "{name}이 이미 있습니다. 덮어쓰기를 확인하세요.",
-    "running_scripts": "계산 중에는 전·후처리 실행 명령을 바꿀 수 없습니다. 요청 데이터와 감시 설정은 수정할 수 있습니다.",
+    "running_scripts": "계산 중에는 전·후처리 실행 명령을 바꿀 수 없습니다. 요청 데이터와 watcher 로그·판정 설정은 수정할 수 있습니다.",
     "macro_pointer": "macro_ticket이 매크로 티켓을 가리켜야 합니다.",
     "child_from_macro": "child는 매크로의 케이스 목록에서 생성하세요.",
     "child_path": "child의 케이스 경로는 매크로에서 지정한 경로를 사용하세요.",
@@ -52,7 +54,7 @@
     "max_files": "최대 파일 수",
     "max_files_limit": "최대 파일 수는 10 이하로 입력하세요.",
     "cores": "코어 수",
-    "running_execution": "계산 중에는 코어 수·CPU 배정·실행 명령을 바꿀 수 없습니다. 요청 데이터와 감시 설정은 수정할 수 있습니다.",
+    "running_execution": "계산 중에는 코어 수·CPU 배정·실행 명령·모니터링 실행 설정을 바꿀 수 없습니다. 요청 데이터와 watcher 로그·판정 설정은 수정할 수 있습니다.",
     "child_execution": "하위 티켓은 매크로 실행 설정을 상속합니다. 부모 매크로 티켓에서 수정하세요."
   },
   "tickets": {
@@ -81,7 +83,8 @@
     "protected_socket": "소켓 간 실행 허용",
     "protected_pre": "전처리 명령",
     "protected_post": "후처리 명령",
-    "running_change": "계산 중에는 {fields}을(를) 바꿀 수 없습니다: {root}. 요청 데이터와 감시 설정은 수정할 수 있습니다.",
+    "protected_monitoring": "모니터링 CPU·스크립트",
+    "running_change": "계산 중에는 {fields}을(를) 바꿀 수 없습니다: {root}. 요청 데이터와 watcher 로그·판정 설정은 수정할 수 있습니다.",
     "ofps_running": "ofps 실행 확인",
     "children_missing": "매크로 child 티켓이 없습니다: {name}",
     "batch_registered": "대기 큐 등록: {name} · {count}개 케이스 · 순차 실행"

@@ -147,11 +147,14 @@ class WebTests(Environment):
         (self.case_root / 'Allrun').write_text('NP=99\nCPU_SET=0-98\n')
         draft = self.draft()
         draft['values'].update(execution_source='ticket', macro_cores='4', macro_command='./Allrun',
-                               macro_cpu_policy='auto')
+                               macro_cpu_policy='auto', monitoring_cpu=True,
+                               monitoring_command='./Allmonitor --interval 2')
         self.post('/api/validate', draft)
         saved = self.post('/api/save', draft)
         self.assertEqual(saved['values']['execution_source'], 'ticket')
         self.assertEqual(saved['values']['macro_cores'], '4')
+        self.assertTrue(saved['values']['monitoring_cpu'])
+        self.assertEqual(saved['values']['monitoring_command'], './Allmonitor --interval 2')
         self.assertEqual(execution_case(load_case(self.app.service.path(self.name)))['cores'], 4)
         self.post('/api/run', dict(name=self.name, revision=saved['revision'], request_id='single-web-run'))
         accept_submissions(self.config, self.store)
@@ -159,6 +162,8 @@ class WebTests(Environment):
         self.assertEqual(job['case']['resource_source'], 'ticket')
         self.assertEqual(job['case']['cores'], 4)
         self.assertEqual(job['case']['command'], ['./Allrun'])
+        self.assertEqual(job['case']['monitoring'], {
+            'allocate_cpu': True, 'command': ['./Allmonitor', '--interval', '2']})
         self.assertNotIn('cpu_set', job['case'])
 
     def test_queue_uses_shared_submission_and_cas_cancel(self):

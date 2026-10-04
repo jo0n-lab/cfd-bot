@@ -120,7 +120,7 @@ flowchart LR
 | `processes.py` | `ofps` 실행·출력 parsing, 실제 경로 정규화, 소유 세션과 CPU 배치 계산 |
 | `logs.py` | 다단계 로그 선택, incremental parsing, 진행값·residual·실패 패턴 수집 |
 | `outcomes.py` | 종료 코드와 오류 증거를 우선 확인한 뒤 `controlDict.endTime`과 최종 `Time`으로 결과 판정 |
-| `jobs.py` | FIFO scheduler, CPU 예약, 독립 worker, 후처리, 종료 이벤트 생성 |
+| `jobs.py` | FIFO scheduler, solver·monitor CPU 예약, 독립 worker, 후처리, 종료 이벤트 생성 |
 | `artifacts.py` | Residual PNG와 요청 파일 검색, 종료 시 파일 snapshot 보관 |
 | `storage.py` | 작업, 관측 상태, outbox, 메시지 ID, 실행시간 이력을 SQLite에 저장 |
 | `telegram.py` | Bot API 호출, 긴 문장 분할, 파일 업로드, retry 정보, 메시지 삭제 |
@@ -139,6 +139,8 @@ flowchart LR
 ### 3.3 ofps 단
 
 `ofps`는 다음 원시 정보를 제공합니다.
+
+OpenFOAM 항목은 프로세스 이름 일치와 함께 실제 `system/controlDict`가 있는 case root를 확인한 경우에만 제공합니다. Basilisk 항목은 명시된 root 안에서 Makefile과 C source가 있는 case를 확인해야 합니다. case를 확인하지 못한 utility, symlink 설치 경로의 일반 실행 파일과 이름 오탐은 현황과 자동 알림 범위에서 제외합니다.
 
 - 실행 엔진: OpenFOAM 또는 Basilisk
 - 실제 계산 케이스 절대 경로
@@ -319,7 +321,10 @@ flowchart TD
     J -->|아니오| K[ofps --check CPU_SET]
     K -->|BLOCKED| F
     K -->|SAFE| L[독립 worker 시작]
-    L --> M[taskset -c CPU_SET command]
+    L --> PC[case/.process-core 생성·동기화]
+    PC --> M[taskset -c CPU_SET solver]
+    L -. 명시 활성화 시 .-> MM[taskset -c MONITOR_CPU monitor command]
+    M -. solver PID .-> MM
     M --> N[로그 incremental parse]
     N --> O{프로세스 종료}
     O --> P[종료 코드와 controlDict endTime 판정]
@@ -346,7 +351,11 @@ stateDiagram-v2
     cancelled --> [*]
 ```
 
-큐 자동 시작 여부는 현재 `scheduler.enabled`와 SQLite의 `queue_paused` 값으로 결정합니다. 개별 티켓은 세 UI의 실행 설정에서 케이스 설정 사용 또는 티켓 지정(NP·명령·CPU 정책)을 선택합니다. `resource_source=ticket`은 기존 케이스 NP보다 우선하며 매크로는 `resource_source=macro` 공통 설정을 child에 적용합니다. 두 명시 설정 모두 같은 가용 코어 배정과 worker 설정 반영 경로를 사용합니다. Child에서는 상속값을 확인하고 부모 매크로에서 편집합니다. 구현 흐름은 [HLD 실행 설정 도식](HLD.md#3-시스템-컨텍스트)과 [변경 이력 / Issue #3](history/2026-09-28-single-ticket-execution.md)에 기록합니다.
+큐 자동 시작 여부는 현재 `scheduler.enabled`와 SQLite의 `queue_paused` 값으로 결정합니다. 개별 티켓은 세 UI의 실행 설정에서 케이스 설정 사용 또는 티켓 지정(NP·명령·CPU 정책)을 선택합니다. `resource_source=ticket`은 기존 케이스 NP보다 우선하며 매크로는 `resource_source=macro` 공통 설정을 child에 적용합니다. 두 명시 설정 모두 같은 가용 코어 배정과 worker 설정 반영 경로를 사용합니다. Child에서는 상속값을 확인하고 부모 매크로에서 편집합니다.
+
+`resource_source=case`는 케이스별 `.process-core`가 있으면 이 파일의 안전한 literal NP·CPU_SET을 legacy `Allrun`·`config/*Run`보다 우선해 사용합니다. 같은 줄의 `; export NP`도 인식합니다. CPU 승인 뒤 worker는 `.process-core`가 없으면 생성하고, 자동 배정 또는 ticket/macro 출처이면 승인값과 동기화합니다. 기존 legacy 설정 반영도 유지해 `.process-core`를 아직 직접 사용하지 않는 케이스와 호환합니다.
+
+선택적 `monitoring`은 실행 출처와 독립적인 공통 설정이며 기본값은 비활성입니다. 세 UI는 사용자가 별도 코어 배치를 활성화한 때에만 command 입력란을 표시하고 `monitoring` 블록을 저장합니다. Scheduler는 이 블록이 있을 때만 계산 CPU와 겹치지 않는 물리 CPU 1개를 `monitor_cpu`로 예약하고 worker는 solver 시작 뒤 해당 CPU에서 monitor command를 실행합니다. solver PID와 job 환경을 전달하고 monitor 종료 문제는 계산 판정과 분리해 기록합니다. 구현 흐름은 [HLD 실행 설정 도식](HLD.md#3-시스템-컨텍스트), [Issue #13 변경 이력](history/2026-10-02-monitoring-cpu-allocation.md), [Issue #16 변경 이력](history/2026-10-04-monitoring-opt-in-visibility.md)에 기록합니다.
 
 큐 다중 취소는 세 UI가 공용 `cancel_queued_jobs`를 호출하고 `Store.cancel_queued`가 한 transaction에서 처리합니다. 선택 후 이미 시작된 작업은 그대로 두고 `unavailable`로 돌려 부분 상태 변화를 사용자에게 알립니다. 작업 큐와 티켓 관리 모두 개별 선택, 전체 선택, 전체 해제를 제공하며 Telegram 선택은 페이지 이동 중에도 유지됩니다.
 
@@ -456,7 +465,8 @@ flowchart TB
 | 저장소 | 주요 내용 |
 |---|---|
 | `bot.json` | state 위치, UI 리소스 위치, `ofps` 명령, polling 간격, Telegram allowlist, scheduler 설정 |
-| `tickets/*.json` | 케이스 경로, watcher 규칙, Residual PNG, 요청 데이터, 선택적 실행 설정 |
+| `tickets/*.json` | 케이스 경로, watcher 규칙, Residual PNG, 요청 데이터, 선택적 실행·모니터링 설정 |
+| `case/.process-core` | 해당 케이스가 실행할 MPI rank `NP`와 허용 CPU 범위 `CPU_SET` |
 | `telegram-ui/manifest.json` | 서비스 시작 시 검증할 필수 UI 리소스 키 목록 |
 | `telegram-ui/strings.json` | 여러 메뉴와 시나리오가 공유하는 기호와 값 |
 | `telegram-ui/menus/*.json` | Telegram 홈·케이스·큐·티켓 메뉴의 문구와 버튼 라벨 |

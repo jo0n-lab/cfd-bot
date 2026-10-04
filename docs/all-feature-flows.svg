@@ -218,13 +218,13 @@
     <rect rx="10" class="card bot" width="205" height="112"/>
     <text class="card-title" x="102.5" y="25">Scheduler + worker</text>
     <text class="card-sub" x="102.5" y="47">OpenFOAM env · CPU topology</text>
-    <text class="card-sub" x="102.5" y="65">예약 충돌 · ofps --check</text>
-    <text class="card-sub" x="102.5" y="83">pre → solver → post</text>
+    <text class="card-sub" x="102.5" y="65">ofps --check · .process-core 생성</text>
+    <text class="card-sub" x="102.5" y="83">pre → solver + 선택 monitor → post</text>
   </g>
   <g transform="translate(1144 1030)">
     <rect rx="10" class="card external" width="390" height="92"/>
     <text class="card-title" x="195" y="27">OpenFOAM / Allrun</text>
-    <text class="card-sub" x="195" y="49">taskset CPU_SET · foreground wait</text>
+    <text class="card-sub" x="195" y="49">case/.process-core → Allrun</text>
     <text class="card-sub" x="195" y="68">종료 후 같은 판정 로직 사용</text>
   </g>
   <path class="arrow" d="M242 1076H330"/>

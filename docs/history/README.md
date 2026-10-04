@@ -4,6 +4,11 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-10-04 | [모니터링 전용 CPU의 명시적 활성화와 입력란 표시](2026-10-04-monitoring-opt-in-visibility.md) | [#16](https://github.com/jo0n-lab/cfd-bot/issues/16) |
+| 2026-10-04 | [케이스별 `.process-core` 자동 생성과 동기화](2026-10-04-process-core-generation.md) | [#15](https://github.com/jo0n-lab/cfd-bot/issues/15) |
+| 2026-10-02 | [case 실행 설정의 NP 보존](2026-10-02-case-np-preservation.md) | [#14](https://github.com/jo0n-lab/cfd-bot/issues/14) |
+| 2026-10-02 | [모니터링 전용 CPU와 스크립트 실행](2026-10-02-monitoring-cpu-allocation.md) | [#13](https://github.com/jo0n-lab/cfd-bot/issues/13) |
+| 2026-10-01 | [유효 CFD case가 없는 scanner 오탐 제거](2026-10-01-ofps-invalid-case-filter.md) | [#12](https://github.com/jo0n-lab/cfd-bot/issues/12) |
 | 2026-09-29 | [Telegram 응답 지연 제거](2026-09-29-telegram-response-latency.md) | [#10](https://github.com/jo0n-lab/cfd-bot/issues/10) |
 | 2026-09-29 | [결과 데이터 추적 링크와 실행 중인 매크로 진행 현황](2026-09-29-trackable-results-and-live-macros.md) | [#9](https://github.com/jo0n-lab/cfd-bot/issues/9) |
 | 2026-09-28 | [작업 큐 다중 선택 취소와 전체 선택·해제](2026-09-28-bulk-queue-cancellation.md) | [#8](https://github.com/jo0n-lab/cfd-bot/issues/8) |

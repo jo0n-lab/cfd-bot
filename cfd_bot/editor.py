@@ -17,6 +17,7 @@ EVENTS = {event: load_ui().text('menus.tickets.basic.event_' + event)
           for event in ('started', 'succeeded', 'failed', 'interrupted')}
 DEFAULT_CASE_ROOT = Path.home() / 'OpenFOAM' / (Path.home().name + '-dev') / 'run'
 DEFAULT_SCRIPTS = {'preprocess': './Allclean', 'postprocess': './Allpost'}
+DEFAULT_MONITOR_SCRIPT = './Allmonitor'
 TEMPLATE = {'version': 1, 'case_dir': '', 'name': '', 'cpu_policy': 'auto',
             'allow_cross_socket': True, 'watcher': {'log': 'log.solver'},
             **{stage: [{'command': [command]}] for stage, command in DEFAULT_SCRIPTS.items()}}
@@ -63,6 +64,9 @@ def form_values(data, tickets_dir):
         'macro_cpu_set': data.get('cpu_set', ''),
         'macro_command': shlex.join(data.get('command', ['./Allrun'])),
         'macro_cross_socket': data.get('allow_cross_socket', False),
+        'monitoring_cpu': data.get('monitoring', {}).get('allocate_cpu', False),
+        'monitoring_command': shlex.join(data.get('monitoring', {}).get(
+            'command', [DEFAULT_MONITOR_SCRIPT])),
         'case_dir': case_dir,
         'name': data.get('name', Path(case_dir).name),
         'residual_pattern': data.get('residual_pattern', ''),
@@ -141,6 +145,13 @@ def form_document(values):
         for key in ('cores', 'command', 'cpu_set'):
             data.pop(key, None)
         data.update(cpu_policy='auto', allow_cross_socket=True)
+    if values.get('monitoring_cpu', False):
+        command = shlex.split(values.get('monitoring_command', DEFAULT_MONITOR_SCRIPT))
+        if not command:
+            raise ValueError(load_ui().text('scenarios.diagnostics.editor.monitor_command'))
+        data['monitoring'] = {'allocate_cpu': True, 'command': command}
+    else:
+        data.pop('monitoring', None)
     data['residual_pattern'] = values['residual_pattern'].strip()
     data.pop('name', None)
     if values['name'].strip():

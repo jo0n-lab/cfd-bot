@@ -101,7 +101,7 @@ def cpu_set(value):
 def load_case(path):
     path = Path(path).resolve()
     c = read_json(path)
-    keys(c, "version case_dir name log residual_pattern cores cpu_set cpu_policy allow_cross_socket command expected_seconds simulation exports preprocess postprocess require_end watcher notifications task_type role macro_ticket end_time queue cases resource_source", "case")
+    keys(c, "version case_dir name log residual_pattern cores cpu_set cpu_policy allow_cross_socket command expected_seconds simulation exports preprocess postprocess monitoring require_end watcher notifications task_type role macro_ticket end_time queue cases resource_source", "case")
     if type(c.get("version")) is not int or c['version'] != 1:
         raise ConfigError(_message('case_version'))
     case_dir = c.get('case_dir')
@@ -299,6 +299,13 @@ def load_case(path):
             keys(hook, 'command timeout_seconds', stage)
             argv(hook.get('command'), stage + '.command')
             number(hook.setdefault('timeout_seconds', 120), stage + '.timeout_seconds', 1)
+    if 'monitoring' in c:
+        monitoring = c['monitoring']
+        keys(monitoring, 'allocate_cpu command', 'monitoring')
+        boolean(monitoring.get('allocate_cpu'), 'monitoring.allocate_cpu')
+        argv(monitoring.get('command'), 'monitoring.command')
+        if not monitoring['allocate_cpu']:
+            c.pop('monitoring')
     c['_root'] = str(root)
     c['_config'] = str(path)
     return c

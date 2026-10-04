@@ -20,7 +20,7 @@
 <rect class="box" x="655" y="285" width="235" height="85" rx="10"/>
 <text class="label" x="673" y="315">공유 JSON / SQLite</text><text class="sub" x="673" y="343">tickets · patterns · queue · outbox</text>
 <rect class="lane" x="940" y="140" width="280" height="230" rx="10"/>
-<text class="label" x="959" y="168">기존 cfd-bot.service</text><text class="small" x="959" y="199">Monitor → Scheduler</text><text class="small" x="959" y="225">가용 CPU 자동 배정 / 중복 방지</text><text class="small" x="959" y="251">Worker · 실행 설정 적용</text><text class="sub" x="959" y="275">전처리 → solver → 후처리</text><text class="small" x="959" y="307">SQLite outbox → Telegram 알림</text><text class="sub green" x="959" y="348">실행 컨트롤러는 하나만 유지</text>
+<text class="label" x="959" y="168">기존 cfd-bot.service</text><text class="small" x="959" y="199">Monitor → Scheduler</text><text class="small" x="959" y="225">가용 CPU 자동 배정 / 중복 방지</text><text class="small" x="959" y="251">Worker · .process-core 적용</text><text class="sub" x="959" y="275">전처리 → solver → 후처리</text><text class="small" x="959" y="307">SQLite outbox → Telegram 알림</text><text class="sub green" x="959" y="348">실행 컨트롤러는 하나만 유지</text>
 <path class="line" d="M275 184H325"/><path class="line" d="M465 255V285"/><path class="line" d="M275 328H325"/><path class="line" d="M605 184H655"/><path class="line" d="M605 328H655"/><path class="line" d="M940 328H890"/>
 <text class="label green" x="40" y="430">LLD — 사용자 동작별 공용 서비스 연결</text>
 <rect class="box" x="40" y="455" width="1180" height="305" rx="10"/>

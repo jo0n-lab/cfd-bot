@@ -150,13 +150,13 @@
   <g transform="translate(590 748)">
     <rect rx="10" class="card domain" width="210" height="92"/>
     <text class="card-title" x="105" y="27">jobs.worker</text>
-    <text class="card-sub" x="105" y="49">pre → solver → post</text>
-    <text class="card-sub" x="105" y="68">terminal_event · artifact freeze</text>
+    <text class="card-sub" x="105" y="49">.process-core → pre → solver</text>
+    <text class="card-sub" x="105" y="68">선택 monitor → post · terminal_event</text>
   </g>
   <g transform="translate(1088 748)">
     <rect rx="10" class="card infra" width="330" height="92"/>
     <text class="card-title" x="165" y="27">OpenFOAM / Allrun</text>
-    <text class="card-sub" x="165" y="49">taskset CPU_SET · foreground wait</text>
+    <text class="card-sub" x="165" y="49">case/.process-core · opt-in monitor CPU</text>
     <text class="card-sub" x="165" y="68">worker와 SQLite로 상태 공유</text>
   </g>
   <path class="arrow" d="M252 794H338"/>

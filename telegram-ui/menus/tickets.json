@@ -48,6 +48,10 @@
       "title": "실행 명령",
       "hint": "예: ./Allrun --foreground"
     },
+    "monitoring_command": {
+      "title": "모니터링 스크립트",
+      "hint": "모니터링 전용 CPU에서 실행할 명령을 입력하세요. 기본값: ./Allmonitor"
+    },
     "preprocess": {
       "title": "전처리 명령",
       "hint": "기본값: ./Allclean · 한 줄에 한 명령. 빈칸이면 실행하지 않습니다."
@@ -87,6 +91,7 @@
     "case_directory": "서버에 존재하는 케이스 디렉터리를 입력하세요.",
     "automatic_cpu": "CPU 범위는 자동으로 배정됩니다. 직접 지정하려면 작업 큐 설정의 고급 설정을 선택하세요.",
     "command_required": "실행 명령을 입력하세요.",
+    "monitor_command_required": "모니터링 스크립트를 입력하세요.",
     "logs_required": "로그를 한 개 이상 지정하세요.",
     "duplicate_paths": "중복 경로를 제거하세요.",
     "png_pattern": "PNG 파일 또는 .png로 끝나는 패턴을 입력하세요.",
@@ -217,7 +222,13 @@
     "use_ticket": "티켓에서 실행 설정 지정",
     "case_body": "실행 설정: 케이스 설정 사용\n기존 Allrun / config/*Run의 NP와 실행 설정을 사용합니다. 코어 수와 실행 명령을 바꾸려면 아래에서 티켓 지정을 선택하세요.",
     "execution_body": "실행 설정\nNP: {cores}\nCPU: {cpu}\n명령: {command}\n자동 배정은 실행 직전에 빈 코어를 확인합니다. 코어가 부족하면 대기합니다.",
-    "inherited": "매크로 실행 설정 상속: {macro}\n변경은 부모 매크로 티켓에서 하세요."
+    "inherited": "매크로 실행 설정 상속: {macro}\n변경은 부모 매크로 티켓에서 하세요.",
+    "monitor_cpu": "{mark} 모니터링 별도 코어 배치",
+    "monitor_command": "모니터링 스크립트 수정",
+    "monitor_status": "모니터링 별도 코어: {state}\n스크립트: {command}",
+    "monitor_status_disabled": "모니터링 별도 코어: 비활성화\n케이스 Allrun의 자체 모니터만 사용합니다.",
+    "monitor_enabled": "활성화",
+    "monitor_disabled": "비활성화"
   },
   "scripts": {
     "body": "전·후처리\n각 케이스 폴더에서 전처리 → 계산 → 정상 종료 후 후처리 순으로 실행합니다.\nAllclean은 기존 계산 결과를 정리합니다. 이어서 계산할 때는 전처리를 비우세요.\n\n전처리: {preprocess}\n후처리: {postprocess}",
@@ -277,6 +288,7 @@
     "macro": "\n선택 케이스: {count}개\n공통 NP: {cores} · CPU: {cpu}\n소켓 간 실행: {cross_socket}\n명령: {command}",
     "pre": "\n전처리: {value}",
     "post": "\n후처리: {value}",
+    "monitor": "\n모니터링: {value}",
     "will_run": "\n\n변경 내용을 저장한 뒤 실행 큐에 등록합니다.",
     "save_only": "\n\n티켓 설정을 저장합니다.",
     "macro_run": "\n이미 대기 중인 작업은 중복 등록하지 않습니다.",

@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .artifacts import freeze_exports
 from .config import cases_for, cpu_set, load_case
-from .cpu_allocation import allocate_cpus
+from .cpu_allocation import allocate_cpus, format_cpus, occupied_cpus
 from .execution import apply_execution_settings, execution_case, openfoam_environment
 from .logs import (case_logs, finish_log, read_log, recent_case_log,
                    select_case_log, start_cursor)
@@ -65,6 +65,13 @@ class Scheduler:
                                      'scenarios.notifications.worker_lost_solver_alive',
                                      case_name=job['case']['name'])))
                 continue
+            monitor_alive = (job.get('monitor_identity') and
+                             identity(job.get('monitor_pid')) == job['monitor_identity'])
+            if monitor_alive:
+                try:
+                    os.killpg(job['monitor_pid'], signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
             if not job.get('started') or job.get('phase') == 'preprocess':
                 self.store.update_job(
                     job['id'], expected=LIVE, status='failed', finished=now,
@@ -148,6 +155,7 @@ class Scheduler:
                                      'scenarios.notifications.waiting', case_name=case['name'], reason=reason)))
                 return
             automatic = case.get('cpu_policy') == 'auto'
+            monitor_requested = bool(case.get('monitoring', {}).get('allocate_cpu'))
             if not automatic:
                 requested = cpu_set(case['cpu_set'])
                 unavailable = requested - os.sched_getaffinity(0)
@@ -156,7 +164,7 @@ class Scheduler:
                                           reason=self.ui.text('scenarios.jobs.cpu_unavailable',
                                                               cpus=','.join(map(str, sorted(unavailable)))))
                     return
-                if any(requested & cpu_set(j['case']['cpu_set']) for j in active):
+                if requested & occupied_cpus({}, active):
                     self.store.update_job(job['id'], expected=('queued',),
                                           reason=self.ui.text('scenarios.jobs.cpu_reserved'))
                     return
@@ -175,13 +183,25 @@ class Scheduler:
                 return
             # Environment setup may take time; inspect live CPU ownership last.
             try:
-                if automatic:
+                live = {}
+                if automatic or monitor_requested:
                     live = snapshot(self.config['ofps_command'])['cases']
                     if case['_root'] in live:
                         raise ValueError(self.ui.text('scenarios.jobs.external_running'))
-                    allocation = allocate_cpus(case['cores'], live, active)
-                    case['cpu_set'] = allocation['cpu_set']
+                if automatic:
+                    allocation = allocate_cpus(case['cores'] + int(monitor_requested), live, active)
+                    selected = sorted(cpu_set(allocation['cpu_set']))
+                    case['cpu_set'] = format_cpus(selected[:case['cores']])
+                    if monitor_requested:
+                        case['monitor_cpu'] = str(selected[case['cores']])
+                elif monitor_requested:
+                    allocation = allocate_cpus(1, live, active + [{'case': case}])
+                    case['monitor_cpu'] = allocation['cpu_set']
                 safe, report = check_cpus(self.config['ofps_command'], case)
+                if safe and monitor_requested:
+                    safe, report = check_cpus(
+                        self.config['ofps_command'],
+                        dict(case, cpu_set=case['monitor_cpu'], allow_cross_socket=True))
             except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as exc:
                 safe, report = False, str(exc)
             if not safe:
@@ -273,6 +293,30 @@ def run_case_hooks(case, stage, store, jid, folder, env):
     return errors
 
 
+def _case_command(case, command):
+    command = list(command)
+    if '/' not in command[0] and (Path(case['_root']) / command[0]).is_file():
+        command[0] = './' + command[0]
+    return command
+
+
+def _stop_child(child, timeout=10):
+    if child is None or child.poll() is not None:
+        return
+    try:
+        os.killpg(child.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        child.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(child.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        child.wait()
+
+
 def worker(state_dir, jid):
     store = Store(state_dir)
     job = store.job(jid)
@@ -286,7 +330,8 @@ def worker(state_dir, jid):
                            worker_pid=os.getpid(), worker_identity=identity(os.getpid()), phase='preprocess')
     if job is None:
         return 1
-    solver = None
+    solver = monitor = None
+    monitor_output = None
     try:
         apply_execution_settings(case, folder)
         env = os.environ.copy()
@@ -313,11 +358,31 @@ def worker(state_dir, jid):
                                       stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
             store.update_job(jid, expected=('running',), solver_pid=solver.pid,
                              solver_identity=identity(solver.pid))
+            monitoring = case.get('monitoring')
+            monitor_ended_early = False
+            if monitoring:
+                monitor_env = dict(env, TCB_MONITORED_SOLVER_PID=str(solver.pid),
+                                   CFD_BOT_MONITOR_CPU=case['monitor_cpu'])
+                monitor_command = (['taskset', '-c', case['monitor_cpu']] +
+                                   _case_command(case, monitoring['command']))
+                monitor_output = (folder / 'monitor.log').open('ab')
+                monitor_output.write((f"[monitor] {shlex.join(monitor_command)}\n").encode())
+                monitor_output.flush()
+                monitor = subprocess.Popen(
+                    monitor_command, cwd=case['_root'], env=monitor_env,
+                    stdin=subprocess.DEVNULL, stdout=monitor_output,
+                    stderr=subprocess.STDOUT, start_new_session=True)
+                store.update_job(jid, expected=('running',), monitor_pid=monitor.pid,
+                                 monitor_identity=identity(monitor.pid),
+                                 monitor_cpu=case['monitor_cpu'])
             if wants_event(case, 'started'):
+                notice = ('scenarios.notifications.queue_started_monitor'
+                          if monitoring else 'scenarios.notifications.queue_started')
                 store.event(jid + ':start', job.get('notification_chats', []),
                             dict(kind='text', text=ui.text(
-                                'scenarios.notifications.queue_started', case_name=case['name'],
-                                cores=case['cores'], cpu_list=case['cpu_set'], job_id=jid)))
+                                notice, case_name=case['name'], cores=case['cores'],
+                                cpu_list=case['cpu_set'], monitor_cpu=case.get('monitor_cpu', ''),
+                                job_id=jid)))
             while True:
                 rc = solver.poll()
                 wrapper_telemetry = read_log(runner_log, wrapper_telemetry,
@@ -336,7 +401,29 @@ def worker(state_dir, jid):
                 store.update_job(jid, expected=('running',), telemetry=current, log_path=log_path)
                 if rc is not None:
                     break
+                if monitor is not None and monitor.poll() is not None:
+                    monitor_ended_early = True
                 time.sleep(0.5)
+        monitor_errors = []
+        monitor_rc = None
+        if monitor is not None:
+            try:
+                monitor_rc = monitor.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                _stop_child(monitor)
+                monitor_rc = monitor.returncode
+                monitor_errors.append(ui.text('scenarios.jobs.hook_timeout',
+                                               label=ui.text('scenarios.jobs.monitor'), timeout=30))
+            if monitor_ended_early:
+                monitor_errors.append(ui.text('scenarios.jobs.monitor_ended_early', code=monitor_rc))
+            elif monitor_rc:
+                monitor_errors.append(ui.text(
+                    'scenarios.jobs.hook_exit', label=ui.text('scenarios.jobs.monitor'),
+                    code=monitor_rc, command=shlex.join(monitoring['command'])))
+            store.update_job(jid, expected=('running',), monitor_returncode=monitor_rc,
+                             monitor_finished=time.time(), monitor_errors=monitor_errors)
+            monitor_output.close()
+            monitor_output = None
         current = finish_log(log_path, current, watcher=watcher)
         wrapper_telemetry = finish_log(runner_log, wrapper_telemetry,
                                        watcher=watcher)
@@ -353,20 +440,20 @@ def worker(state_dir, jid):
                                       status)
         job = store.job(jid)
         job.update(status=status, finished=time.time(), reason=reason, telemetry=current,
-                   postprocess_errors=post_errors, returncode=rc)
+                   postprocess_errors=post_errors, monitor_errors=monitor_errors,
+                   monitor_returncode=monitor_rc, returncode=rc)
         store.put('event:' + jid, dict(kind='terminal', run=job, files=files, notes=notes))
         store.update_job(jid, expected=LIVE, status=status, finished=job['finished'], reason=reason,
-                         telemetry=current, postprocess_errors=post_errors, returncode=rc)
+                         telemetry=current, postprocess_errors=post_errors,
+                         monitor_errors=monitor_errors, monitor_returncode=monitor_rc,
+                         returncode=rc)
         store.remember_run(job)
         return 0 if status == 'succeeded' else 1
     except Exception as exc:
-        if solver is not None and solver.poll() is None:
-            os.killpg(solver.pid, signal.SIGTERM)
-            try:
-                solver.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                os.killpg(solver.pid, signal.SIGKILL)
-                solver.wait()
+        _stop_child(solver)
+        _stop_child(monitor)
+        if monitor_output is not None:
+            monitor_output.close()
         store.update_job(jid, expected=LIVE, status='failed', finished=time.time(),
                          reason=ui.text('scenarios.jobs.worker_error', error=exc))
         return 1

@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from cfd_bot.config import ConfigError, cpu_set
 from cfd_bot.cpu_allocation import occupied_cpus, select_cpus, topology
-from cfd_bot.execution import execution_case
+from cfd_bot.execution import apply_execution_settings, execution_case
 from cfd_bot.jobs import Scheduler
 from cfd_bot.processes import check_cpus, snapshot
 from tests.test_core import Environment
@@ -31,6 +31,12 @@ class AllocationTests(unittest.TestCase):
         self.assertEqual(select_cpus(2, self.layout, range(8), busy)['cpu_set'], '6-7')
         with self.assertRaisesRegex(ValueError, 'CPU 범위'):
             occupied_cpus({'unknown': {'processes': [{'cpu_list': ''}]}}, [])
+
+    def test_monitor_cpu_is_reserved_for_later_jobs(self):
+        active = [{'case': {'cpu_set': '0-2', 'monitor_cpu': '4'}}]
+        self.assertEqual(occupied_cpus({}, active), {0, 1, 2, 4})
+        self.assertEqual(select_cpus(2, self.layout, range(8),
+                                     occupied_cpus({}, active))['cpu_set'], '5-6')
 
     def test_spans_sockets_without_reducing_count_or_using_busy_cores(self):
         allocation = select_cpus(5, self.layout, range(8), set())
@@ -84,6 +90,86 @@ class AllocationTests(unittest.TestCase):
                 (folder / f'node{node}').mkdir()
             self.assertEqual(topology(root), {0: (0, 0, 0), 2: (1, 2, 0), 3: (1, 3, 1)})
 
+    def test_case_source_preserves_np_with_trailing_export_during_auto_allocation(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            allrun = root / 'Allrun'
+            before = '#!/bin/sh\nNP=4; export NP\nCPU_SET=0-3; export CPU_SET\n'
+            allrun.write_text(before)
+            case = dict(_root=str(root), resource_source='case', cpu_policy='auto',
+                        cores=1, command=['./Allrun'])
+
+            resolved = execution_case(case)
+
+            self.assertEqual(resolved['cores'], 4)
+            resolved['cpu_set'] = '4-7'
+            apply_execution_settings(resolved, root / 'job')
+            self.assertEqual(allrun.read_text(),
+                             '#!/bin/sh\nNP=4; export NP\nCPU_SET=4-7; export CPU_SET\n')
+            backup = root / 'job/case-settings-before/Allrun'
+            self.assertEqual(backup.read_text(), before)
+            self.assertEqual((root / '.process-core').read_text(),
+                             'NP=4\nCPU_SET="4-7"\n\nexport NP CPU_SET\n')
+
+    def test_missing_process_core_is_created_for_manual_case(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'Allrun').write_text('#!/bin/sh\nNP=2\nCPU_SET=6-7\n')
+            case = execution_case(dict(_root=str(root), resource_source='case',
+                                       cpu_policy='manual', cores=1,
+                                       command=['./Allrun']))
+
+            apply_execution_settings(case, root / 'job')
+
+            self.assertEqual((root / '.process-core').read_text(),
+                             'NP=2\nCPU_SET="6-7"\n\nexport NP CPU_SET\n')
+            self.assertFalse((root / 'job/case-settings-before/.process-core').exists())
+
+    def test_process_core_wins_over_legacy_settings_and_tracks_auto_allocation(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'config').mkdir()
+            (root / 'Allrun').write_text('#!/bin/sh\nNP=99\nCPU_SET=0-98\n')
+            (root / 'config/solverRun').write_text('NP=8\nCPU_SET=0-7\n')
+            original = 'NP=4\nCPU_SET="0-3"\n\nexport NP CPU_SET\n'
+            (root / '.process-core').write_text(original)
+            case = execution_case(dict(_root=str(root), resource_source='case',
+                                       cpu_policy='auto', cores=1,
+                                       command=['./Allrun']))
+            self.assertEqual(case['cores'], 4)
+
+            case['cpu_set'] = '4-7'
+            apply_execution_settings(case, root / 'job')
+
+            self.assertEqual((root / '.process-core').read_text(),
+                             'NP=4\nCPU_SET="4-7"\n\nexport NP CPU_SET\n')
+            self.assertEqual((root / 'job/case-settings-before/.process-core').read_text(),
+                             original)
+            self.assertIn('NP=8', (root / 'config/solverRun').read_text())
+
+    def test_process_core_symlink_is_rejected(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / 'outside'
+            target.write_text('NP=2\nCPU_SET=0-1\n')
+            (root / '.process-core').symlink_to(target)
+            (root / 'Allrun').write_text('#!/bin/sh\n')
+            with self.assertRaisesRegex(ValueError, '일반 파일'):
+                execution_case(dict(_root=str(root), resource_source='case',
+                                    cpu_policy='auto', cores=2,
+                                    command=['./Allrun']))
+
+    def test_case_np_parser_does_not_execute_shell_expressions(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            marker = root / 'unsafe'
+            (root / 'Allrun').write_text(f'NP="$(touch {marker})"; export NP\n')
+            resolved = execution_case(dict(_root=str(root), resource_source='case',
+                                           cpu_policy='auto', cores=2,
+                                           command=['./Allrun']))
+            self.assertEqual(resolved['cores'], 2)
+            self.assertFalse(marker.exists())
+
 
 class AutomaticSchedulerTests(Environment):
     def setUp(self):
@@ -108,6 +194,22 @@ class AutomaticSchedulerTests(Environment):
         self.case_data.update(allow_cross_socket=False, cpu_policy='unknown')
         with self.assertRaisesRegex(ConfigError, 'cpu_policy'):
             self.write_case()
+
+    def test_case_source_uses_semicolon_export_np_for_allocation(self):
+        self.case_data['resource_source'] = 'case'
+        self.write_case()
+        (self.case_root / 'Allrun').write_text('#!/bin/sh\nNP=4; export NP\n')
+        job = self.store.enqueue(self.case)
+        with patch('cfd_bot.jobs.openfoam_environment', return_value=os.environ.copy()), \
+                patch('cfd_bot.jobs.snapshot', return_value={'cases': {}}), \
+                patch('cfd_bot.jobs.check_cpus', return_value=(True, 'SAFE')) as check, \
+                patch('cfd_bot.jobs.subprocess.Popen') as launch:
+            Scheduler(self.config, self.store).tick({})
+        admitted = self.store.job(job['id'])['case']
+        self.assertEqual(admitted['cores'], 4)
+        self.assertEqual(admitted['cpu_set'], '0-3')
+        self.assertEqual(check.call_count, 1)
+        launch.assert_called_once()
 
     def test_fresh_scan_after_environment_setup_picks_other_socket(self):
         self.case_data['cores'] = 3
@@ -134,6 +236,24 @@ class AutomaticSchedulerTests(Environment):
         self.assertEqual(order, ['environment', 'snapshot', 'check'])
         self.assertEqual(self.store.job(job['id'])['case']['cpu_set'], '4-6')
         self.assertNotIn('cpu_set', json.loads(self.case_path.read_text()))
+
+    def test_auto_monitor_reserves_one_extra_cpu_without_changing_solver_cores(self):
+        self.case_data.update(cores=3, monitoring={
+            'allocate_cpu': True, 'command': ['./Allmonitor']})
+        self.write_case()
+        job = self.store.enqueue(self.case)
+        with patch('cfd_bot.jobs.openfoam_environment', return_value=os.environ.copy()), \
+                patch('cfd_bot.jobs.snapshot', return_value={'cases': {}}), \
+                patch('cfd_bot.jobs.check_cpus', return_value=(True, 'SAFE')) as check, \
+                patch('cfd_bot.jobs.subprocess.Popen') as launch:
+            Scheduler(self.config, self.store).tick({})
+        admitted = self.store.job(job['id'])['case']
+        self.assertEqual(len(cpu_set(admitted['cpu_set'])), 3)
+        self.assertEqual(len(cpu_set(admitted['monitor_cpu'])), 1)
+        self.assertFalse(cpu_set(admitted['cpu_set']) & cpu_set(admitted['monitor_cpu']))
+        self.assertEqual(admitted['cores'], 3)
+        self.assertEqual(check.call_count, 2)
+        launch.assert_called_once()
 
     def test_reserves_cpu_sets_for_two_workers_started_in_the_same_tick(self):
         self.config['scheduler']['max_parallel'] = 2

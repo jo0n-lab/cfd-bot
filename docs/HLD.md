@@ -24,6 +24,10 @@
 
 현재 실행 중인 계산은 watcher DB가 아니라 요청 시 새로 실행한 `ofps` snapshot으로 판단합니다. `/stat`과 백그라운드 Monitor가 같은 `processes.snapshot()` 경로를 사용하며, `SNAPSHOT_LOCK`으로 동시 프로세스 스캔을 직렬화합니다.
 
+OpenFOAM 프로세스는 명령 이름만으로 case로 인정하지 않습니다. 실행 인자와 작업 경로에서 `system/controlDict`가 있는 실제 case root를 찾은 항목만 snapshot과 자동 감시에 포함합니다.
+
+Basilisk 프로세스는 symlink 호출 위치가 아닌 실제 `ofps` 파일 위치를 기본 탐색 root로 사용합니다. `OFPS_BASILISK_ROOT` 안에서 Makefile과 C source가 있는 case를 확인한 항목만 포함합니다.
+
 application에서 `ofps`를 호출할 때는 `CFD_BOT_OFPS_MANAGED=1`을 전달합니다. 이 호출에서는 `bin/ofps`가 프로세스 scan만 수행하고, 상태를 소유한 service가 티켓 JSON과 SQLite를 한 번만 반영합니다. `/stat`은 표시와 무관한 티켓 기록을 기다리지 않으며 같은 service의 Monitor가 상태를 반영합니다. 터미널에서 직접 실행하는 `ofps`, `ofps --watch`, `ofps --check`는 기존처럼 자체 상태 동기화를 수행합니다.
 
 ### 2.2 티켓은 관측의 전제 조건이 아님
@@ -53,7 +57,9 @@ Telegram에 표시하는 고정 문구, 버튼, 명령 설명과 템플릿은 `t
 
 ## 3. 시스템 컨텍스트
 
-티켓 실행 설정은 세 인터페이스에서 같은 도메인으로 연결합니다. 독립 티켓의 기본 `case` 모드는 기존 케이스 설정을 사용하고, `ticket` 모드는 사용자가 명시한 NP·실행 명령을 우선합니다. 매크로 하위 티켓의 실행 설정은 부모에서 편집합니다.
+티켓 실행 설정은 세 인터페이스에서 같은 도메인으로 연결합니다. 독립 티켓의 기본 `case` 모드는 기존 케이스 설정을 사용하고, `ticket` 모드는 사용자가 명시한 NP·실행 명령을 우선합니다. 매크로 하위 티켓의 실행 설정은 부모에서 편집합니다. 기본값은 케이스 `Allrun`이 가진 자체 모니터 하나만 사용하는 방식입니다. 사용자가 모니터링 별도 코어 배치를 명시적으로 활성화한 때에만 계산 CPU와 겹치지 않는 물리 CPU 1개를 추가 예약하고 입력한 monitor command를 실행합니다.
+
+`case` 모드는 케이스별 `.process-core`가 있으면 그 파일의 안전한 literal `NP`·`CPU_SET`을 최종 실행 설정으로 사용하고, 없는 기존 케이스는 `Allrun`과 `config/*Run`에서 값을 읽습니다. `NP=4; export NP` 같은 일반적인 shell 대입도 인식합니다. Scheduler가 CPU 배정을 승인하면 worker는 전처리 전에 `.process-core`를 생성하거나 동기화하므로 `Allrun`과 cfd-bot이 같은 NP·CPU 범위를 사용합니다.
 
 편집 화면을 여는 읽기 동작은 Monitor가 저장한 최근 snapshot을 사용해 즉시 표시합니다. 실제 실행 요청은 별도의 fresh `ofps` 검사를 통과해야 하므로 편집 성능과 중복 실행 방지를 분리합니다.
 
@@ -66,8 +72,14 @@ flowchart LR
     CASE --> EXEC[execution_case]
     TICKET --> EXEC
     MACRO --> EXEC
-    EXEC --> CPU[가용 코어 배정 / 중복 금지]
-    CPU --> WORKER[실행 설정 적용 → worker]
+    EXEC --> OPT{별도 monitor 코어 활성화?}
+    OPT -- 아니오 --> CPU[solver 코어 배정 / 중복 금지]
+    OPT -- 예 --> CPUX[solver 코어 + monitor 코어 배정]
+    CPUX --> CPU
+    CPU --> WORKER[worker → case/.process-core 생성·동기화]
+    WORKER --> SOLVER[solver / 계산 CPU]
+    WORKER -. 명시 활성화 시 .-> MONITOR[monitor command / 전용 CPU]
+    SOLVER -. TCB_MONITORED_SOLVER_PID .-> MONITOR
 ```
 
 ```mermaid
@@ -165,7 +177,7 @@ SSH, tmux, systemd, `nohup`, 외부 스크립트 등 실행 주체와 관계없�
 
 ### 5.3 관리 큐 실행
 
-`티켓 선택 → SQLite queued → 실행 환경 확인 → CPU 자동/수동 배정 → ofps --check → worker → 전처리 → solver → 종료 판정 → 후처리 → 알림`
+`티켓 선택 → SQLite queued → 실행 환경 확인 → 계산 CPU와 선택적 모니터 CPU 배정 → ofps --check → worker → .process-core 생성·동기화 → 전처리 → solver + monitor → 종료 판정 → 후처리 → 알림`
 
 한 케이스에는 동시에 하나의 활성 job만 존재할 수 있습니다. 매크로 검색은 지정 루트의 직계 하위 폴더 중 바로 아래에 `Allrun`이 있는 폴더만 대상으로 하며, 매크로 티켓은 선택한 child를 지정 순서대로 원자적으로 등록합니다.
 

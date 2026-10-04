@@ -46,6 +46,9 @@ def occupied_cpus(observed, active):
             busy.update(cpu_set(value))
     for job in active:
         busy.update(cpu_set(job['case']['cpu_set']))
+        monitor_cpu = job['case'].get('monitor_cpu')
+        if monitor_cpu:
+            busy.update(cpu_set(monitor_cpu))
     return busy
 
 

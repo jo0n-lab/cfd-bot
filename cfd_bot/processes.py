@@ -146,8 +146,9 @@ def parse_snapshot(raw):
             engine = line[8:]
         elif line.startswith('CASE: '):
             root = line[6:]
-            if root.endswith(' [controlDict not found]'):
-                root = root[:-len(' [controlDict not found]')]
+            if root.endswith((' [controlDict not found]', ' [Basilisk case not found]')):
+                current = None
+                continue
             root = str(Path(root).expanduser().resolve())
             current = cases.setdefault(root, {'root': root, 'engines': [], 'processes': [], 'supervisors': []})
             if engine not in current['engines']:
