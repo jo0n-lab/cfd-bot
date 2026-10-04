@@ -102,6 +102,11 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     await page.locator('#execution-source').selectOption('ticket');
     await page.locator('#f-macro_cores').fill('4');
     await page.locator('#f-macro_command').fill('./Allrun --foreground');
+    assert.equal(await page.locator('#monitoring-command').count(),0);
+    await page.locator('[data-field="monitoring_cpu"]').check();
+    assert.equal(await page.locator('#monitoring-command').count(),1);
+    assert.equal(await page.locator('#monitoring-command').isEnabled(),true);
+    await page.locator('#monitoring-command').fill('./Allmonitor --interval 2');
     await page.locator('[data-action="save"]').click();
     await page.waitForFunction(()=>document.querySelector('#draft-state').textContent.includes('저장된'));
     assert.equal(await page.locator('#execution-source').inputValue(),'ticket');
@@ -110,6 +115,7 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     assert.equal(single.resource_source,'ticket');
     assert.equal(single.cores,4);
     assert.deepEqual(single.command,['./Allrun','--foreground']);
+    assert.deepEqual(single.monitoring,{allocate_cpu:true,command:['./Allmonitor','--interval','2']});
     await page.screenshot({path:'/tmp/cfd-web-single-execution.png',fullPage:true});
 
     await page.locator('[data-action="save"]').click();

@@ -1,0 +1,4 @@
+NP=48
+CPU_SET="0-23,26-49"
+
+export NP CPU_SET

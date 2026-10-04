@@ -2,9 +2,9 @@
 set -uo pipefail
 
 readonly script_path=$(readlink -f -- "${BASH_SOURCE[0]}")
-readonly project_root=$(cd "$(dirname "$script_path")/.." && pwd)
-readonly invocation_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
-readonly basilisk_root=${OFPS_BASILISK_ROOT:-$invocation_dir}
+readonly script_dir=$(cd "$(dirname "$script_path")" && pwd -P)
+readonly project_root=$(cd "$script_dir/.." && pwd)
+readonly basilisk_root=${OFPS_BASILISK_ROOT:-$script_dir}
 readonly bot_config=${CFD_BOT_CONFIG:-$project_root/bot.json}
 readonly bot_python=${CFD_BOT_PYTHON:-python3}
 
@@ -262,9 +262,11 @@ openfoam_case_from_process()
 
 basilisk_case_from_process()
 {
-    local executable=$1 candidate parent
+    local executable=$1 candidate parent start
     candidate=${executable%/*}
-    while [[ $candidate == "$basilisk_root"* && $candidate != / ]]; do
+    start=$candidate
+    while [[ $candidate != / ]] \
+        && [[ $candidate == "$basilisk_root" || $candidate == "$basilisk_root"/* ]]; do
         if [[ -f $candidate/Makefile ]] && compgen -G "$candidate/*.c" >/dev/null; then
             printf '%s\n' "$candidate"
             return
@@ -273,7 +275,7 @@ basilisk_case_from_process()
         [[ $parent != "$candidate" ]] || break
         candidate=$parent
     done
-    printf '%s\n' "${executable%/*}"
+    printf '%s [Basilisk case not found]\n' "$start"
 }
 
 supervisor_identity()
@@ -411,9 +413,11 @@ scan_once()
         if is_openfoam_application "$name" "$executable"; then
             engine=OpenFOAM
             case_dir=$(openfoam_case_from_process "$cwd" "${argv[@]}")
+            [[ $case_dir != *' [controlDict not found]' ]] || continue
         elif is_basilisk_application "$executable"; then
             engine=Basilisk
             case_dir=$(basilisk_case_from_process "$executable")
+            [[ $case_dir != *' [Basilisk case not found]' ]] || continue
         else
             continue
         fi

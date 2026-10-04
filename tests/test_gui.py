@@ -82,6 +82,23 @@ class FormTests(unittest.TestCase):
         self.assertNotIn('cores', inherited)
         self.assertNotIn('command', inherited)
 
+    def test_monitoring_cpu_and_script_roundtrip(self):
+        self.assertFalse(self.fields['monitoring_cpu'])
+        self.assertEqual(self.fields['monitoring_command'], './Allmonitor')
+        self.fields.update(monitoring_cpu=True,
+                           monitoring_command='./Allmonitor --interval 2')
+        data = self.validate()
+        self.assertEqual(data['monitoring'], {
+            'allocate_cpu': True, 'command': ['./Allmonitor', '--interval', '2']})
+        reopened = form_values(data, self.tickets)
+        self.assertTrue(reopened['monitoring_cpu'])
+        self.assertEqual(reopened['monitoring_command'], './Allmonitor --interval 2')
+        reopened['monitoring_cpu'] = False
+        self.assertNotIn('monitoring', self.validate(reopened))
+        self.fields.update(monitoring_cpu=True, monitoring_command='')
+        with self.assertRaisesRegex(ValueError, '모니터링 스크립트'):
+            self.validate()
+
     def test_single_explicit_execution_validates_core_count_and_manual_allocation(self):
         self.fields.update(execution_source='ticket', macro_cpu_policy='manual', macro_cpu_set='2-3')
         for count in ('', '0', '-1', '1.5'):
@@ -363,6 +380,20 @@ class WidgetTests(unittest.TestCase):
         self.assertTrue(editor.execution_source.instate(['disabled']))
         entries = [w for w in editor.common_execution.winfo_children() if w.winfo_class() == 'TEntry']
         self.assertTrue(all(w.instate(['disabled']) for w in entries))
+
+    def test_monitoring_checkbox_controls_script_and_saves(self):
+        editor = self.editor
+        editor.case_entry.insert(0, str(self.case))
+        self.assertFalse(editor.monitoring_command_group.winfo_ismapped())
+        editor.variables['monitoring_cpu'][0].set(True)
+        editor.update_execution_visibility()
+        self.root.update_idletasks()
+        self.assertTrue(editor.monitoring_command_group.winfo_ismapped())
+        self.assertFalse(editor.monitoring_command.instate(['disabled']))
+        editor.variables['monitoring_command'][0].set('./Allmonitor --interval 2')
+        self.assertTrue(editor.save())
+        self.assertEqual(load_case(editor.current)['monitoring'], {
+            'allocate_cpu': True, 'command': ['./Allmonitor', '--interval', '2']})
 
     def test_execution_button_tracks_running_and_idle_ticket(self):
         editor = self.editor

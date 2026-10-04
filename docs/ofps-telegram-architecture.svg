@@ -161,12 +161,12 @@
   <g transform="translate(610 832)">
     <rect rx="10" class="card bot" width="250" height="60"/>
     <text class="card-title" x="125" y="25">Scheduler + worker</text>
-    <text class="card-sub" x="125" y="44">CPU 예약 · ofps --check</text>
+    <text class="card-sub" x="125" y="44">CPU 예약 · core 파일 · ofps 검사</text>
   </g>
   <g transform="translate(982 832)">
     <rect rx="10" class="card foam" width="330" height="60"/>
     <text class="card-title" x="165" y="25">OpenFOAM / Allrun</text>
-    <text class="card-sub" x="165" y="44">종료 후 같은 controlDict 판정</text>
+    <text class="card-sub" x="165" y="44">case/.process-core 사용 · 종료 판정</text>
   </g>
   <path class="arrow" d="M232 862H330"/>
   <path class="arrow" d="M540 862H610"/>

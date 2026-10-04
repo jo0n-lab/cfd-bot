@@ -93,8 +93,8 @@
   <g transform="translate(1028 430)">
     <rect rx="10" class="card external" width="280" height="92"/>
     <text class="card-title" x="140" y="29">Detached Worker</text>
-    <text class="card-sub" x="140" y="51">preprocess → solver → postprocess</text>
-    <text class="card-sub" x="140" y="70">bot 재시작과 독립된 process group</text>
+    <text class="card-sub" x="140" y="51">.process-core → solver + 선택 monitor</text>
+    <text class="card-sub" x="140" y="70">pre/post · 독립 process group</text>
   </g>
 
   <g transform="translate(164 570)">

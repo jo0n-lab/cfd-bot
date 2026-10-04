@@ -91,6 +91,11 @@ class TicketServiceTests(Environment):
                 with self.assertRaisesRegex(ValueError, '계산 중에는 코어'):
                     self.service.save(draft['values'], self.name, self.name)
                 self.assertEqual(self.service.path(self.name).read_bytes(), before)
+        draft = self.service.open(self.name)
+        draft['values'].update(monitoring_cpu=True, monitoring_command='./Allmonitor')
+        with self.assertRaisesRegex(ValueError, '모니터링 실행 설정'):
+            self.service.save(draft['values'], self.name, self.name)
+        self.assertEqual(self.service.path(self.name).read_bytes(), before)
 
     def test_submission_retry_keeps_request_id_and_source_files(self):
         draft = self.service.open(self.name)
@@ -415,6 +420,9 @@ class TicketChatTests(Environment):
         self.field('case_dir', str(self.root))
         self.click('queue')
         self.field('macro_cores', '1')
+        self.click('queue')
+        self.click('toggle', 'monitoring_cpu')
+        self.click('card')
         self.click('scripts')
         self.assertIn('./Allclean', self.panel()['text'])
         self.assertIn('./Allpost', self.panel()['text'])
@@ -436,6 +444,8 @@ class TicketChatTests(Environment):
         child = read_json(self.service.path(macro['cases'][0]['ticket']))
         self.assertEqual(child['preprocess'], [{'command': ['./prepare', '--clean']}])
         self.assertEqual(child['postprocess'], [{'command': ['./Allpost']}])
+        self.assertEqual(child['monitoring'], {
+            'allocate_cpu': True, 'command': ['./Allmonitor']})
 
     def test_new_case_browser_starts_at_openfoam_run(self):
         run = self.root / 'OpenFOAM/joon-dev/run'
@@ -622,6 +632,24 @@ class TicketChatTests(Environment):
         accept_submissions(self.config, self.store)
         self.assertEqual(self.store.jobs()[0]['case']['cores'], 3)
         self.assertEqual(self.store.jobs()[0]['case']['command'], ['./CustomRun'])
+
+    def test_monitoring_cpu_toggle_enables_script_and_saves_shared_schema(self):
+        self.new()
+        self.click('basic')
+        self.field('case_dir', str(self.case_root))
+        self.click('queue')
+        self.assertIn('모니터링 별도 코어: 비활성화', self.panel()['text'])
+        self.assertNotIn('./Allmonitor', self.panel()['text'])
+        self.click('toggle', 'monitoring_cpu')
+        self.assertIn('모니터링 별도 코어: 활성화', self.panel()['text'])
+        self.assertIn('./Allmonitor', self.panel()['text'])
+        self.field('monitoring_command', './Allmonitor --interval 5')
+        self.click('review', 'save')
+        self.assertIn('모니터링: ./Allmonitor --interval 5', self.panel()['text'])
+        self.click('save')
+        saved = read_json(self.service.path(self.session()['draft']['current']))
+        self.assertEqual(saved['monitoring'], {
+            'allocate_cpu': True, 'command': ['./Allmonitor', '--interval', '5']})
 
     def test_manual_mapping_requires_advanced_mode_and_auto_clears_mapping(self):
         self.new('macro')

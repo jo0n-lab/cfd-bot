@@ -167,6 +167,10 @@ Bot.fresh_runs()
 
 `processes.snapshot()`은 `CFD_BOT_OFPS_MANAGED=1` 환경으로 `ofps_command`를 최대 45초 실행하고 출력 계약을 검사합니다. 현재 명령 `/home/joon/.local/bin/ofps`는 저장소의 자체 완결형 `bin/ofps`를 가리키며, 이 파일이 `/proc` scan을 직접 수행합니다. 별도 scanner subprocess나 fallback은 없습니다. `parse_snapshot()`은 `ENGINE`, `CASE`, `SUPERVISOR`와 process table을 case root별로 묶습니다.
 
+OpenFOAM application 이름이나 실행 파일 경로가 일치해도 `-case` 또는 현재 경로의 상위에서 `system/controlDict`를 찾지 못하면 scanner가 해당 process record를 버립니다. 이전 scanner 형식의 `[controlDict not found]` CASE block도 parser가 전체 폐기해 일반 디렉터리가 자동 감시 대상으로 승격되지 않게 합니다.
+
+Basilisk 기본 root는 `BASH_SOURCE`의 symlink 디렉터리가 아니라 `readlink -f`로 구한 실제 `bin/ofps` 디렉터리입니다. 다른 tree는 `OFPS_BASILISK_ROOT`로 명시합니다. root 안에서도 Makefile과 C source를 함께 찾지 못하면 record를 버리고, parser는 `[Basilisk case not found]` block을 폐기합니다.
+
 `bin/ofps`는 일반 scan, `--watch`, `--check`를 내장 Bash scanner로 처리하고 bot 확장 option은 같은 파일의 argv 분기에서 `python3 -m cfd_bot`으로 연결합니다. standalone 호출은 scan 결과를 stdout과 snapshot·티켓 상태 동기화에 함께 사용하며, 동기화 실패가 CPU 검사 종료코드를 바꾸지 않습니다. managed 호출은 stdout만 반환하고 상태를 소유한 application service가 필요할 때 `sync_ticket_states()`를 실행합니다. 이 함수는 catalog를 한 번 읽고, job을 case root별로 묶으며, 모든 `observed:*` 값을 한 SQLite 연결에서 조회합니다.
 
 후처리 단계:
@@ -256,6 +260,7 @@ Scheduler는 FIFO 순서에서 다음을 확인합니다.
 - 티켓 삭제·이름 변경·macro 관계
 - OpenFOAM/MPI 실행 환경
 - 자동 CPU topology 또는 수동 `cpu_set`
+- 명시적으로 활성화된 `monitoring.allocate_cpu`에 필요한 빈 물리 CPU 1개
 - active job 예약 CPU와 현재 `ofps` CPU 사용량
 - 최종 `ofps --check`
 
@@ -282,28 +287,36 @@ DB의 partial unique index가 한 `case_root`의 `queued|starting|running|postpr
 
 worker는 다음 순서로 동작합니다.
 
-1. 실행 설정을 case에 적용하고 backup을 남깁니다.
+1. 승인된 `NP`·`CPU_SET`으로 case의 `.process-core`를 생성하거나 동기화하고, 기존 파일을 바꿀 때 backup을 남깁니다.
 2. `preprocess` hooks를 순서대로 실행합니다.
 3. 기존 로그 cursor를 수집합니다.
 4. `taskset -c <cpu_set> <command>`로 solver wrapper를 실행합니다.
-5. wrapper 종료 코드와 케이스 로그를 병합해 판정합니다.
-6. 성공 시 `postprocess` hooks를 실행합니다.
-7. 이번 실행에서 갱신된 Residual 한 개를 event directory에 복사합니다.
-8. terminal event를 outbox에 저장합니다.
+5. 사용자가 활성화해 `monitoring`이 저장된 경우에만 solver PID를 `TCB_MONITORED_SOLVER_PID`로 전달하고 `taskset -c <monitor_cpu> <monitor command>`를 병렬 실행합니다.
+6. wrapper 종료 코드와 케이스 로그를 병합해 판정하고, monitor가 자체 정리할 시간을 준 뒤 남은 process group을 종료합니다.
+7. monitor 종료 코드·조기 종료·정리 제한시간은 `monitor_errors`에 별도로 기록하며 solver 판정을 덮어쓰지 않습니다.
+8. 성공 시 `postprocess` hooks를 실행합니다.
+9. 이번 실행에서 갱신된 Residual 한 개를 event directory에 복사합니다.
+10. terminal event를 outbox에 저장합니다.
+
+자동 배정은 monitor가 켜진 경우 `cores + 1`개의 물리 코어를 한 번에 고른 뒤 계산용 `cores`개와 monitor용 1개로 분리합니다. 수동 `cpu_set`은 계산 범위로 유지하고 이 범위와 live/active 예약을 제외한 CPU 1개를 monitor에 자동 배정합니다. `occupied_cpus()`는 active job의 `case.cpu_set`과 `case.monitor_cpu`를 모두 예약으로 취급합니다.
 
 ## 10. Ticket 모델과 편집
 
 ### 10.1 단일 티켓
 
-주요 영역은 `case_dir/name`, `watcher`, `notifications`, `exports`, `preprocess/postprocess`, 선택적 `command/cores/cpu_set`입니다. 런타임의 `_root`, `_config`, `_ui_dir`는 loader가 추가하며 JSON에 저장하지 않습니다.
+주요 영역은 `case_dir/name`, `watcher`, `notifications`, `exports`, `preprocess/postprocess`, 선택적 `command/cores/cpu_set`과 `monitoring`입니다. 모니터링 별도 코어 배치는 기본적으로 꺼져 있으며 command 입력란도 숨깁니다. 활성화하면 입력란을 표시하고 `monitoring`을 `{allocate_cpu: true, command: ["./Allmonitor"]}` 형태로 저장합니다. 다시 끄면 블록을 제거합니다. 런타임의 `_root`, `_config`, `_ui_dir`, `monitor_cpu`는 loader 또는 scheduler가 추가하며 JSON에 저장하지 않습니다.
 
 ### 10.2 macro 티켓
 
-macro는 ordered child 목록과 공통 실행 설정을 가집니다. `tickets.publish_macro()`는 child 파일을 먼저 stage하고 macro를 마지막에 원자적으로 저장하며 실패 시 rollback합니다. 실행 중 child의 실행 설정은 변경할 수 없지만 요청 데이터와 감시 설정은 갱신할 수 있습니다.
+macro는 ordered child 목록과 공통 실행 설정을 가집니다. `tickets.publish_macro()`는 child 파일을 먼저 stage하고 macro를 마지막에 원자적으로 저장하며 실패 시 rollback합니다. 모니터링 CPU·스크립트도 child에 복제합니다. 실행 중 child의 실행 설정은 변경할 수 없지만 요청 데이터와 watcher 감시 경로는 갱신할 수 있습니다.
 
 독립 티켓도 세 UI에서 `execution_source=case|ticket`과 공통 실행 폼 필드(NP·명령·CPU 배정)를 사용합니다. `form_values` / `form_document`는 기존 `macro_*` 폼 키를 호환 유지하고 명시 지정일 때 JSON의 `resource_source=ticket`을 저장합니다. `config.load_case`는 `ticket`과 `macro`에 NP·명령 및 수동 모드의 CPU 범위를 요구합니다. `execution_case`는 두 출처 모두 케이스 내부 NP보다 티켓 값을 우선하며 `apply_execution_settings`는 할당된 NP/CPU_SET을 실행 전에 반영하고 원본을 백업합니다. `case` 모드로 되돌리면 명시 실행 값을 제거하고 자동 CPU 배정과 기존 케이스 NP를 사용합니다. 기존 case 티켓의 메타데이터만 저장할 때는 실행 설정을 보존합니다.
 
-Child의 실행 설정은 세 UI에서 상속값으로 표시합니다. 저장 시 `TicketService`가 매크로 설정과 일치하는지 검증합니다. 실행 중인 독립 티켓은 `execution_settings` 비교로 실행 출처·NP·명령·CPU 정책·범위·소켓 허용 변경을 거절합니다. 요청 데이터와 감시 설정 변경에는 이 제한을 적용하지 않습니다. 모든 인터페이스 변경은 세 adapter와 관련 검증을 함께 갱신합니다(저장소 `AGENTS.md`).
+case 설정 parser는 shell을 실행하지 않고 `Allrun`, `config/*Run`, 케이스별 `.process-core`의 literal `NP`·`CPU_SET`만 읽습니다. `.process-core`가 있으면 legacy 파일보다 나중에 읽어 최종 우선순위를 가집니다. 단순 대입, `export NP=4`, `NP=4; export NP`를 지원하고 command substitution·backtick·복합 shell 표현은 채택하지 않습니다.
+
+worker의 `apply_execution_settings()`는 전처리 전에 `.process-core`를 확인합니다. 파일이 없으면 승인된 값으로 `NP`, 인용된 `CPU_SET`, `export NP CPU_SET`을 같은 디렉터리의 임시 파일에서 원자적으로 생성합니다. case 출처 수동 설정의 기존 파일은 그대로 두고, 자동 배정이나 ticket/macro 출처는 실제 승인값과 파일을 동기화하며 기존 파일을 job backup에 보관합니다. `.process-core` symlink와 일반 파일이 아닌 경로는 거부합니다. legacy `Allrun`·`config/*Run` 갱신은 기존 케이스 호환성을 위해 유지합니다.
+
+Child의 실행 설정은 세 UI에서 상속값으로 표시합니다. 저장 시 `TicketService`가 매크로 설정과 일치하는지 검증합니다. 실행 중인 독립 티켓은 `execution_settings` 비교로 실행 출처·NP·명령·CPU 정책·범위·소켓 허용·모니터링 CPU와 스크립트 변경을 거절합니다. 요청 데이터와 watcher 로그·판정 설정 변경에는 이 제한을 적용하지 않습니다. 모든 인터페이스 변경은 세 adapter와 관련 검증을 함께 갱신합니다(저장소 `AGENTS.md`).
 
 ### 10.3 편집기 공유 계층
 

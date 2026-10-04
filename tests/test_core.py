@@ -82,6 +82,20 @@ class ConfigTests(Environment):
         with self.assertRaises(ConfigError):
             self.write_case()
 
+    def test_monitoring_schema_requires_enabled_flag_and_command(self):
+        self.case_data['monitoring'] = {'allocate_cpu': True, 'command': ['./Allmonitor']}
+        self.write_case()
+        self.assertEqual(self.case['monitoring']['command'], ['./Allmonitor'])
+        self.case_data['monitoring'] = {'allocate_cpu': False, 'command': ['./Allmonitor']}
+        self.write_case()
+        self.assertNotIn('monitoring', self.case)
+        for value in ({'allocate_cpu': True, 'command': []},
+                      {'allocate_cpu': True, 'command': ['./Allmonitor'], 'cpu': 3}):
+            with self.subTest(value=value):
+                self.case_data['monitoring'] = value
+                with self.assertRaises(ConfigError):
+                    self.write_case()
+
     def test_export_rejects_symlink_escape(self):
         secret = self.root / 'secret'
         secret.write_text('do not transmit')
@@ -322,6 +336,28 @@ class StoreTests(Environment):
 
 
 class WorkerTests(Environment):
+    def test_monitor_runs_on_reserved_cpu_with_solver_pid(self):
+        marker = self.case_root / 'monitor.json'
+        self.case_data['command'] = [
+            sys.executable, '-c', "import time; time.sleep(.3); print('Time = 10\\nEnd')"]
+        self.case_data['monitoring'] = {'allocate_cpu': True, 'command': [
+            sys.executable, '-c',
+            "import json,os,time; p=os.environ['TCB_MONITORED_SOLVER_PID']; "
+            "json.dump({'pid':p,'cpu':sorted(os.sched_getaffinity(0))},open('monitor.json','w')); "
+            "\nwhile os.path.exists('/proc/'+p): time.sleep(.02)"]}
+        self.write_case()
+        job = self.claim()
+        admitted = dict(job['case'], monitor_cpu=self.cpu)
+        self.store.update_job(job['id'], case=admitted)
+        self.assertEqual(worker(self.store.root, job['id']), 0)
+        result = self.store.job(job['id'])
+        recorded = json.loads(marker.read_text())
+        self.assertTrue(recorded['pid'].isdigit())
+        self.assertEqual(recorded['cpu'], [int(self.cpu)])
+        self.assertEqual(result['monitor_returncode'], 0)
+        self.assertEqual(result['monitor_errors'], [])
+        self.assertTrue((self.store.root / 'jobs' / job['id'] / 'monitor.log').exists())
+
     def test_worker_uses_custom_watcher_from_case_json(self):
         self.case_data.pop('simulation')
         self.case_data['watcher'] = dict(
@@ -611,6 +647,18 @@ class MonitorTests(Environment):
         parsed = parse_snapshot(raw)
         self.assertEqual(parsed['/tmp/a case']['processes'][0]['cpu_list'], '4-7')
         self.assertEqual(parsed['/tmp/a case']['supervisors'][0]['name'], 'Allrun')
+
+    def test_snapshot_parser_drops_openfoam_block_without_control_dict(self):
+        raw = ('ENGINE: OpenFOAM\n'
+               'CASE: /home/joon/.local/bin [controlDict not found]\n'
+               '  900002 1 foamRun OpenMP 52 52 0-51 0,1 0,1 00:30\n')
+        self.assertEqual(parse_snapshot(raw), {})
+
+    def test_snapshot_parser_drops_basilisk_block_without_case_sources(self):
+        raw = ('ENGINE: Basilisk\n'
+               'CASE: /home/joon/.local/bin [Basilisk case not found]\n'
+               '  900003 1 gh OpenMP 8 52 0-51 0,1 0,1 00:30\n')
+        self.assertEqual(parse_snapshot(raw), {})
 
 
 class FakeAPI:

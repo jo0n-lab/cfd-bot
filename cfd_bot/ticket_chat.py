@@ -22,7 +22,7 @@ FIELD_KEYS = {
     'case_dir', 'name', 'filename', 'logs', 'residual_pattern', 'end_time',
     'failure_patterns', 'updated_files', 'macro_ticket', 'macro_cores',
     'macro_cpu_set', 'macro_command', 'preprocess', 'postprocess', 'x.name',
-    'x.pattern', 'x.max_files', 'template_name', 'browse_path',
+    'monitoring_command', 'x.pattern', 'x.max_files', 'template_name', 'browse_path',
 }
 CLEARABLE = {'name', 'residual_pattern', 'end_time', 'failure_patterns', 'updated_files', 'macro_ticket',
              'preprocess', 'postprocess'}
@@ -371,6 +371,17 @@ class TicketChat:
         elif not child:
             text = self.t('queue.single_body', role=v['role'],
                           macro=short(v['macro_ticket'] or self.ui.text('strings.common.none'))) + '\n\n' + text
+        monitoring = v.get('monitoring_cpu', False)
+        text += '\n\n' + (self.t(
+            'queue.monitor_status', state=self.t('queue.monitor_enabled'),
+            command=short(v.get('monitoring_command', './Allmonitor')))
+            if monitoring else self.t('queue.monitor_status_disabled'))
+        if not child:
+            rows.append([(self.t('queue.monitor_cpu', mark=self.ui.text(
+                'strings.common.checked' if monitoring else 'strings.common.unchecked').strip()),
+                          'toggle', 'monitoring_cpu')])
+            if monitoring:
+                rows.append([(self.t('queue.monitor_command'), 'field', 'monitoring_command')])
         rows.append([(self.ui.text('strings.common.back'), 'card', None)])
         self.render(chat, user, s, text, rows, 'queue')
 
@@ -440,6 +451,9 @@ class TicketChat:
             elif key == 'macro_command':
                 if not shlex.split(value):
                     raise ValueError(self.t('errors.command_required'))
+            elif key == 'monitoring_command':
+                if not shlex.split(value):
+                    raise ValueError(self.t('errors.monitor_command_required'))
             elif key in DEFAULT_SCRIPTS:
                 script_commands(value)
             elif key == 'failure_patterns':
@@ -719,6 +733,8 @@ class TicketChat:
         unused = self.ui.text('strings.common.not_used')
         text += self.t('review.pre', value=short(d['values'].get('preprocess') or unused, 300))
         text += self.t('review.post', value=short(d['values'].get('postprocess') or unused, 300))
+        text += self.t('review.monitor', value=(short(d['values'].get('monitoring_command'))
+                                               if d['values'].get('monitoring_cpu') else unused))
         will_run = mode == 'submit' or queue
         text += self.t('review.will_run' if will_run else 'review.save_only')
         if existing_macro:
@@ -841,7 +857,7 @@ class TicketChat:
             d['dirty'] = True
             self.queue(chat, user, s)
         elif op == 'toggle':
-            if arg not in ('openfoam_defaults', 'macro_cross_socket'): raise ValueError(self.t('errors.setting'))
+            if arg not in ('openfoam_defaults', 'macro_cross_socket', 'monitoring_cpu'): raise ValueError(self.t('errors.setting'))
             d = self.draft(s)
             if arg == 'macro_cross_socket' and d['values']['macro_cpu_policy'] == 'auto':
                 raise ValueError(self.t('errors.auto_cross_socket'))

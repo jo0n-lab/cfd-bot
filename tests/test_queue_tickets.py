@@ -2,6 +2,7 @@ from copy import deepcopy
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import time
 from unittest.mock import patch
@@ -301,7 +302,8 @@ class QueueTicketTests(Environment):
         changes = dict(command=['./Allrun', '--changed'], cores=2,
                        cpu_set=str(int(self.cpu) + 1), resource_source='case',
                        allow_cross_socket=True, preprocess=[{'command': ['true']}],
-                       postprocess=[{'command': ['true']}])
+                       postprocess=[{'command': ['true']}],
+                       monitoring={'allocate_cpu': True, 'command': ['./Allmonitor']})
         for key, value in changes.items():
             with self.subTest(field=key):
                 data = read_json(path)
@@ -478,6 +480,82 @@ class QueueTicketTests(Environment):
         self.assertEqual(result.returncode, 4, result.stderr)
         self.assertIn('BLOCKED: overlaps PID', result.stderr)
         self.assertEqual(read_json(path)['cases'][0]['state'], 'running')
+
+    def test_integrated_ofps_ignores_openfoam_name_outside_a_case(self):
+        wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'
+        folder = self.root / 'not-an-openfoam-case'
+        folder.mkdir()
+        solver = subprocess.Popen(
+            ['taskset', '-c', self.cpu, 'bash', '-c',
+             'cd "$1" && exec -a foamRun sleep 30', 'ofps-false-positive', str(folder)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            for _ in range(100):
+                cmdline = Path(f'/proc/{solver.pid}/cmdline')
+                cwd = Path(f'/proc/{solver.pid}/cwd')
+                if (cmdline.exists() and cmdline.read_bytes().split(b'\0', 1)[0] == b'foamRun'
+                        and cwd.resolve() == folder):
+                    break
+                time.sleep(0.01)
+            result = subprocess.run([str(wrapper)],
+                                    env=dict(os.environ, CFD_BOT_OFPS_MANAGED='1'),
+                                    capture_output=True, text=True, timeout=10)
+        finally:
+            solver.terminate()
+            solver.wait(timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn(str(folder), result.stdout)
+        self.assertNotIn('[controlDict not found]', result.stdout)
+
+    def test_ofps_symlink_directory_is_not_an_implicit_basilisk_root(self):
+        wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'
+        local_bin = self.root / 'local-bin'
+        local_bin.mkdir()
+        linked_wrapper = local_bin / 'ofps'
+        linked_wrapper.symlink_to(wrapper)
+        ordinary = local_bin / 'ordinary-cli'
+        shutil.copy('/bin/sleep', ordinary)
+        solver = subprocess.Popen([str(ordinary), '30'])
+        try:
+            for _ in range(100):
+                executable = Path(f'/proc/{solver.pid}/exe')
+                if executable.exists() and executable.resolve() == ordinary:
+                    break
+                time.sleep(0.01)
+            result = subprocess.run([str(linked_wrapper)],
+                                    env=dict(os.environ, CFD_BOT_OFPS_MANAGED='1'),
+                                    capture_output=True, text=True, timeout=10)
+        finally:
+            solver.terminate()
+            solver.wait(timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn(str(local_bin), result.stdout)
+
+    def test_ofps_detects_basilisk_case_with_explicit_root_and_sources(self):
+        wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'
+        root = self.root / 'basilisk'
+        case = root / 'wave'
+        case.mkdir(parents=True)
+        (case / 'Makefile').write_text('all:\n\t@true\n')
+        (case / 'wave.c').write_text('int main(void) { return 0; }\n')
+        solver_path = case / 'wave'
+        shutil.copy('/bin/sleep', solver_path)
+        solver = subprocess.Popen([str(solver_path), '30'])
+        try:
+            for _ in range(100):
+                executable = Path(f'/proc/{solver.pid}/exe')
+                if executable.exists() and executable.resolve() == solver_path:
+                    break
+                time.sleep(0.01)
+            result = subprocess.run([str(wrapper)], env=dict(
+                os.environ, CFD_BOT_OFPS_MANAGED='1', OFPS_BASILISK_ROOT=str(root)),
+                capture_output=True, text=True, timeout=10)
+        finally:
+            solver.terminate()
+            solver.wait(timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('ENGINE: Basilisk', result.stdout)
+        self.assertIn('CASE: ' + str(case), result.stdout)
 
     def test_integrated_ofps_has_no_legacy_scanner_dependency(self):
         wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'

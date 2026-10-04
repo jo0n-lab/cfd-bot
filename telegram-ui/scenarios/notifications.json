@@ -2,6 +2,7 @@
   "external_started": "▶️ 외부 계산 감지: {case_name}\n{owner} · {observation}",
   "collection_failed": "⚠️ 상태 수집 실패. 큐 실행을 보류합니다.\n{message}",
   "queue_started": "▶️ 큐 계산 시작: {case_name}\n{cores}코어 · CPU {cpu_list} · 작업 {job_id}",
+  "queue_started_monitor": "▶️ 큐 계산 시작: {case_name}\n계산 {cores}코어 · CPU {cpu_list}\n모니터 CPU {monitor_cpu} · 작업 {job_id}",
   "worker_lost_solver_alive": "⚠️ {case_name}: 실행기가 종료됐지만 계산 프로세스는 살아 있습니다. 자동 재실행하지 않습니다.",
   "external_duplicate_skipped": "계산종료: {case_name} · 외부 계산 완료 확인, 큐의 중복 실행 생략",
   "ticket_deleted": "대기 취소: {case_name} · 티켓이 삭제됨",

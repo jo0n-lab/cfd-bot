@@ -153,15 +153,27 @@ class TicketEditor:
         self.manual_execution.columnconfigure(1, weight=1)
         self.field(self.manual_execution, 0, 'macro_cpu_set', 'CPU 범위', hint='고정 배정이 필요한 경우만 사용하세요. 실행 전 ofps 검사 필수.')
         self.check(self.manual_execution, 1, 'macro_cross_socket', '여러 소켓/NUMA에 걸친 CPU 범위 허용')
+        self.monitoring_execution = ttk.LabelFrame(queue_tab, text='계산 모니터링', padding=10)
+        self.monitoring_execution.grid(row=7, column=0, columnspan=3, sticky='ew', pady=10)
+        self.monitoring_execution.columnconfigure(1, weight=1)
+        monitor_check = self.check(
+            self.monitoring_execution, 0, 'monitoring_cpu', '모니터링 별도 코어 배치')
+        monitor_check.configure(command=self.update_execution_visibility)
+        self.monitoring_command_group = ttk.Frame(self.monitoring_execution)
+        self.monitoring_command_group.grid(row=2, column=0, columnspan=3, sticky='ew')
+        self.monitoring_command_group.columnconfigure(1, weight=1)
+        self.monitoring_command = self.field(
+            self.monitoring_command_group, 0, 'monitoring_command', '모니터링 스크립트',
+            hint='기본값: ./Allmonitor · 계산 CPU와 겹치지 않는 물리 CPU 1개에서 실행합니다.')
         ttk.Label(queue_tab, text='매크로: Case directory의 직계 하위 폴더만 검색합니다.\n'
                   '각 폴더 바로 아래에 Allrun이 있어야 하며, *-template과 실행 중인 케이스는 제외합니다.\n'
                   'postProcessing이 있는 케이스도 포함하며 노란색으로 표시합니다.\n'
                   '행 순서대로 실행합니다. 제외할 행의 삭제 버튼을 누른 뒤 저장하면 큐에 등록됩니다.',
-                  wraplength=650).grid(row=7, column=0, columnspan=3, sticky='w', pady=12)
+                  wraplength=650).grid(row=8, column=0, columnspan=3, sticky='w', pady=12)
         self.scan_button = ttk.Button(queue_tab, text='직계 하위 케이스 검색', command=self.scan_cases)
-        self.scan_button.grid(row=8, column=0, columnspan=3, sticky='w')
+        self.scan_button.grid(row=9, column=0, columnspan=3, sticky='w')
         self.case_rows = ttk.Frame(queue_tab)
-        self.case_rows.grid(row=9, column=0, columnspan=3, sticky='ew', pady=8)
+        self.case_rows.grid(row=10, column=0, columnspan=3, sticky='ew', pady=8)
         self.case_rows.columnconfigure(0, weight=1)
 
         ttk.Label(
@@ -325,8 +337,9 @@ class TicketEditor:
     def check(self, parent, row, key, label):
         variable = self.tk.BooleanVar(parent)
         self.variables[key] = (variable, None)
-        self.ttk.Checkbutton(parent, text=label, variable=variable).grid(row=row * 2, column=1, columnspan=2,
-                                                                       sticky='w', pady=(8, 0))
+        widget = self.ttk.Checkbutton(parent, text=label, variable=variable)
+        widget.grid(row=row * 2, column=1, columnspan=2, sticky='w', pady=(8, 0))
+        return widget
 
     def event_checks(self, parent, events):
         variables = {}
@@ -426,6 +439,7 @@ class TicketEditor:
                                      'readonly' if widget.winfo_class() == 'TCombobox' else 'normal')
                 set_enabled(widget)
         set_enabled(self.common_execution)
+        set_enabled(self.monitoring_execution)
         if self.variables['macro_cpu_policy'][0].get() == '고급: CPU 직접 지정':
             self.manual_execution.grid()
         else:
@@ -434,6 +448,11 @@ class TicketEditor:
             self.common_execution.grid()
         else:
             self.common_execution.grid_remove()
+        if v['monitoring_cpu']:
+            self.monitoring_command_group.grid()
+        else:
+            self.monitoring_command_group.grid_remove()
+        self.monitoring_command.configure(state='disabled' if child else 'normal')
         self.residual_picker.configure(state='disabled' if macro else 'normal')
 
     def refresh_end_default(self):

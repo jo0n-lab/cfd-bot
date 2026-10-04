@@ -63,6 +63,7 @@ def _context(run, ui=None):
     errors = '\n'.join(t.get('errors', [])[-5:])
     tail = '\n'.join(t.get('tail', [])[-8:]) if run['status'] in ('failed', 'interrupted') and not errors else ''
     post_errors = '\n'.join(run.get('postprocess_errors', []))
+    monitor_errors = '\n'.join(run.get('monitor_errors', []))
     return {
         'case_name': case['name'],
         'status': (ui.text('strings.status.' + run['status'])
@@ -89,6 +90,7 @@ def _context(run, ui=None):
         'errors': ui.text('scenarios.run.errors', content=errors) if errors else '',
         'tail': ui.text('scenarios.run.tail', content=tail) if tail else '',
         'postprocess_errors': ui.text('scenarios.run.postprocess_errors', content=post_errors) if post_errors else '',
+        'monitor_errors': ui.text('scenarios.run.monitor_errors', content=monitor_errors) if monitor_errors else '',
     }
 
 

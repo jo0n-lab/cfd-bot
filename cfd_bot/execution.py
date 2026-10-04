@@ -13,12 +13,83 @@ from .ui import load_ui
 
 
 EXECUTION_DEFAULTS = dict(resource_source='case', cores=1, command=None,
-                          cpu_policy='manual', cpu_set=None, allow_cross_socket=False)
+                          cpu_policy='manual', cpu_set=None, allow_cross_socket=False,
+                          monitoring=None)
+PROCESS_CORE = '.process-core'
+
+
+def _literal_setting(line):
+    """Read a safe NP/CPU_SET assignment without evaluating shell syntax."""
+    match = re.fullmatch(r'\s*(?:export\s+)?(NP|CPU_SET)\s*=\s*(.*?)\s*', line)
+    if not match:
+        return None
+    name, value = match.groups()
+    trailing_export = re.search(rf'\s*;\s*export\s+{name}\s*$', value)
+    if trailing_export:
+        value = value[:trailing_export.start()].rstrip()
+    try:
+        parts = shlex.split(value, comments=True)
+    except ValueError:
+        return None
+    if len(parts) != 1 or any(char in parts[0] for char in '$`();'):
+        return None
+    return name, parts[0]
+
+
+def _process_core(root, ui):
+    path = root / PROCESS_CORE
+    if path.is_symlink() or (path.exists() and not path.is_file()):
+        raise ValueError(ui.text('scenarios.diagnostics.execution.process_core_invalid', path=path))
+    return path
+
+
+def _process_core_text(case):
+    cpus = case['cpu_set']
+    cpu_set(cpus)
+    return (f'NP={int(case["cores"])}\n'
+            f'CPU_SET="{cpus}"\n\n'
+            'export NP CPU_SET\n')
+
+
+def _atomic_write(path, text, mode):
+    with tempfile.NamedTemporaryFile('w', dir=path.parent, prefix='.', delete=False,
+                                     encoding='utf-8') as stream:
+        temporary = Path(stream.name)
+        stream.write(text)
+    try:
+        temporary.chmod(mode)
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _replace_settings(source, values, root, job_folder, ui):
+    if not source.is_file():
+        return
+    if not source.resolve().is_relative_to(root):
+        raise ValueError(ui.text('scenarios.diagnostics.execution.settings_escape', path=source))
+    before = source.read_text(encoding='utf-8')
+    assignment = re.compile(r'^(\s*(?:export\s+)?)(NP|CPU_SET)\s*=.*$', re.M)
+
+    def replace(match):
+        name = match[2]
+        if name not in values:
+            return match[0]
+        suffix = re.search(rf'(\s*;\s*export\s+{name}\s*)$', match[0])
+        return f'{match[1]}{name}={values[name]}{suffix[1] if suffix else ""}'
+
+    after = assignment.sub(replace, before)
+    if after == before:
+        return
+    backup = Path(job_folder) / 'case-settings-before' / source.relative_to(root)
+    backup.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, backup)
+    _atomic_write(source, after, source.stat().st_mode & 0o777)
 
 
 def execution_settings(case):
-    """Comparable execution intent, excluding monitoring data and runtime state."""
-    return {key: case.get(key, default) for key, default in EXECUTION_DEFAULTS.items()}
+    """Comparable execution intent, excluding runtime allocation state."""
+    return {key: deepcopy(case.get(key, default)) for key, default in EXECUTION_DEFAULTS.items()}
 
 
 def openfoam_environment(bashrc, environment):
@@ -96,17 +167,16 @@ def execution_case(case):
     allrun = root / 'Allrun'
     script = allrun.read_text(encoding='utf-8', errors='replace') if allrun.is_file() else ''
     settings = {}
-    sources = [allrun] + sorted((root / 'config').glob('*Run'))
+    process_core = _process_core(root, ui)
+    # The per-case contract wins over legacy assignments when it exists.
+    sources = [allrun] + sorted((root / 'config').glob('*Run')) + [process_core]
     for source in sources:
         if not source.is_file():
             continue
         for line in source.read_text(encoding='utf-8', errors='replace').splitlines():
-            match = re.fullmatch(r'\s*(?:export\s+)?(NP|CPU_SET)\s*=\s*(.*?)\s*', line)
-            if not match:
-                continue
-            parts = shlex.split(match[2], comments=True)
-            if len(parts) == 1 and not any(c in parts[0] for c in '$`();'):
-                settings[match[1]] = parts[0]
+            setting = _literal_setting(line)
+            if setting:
+                settings[setting[0]] = setting[1]
     # Explicit ticket/macro intent takes priority and is applied before launch.
     common = case.get('resource_source') in ('macro', 'ticket')
     automatic = case.get('cpu_policy') == 'auto'
@@ -145,30 +215,25 @@ def apply_execution_settings(case, job_folder):
     are replaced; shell snippets are never evaluated to discover settings.
     """
     ui = load_ui(case.get('_ui_dir'))
-    if case.get('resource_source') not in ('macro', 'ticket') and case.get('cpu_policy') != 'auto':
-        return
+    explicit = case.get('resource_source') in ('macro', 'ticket')
     root = Path(case['_root'])
+    process_core = _process_core(root, ui)
+    process_text = _process_core_text(case)
+    if not process_core.exists():
+        _atomic_write(process_core, process_text, 0o644)
+    elif explicit or case.get('cpu_policy') == 'auto':
+        before = process_core.read_text(encoding='utf-8')
+        if before != process_text:
+            backup = Path(job_folder) / 'case-settings-before' / PROCESS_CORE
+            backup.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(process_core, backup)
+            _atomic_write(process_core, process_text, process_core.stat().st_mode & 0o777)
+
+    if not explicit and case.get('cpu_policy') != 'auto':
+        return
     sources = [root / 'Allrun'] + sorted((root / 'config').glob('*Run'))
-    values = {'NP': str(case['cores']), 'CPU_SET': shlex.quote(case['cpu_set'])}
-    assignment = re.compile(r'^(\s*(?:export\s+)?)(NP|CPU_SET)\s*=.*$', re.M)
+    values = {'CPU_SET': shlex.quote(case['cpu_set'])}
+    if explicit:
+        values['NP'] = str(case['cores'])
     for source in sources:
-        if not source.is_file():
-            continue
-        if not source.resolve().is_relative_to(root):
-            raise ValueError(ui.text('scenarios.diagnostics.execution.settings_escape', path=source))
-        before = source.read_text(encoding='utf-8')
-        after = assignment.sub(lambda m: f'{m[1]}{m[2]}={values[m[2]]}', before)
-        if after == before:
-            continue
-        backup = Path(job_folder) / 'case-settings-before' / source.relative_to(root)
-        backup.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, backup)
-        with tempfile.NamedTemporaryFile('w', dir=source.parent, prefix='.', delete=False,
-                                         encoding='utf-8') as stream:
-            temporary = Path(stream.name)
-            stream.write(after)
-        try:
-            temporary.chmod(source.stat().st_mode & 0o777)
-            temporary.replace(source)
-        finally:
-            temporary.unlink(missing_ok=True)
+        _replace_settings(source, values, root, job_folder, ui)

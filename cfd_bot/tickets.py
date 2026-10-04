@@ -245,8 +245,8 @@ def publish_macro(path, data, previous=None, *, request_id=None, locked=False):
             if old and old.get('queue', {}).get('state') == 'running':
                 if not editing or old['role'] != 'child':
                     raise ValueError(ui.text('scenarios.diagnostics.tickets.adopt_running', root=root))
-                # Request data and monitoring settings do not launch or reconfigure
-                # a solver. Protect execution settings, rather than blocking saving.
+                # Request data and watcher settings do not launch or reconfigure a
+                # solver. Protect execution and monitor-process settings instead.
                 protected = {
                     'command': (ui.text('scenarios.diagnostics.tickets.protected_command'), None),
                     'cores': (ui.text('scenarios.diagnostics.tickets.protected_cores'), 1),
@@ -256,6 +256,7 @@ def publish_macro(path, data, previous=None, *, request_id=None, locked=False):
                     'allow_cross_socket': (ui.text('scenarios.diagnostics.tickets.protected_socket'), False),
                     'preprocess': (ui.text('scenarios.diagnostics.tickets.protected_pre'), []),
                     'postprocess': (ui.text('scenarios.diagnostics.tickets.protected_post'), []),
+                    'monitoring': (ui.text('scenarios.diagnostics.tickets.protected_monitoring'), None),
                 }
                 changed = [label for key, (label, default) in protected.items()
                            if child.get(key, default) != old_data.get(key, default)]

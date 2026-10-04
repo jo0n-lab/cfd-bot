@@ -18,5 +18,7 @@
   "hook_exit": "{label} 종료 코드 {code}: {command}",
   "preprocess": "전처리",
   "postprocess": "후처리",
+  "monitor": "모니터링",
+  "monitor_ended_early": "모니터링 스크립트가 계산 종료 전에 끝났습니다. (종료 코드 {code})",
   "worker_error": "실행기 오류: {error}"
 }

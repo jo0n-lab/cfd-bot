@@ -1,5 +1,5 @@
 {
   "version": 1,
-  "detail": "📋 {case_name}\n상태: {status}\n소유대상: {owner}\n코어: {cores}/{cpu_list}\n시작: {started_at}\n경과: {elapsed}\n진행: {simulation_time} · ClockTime {clock_time}\n예상 잔여시간: {eta}\n로그: {log_path}\nResidual PNG: {residuals}\n{errors}{tail}{postprocess_errors}",
-  "completion": "🏁 {case_name}\n결과: {status}\n소유대상: {owner}\n코어: {cores}/{cpu_list}\n시작: {started_at}\n종료: {finished_at}\n총 경과: {elapsed}\n최종 진행값: {simulation_time}\n종료 코드: {return_code}\n판정: {reason}\nResidual PNG: {residuals}\n{errors}{tail}{postprocess_errors}"
+  "detail": "📋 {case_name}\n상태: {status}\n소유대상: {owner}\n코어: {cores}/{cpu_list}\n시작: {started_at}\n경과: {elapsed}\n진행: {simulation_time} · ClockTime {clock_time}\n예상 잔여시간: {eta}\n로그: {log_path}\nResidual PNG: {residuals}\n{errors}{tail}{postprocess_errors}{monitor_errors}",
+  "completion": "🏁 {case_name}\n결과: {status}\n소유대상: {owner}\n코어: {cores}/{cpu_list}\n시작: {started_at}\n종료: {finished_at}\n총 경과: {elapsed}\n최종 진행값: {simulation_time}\n종료 코드: {return_code}\n판정: {reason}\nResidual PNG: {residuals}\n{errors}{tail}{postprocess_errors}{monitor_errors}"
 }
