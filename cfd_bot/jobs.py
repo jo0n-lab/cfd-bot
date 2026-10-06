@@ -8,8 +8,9 @@ import time
 from pathlib import Path
 
 from .artifacts import freeze_exports
-from .config import cases_for, cpu_set, load_case
-from .cpu_allocation import allocate_cpus, format_cpus, occupied_cpus
+from .config import cpu_set, load_case
+from .catalog import ticket_index
+from .cpu_allocation import allocate_cpus, format_cpus, managed_cpus, occupied_cpus
 from .execution import apply_execution_settings, execution_case, openfoam_environment
 from .logs import (case_logs, finish_log, read_log, recent_case_log,
                    select_case_log, start_cursor)
@@ -34,6 +35,18 @@ def terminal_event(store, job, chats, ui=None):
         payload = dict(kind='terminal', run=job, files=files, notes=notes)
         store.put('event:' + job['id'], payload)
     store.event(job['id'] + ':terminal', chats, payload)
+
+
+def scheduling_candidates(jobs):
+    """Immediate requests first, then only the FIFO head of each of three lanes."""
+    immediate = sorted((job for job in jobs if job.get('priority') == 'run'),
+                       key=lambda item: item['created'])
+    heads = {}
+    for job in sorted((job for job in jobs if job.get('priority') != 'run'),
+                      key=lambda item: item['created']):
+        lane = job.get('queue_lane', 1)
+        heads.setdefault(lane, job)
+    return immediate + sorted(heads.values(), key=lambda item: item['created'])
 
 
 class Scheduler:
@@ -100,21 +113,27 @@ class Scheduler:
         active = self.store.jobs(LIVE)
         if not self.config['scheduler']['enabled'] or self.store.get('queue_paused', False):
             return
-        for job in self.store.jobs(('queued',)):
+        queued = scheduling_candidates(self.store.jobs(('queued',)))
+        for job in queued:
             if len(active) >= self.config['scheduler']['max_parallel']:
                 return
             case = job['case']
+            if (job.get('priority') != 'run'
+                    and any(active_job.get('priority') != 'run'
+                            and active_job.get('queue_lane', 1) == job.get('queue_lane', 1)
+                            for active_job in active)):
+                continue
             if job.get('batch') and any(j.get('batch') == job['batch'] for j in active):
-                return
+                continue
             if case['_root'] in observed:
                 self.store.update_job(job['id'], expected=('queued',),
                                       reason=self.ui.text('scenarios.jobs.external_running'))
-                return
+                continue
             external = self.store.get('observed:' + case['_root'])
             if external and external['status'] in LIVE:
                 self.store.update_job(job['id'], expected=('queued',),
                                       reason=self.ui.text('scenarios.jobs.external_finishing'))
-                return
+                continue
             if (case.get('role') == 'child' and external and external['status'] == 'succeeded'
                     and external.get('finished', 0) >= job['created']):
                 self.store.update_job(job['id'], expected=('queued',), status='cancelled',
@@ -125,8 +144,7 @@ class Scheduler:
                 continue
             try:
                 if case.get('_config') and not Path(case['_config']).is_file():
-                    renamed = next((c for c in cases_for(self.config)
-                                    if c['_root'] == case['_root']), None)
+                    renamed = ticket_index(self.config).lookup(case['_root'])
                     if renamed is None:
                         self.store.update_job(job['id'], expected=('queued',), status='cancelled',
                                               finished=time.time(), reason=self.ui.text('scenarios.jobs.ticket_deleted'))
@@ -153,21 +171,22 @@ class Scheduler:
                                  self.config['telegram']['chat_ids'],
                                  dict(kind='text', text=self.ui.text(
                                      'scenarios.notifications.waiting', case_name=case['name'], reason=reason)))
-                return
+                continue
             automatic = case.get('cpu_policy') == 'auto'
             monitor_requested = bool(case.get('monitoring', {}).get('allocate_cpu'))
+            pool = managed_cpus(self.config)
             if not automatic:
                 requested = cpu_set(case['cpu_set'])
-                unavailable = requested - os.sched_getaffinity(0)
+                unavailable = requested - pool
                 if unavailable:
                     self.store.update_job(job['id'], expected=('queued',),
                                           reason=self.ui.text('scenarios.jobs.cpu_unavailable',
                                                               cpus=','.join(map(str, sorted(unavailable)))))
-                    return
+                    continue
                 if requested & occupied_cpus({}, active):
                     self.store.update_job(job['id'], expected=('queued',),
                                           reason=self.ui.text('scenarios.jobs.cpu_reserved'))
-                    return
+                    continue
             env = os.environ.copy()
             # Neither sourcing OpenFOAM nor the detached worker needs the bot token.
             env.pop(self.config['telegram']['token_env'], None)
@@ -180,7 +199,7 @@ class Scheduler:
                                  self.config['telegram']['chat_ids'],
                                  dict(kind='text', text=self.ui.text(
                                      'scenarios.notifications.waiting_suffix', case_name=case['name'], reason=reason)))
-                return
+                continue
             # Environment setup may take time; inspect live CPU ownership last.
             try:
                 live = {}
@@ -189,13 +208,14 @@ class Scheduler:
                     if case['_root'] in live:
                         raise ValueError(self.ui.text('scenarios.jobs.external_running'))
                 if automatic:
-                    allocation = allocate_cpus(case['cores'] + int(monitor_requested), live, active)
+                    allocation = allocate_cpus(case['cores'] + int(monitor_requested), live, active,
+                                               allowed=pool)
                     selected = sorted(cpu_set(allocation['cpu_set']))
                     case['cpu_set'] = format_cpus(selected[:case['cores']])
                     if monitor_requested:
                         case['monitor_cpu'] = str(selected[case['cores']])
                 elif monitor_requested:
-                    allocation = allocate_cpus(1, live, active + [{'case': case}])
+                    allocation = allocate_cpus(1, live, active + [{'case': case}], allowed=pool)
                     case['monitor_cpu'] = allocation['cpu_set']
                 safe, report = check_cpus(self.config['ofps_command'], case)
                 if safe and monitor_requested:
@@ -210,7 +230,7 @@ class Scheduler:
                                  dict(kind='text', text=self.ui.text(
                                      'scenarios.notifications.cpu_policy_waiting',
                                      case_name=case['name'], report=report)))
-                return
+                continue
             claimed = self.store.update_job(job['id'], expected=('queued',), status='starting',
                                             claimed=time.time(), reason='', case=case,
                                             openfoam_bashrc=self.config['scheduler'].get('openfoam_bashrc'),

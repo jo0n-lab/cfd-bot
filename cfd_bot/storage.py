@@ -62,7 +62,35 @@ class Store:
                     finished REAL NOT NULL, body TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS history_by_case ON run_history(case_root, finished);
+                CREATE INDEX IF NOT EXISTS jobs_by_case ON jobs(case_root, created);
+                CREATE TABLE IF NOT EXISTS ticket_changes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, case_root TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ticket_changes_by_root ON ticket_changes(case_root, id);
+                CREATE TABLE IF NOT EXISTS observed_tracking (case_root TEXT PRIMARY KEY);
+                CREATE TRIGGER IF NOT EXISTS ticket_job_insert AFTER INSERT ON jobs BEGIN
+                    INSERT INTO ticket_changes(case_root) VALUES (NEW.case_root);
+                END;
+                CREATE TRIGGER IF NOT EXISTS ticket_job_update AFTER UPDATE ON jobs
+                WHEN OLD.status != NEW.status OR
+                     json_extract(OLD.body, '$.reason') IS NOT json_extract(NEW.body, '$.reason') BEGIN
+                    INSERT INTO ticket_changes(case_root) VALUES (NEW.case_root);
+                END;
+                CREATE TRIGGER IF NOT EXISTS ticket_observed_insert AFTER INSERT ON kv
+                WHEN substr(NEW.key, 1, 9) = 'observed:' BEGIN
+                    INSERT INTO ticket_changes(case_root) VALUES (substr(NEW.key, 10));
+                    INSERT OR IGNORE INTO observed_tracking VALUES (substr(NEW.key, 10));
+                END;
             ''')
+            # One-time recovery also covers old workers that know only jobs/kv.
+            db.execute('BEGIN IMMEDIATE')
+            if not db.execute("SELECT 1 FROM kv WHERE key='ticket_index_migrated'").fetchone():
+                db.execute('INSERT INTO ticket_changes(case_root) SELECT DISTINCT case_root FROM jobs')
+                db.execute("INSERT INTO ticket_changes(case_root) SELECT substr(key,10) FROM kv "
+                           "WHERE substr(key,1,9)='observed:'")
+                db.execute("INSERT OR IGNORE INTO observed_tracking SELECT substr(key,10) FROM kv "
+                           "WHERE substr(key,1,9)='observed:'")
+                db.execute("INSERT INTO kv VALUES ('ticket_index_migrated','true')")
 
     @contextlib.contextmanager
     def connect(self):
@@ -115,11 +143,43 @@ class Store:
                 rows = db.execute('SELECT body FROM jobs ORDER BY created').fetchall()
         return [json.loads(r[0]) for r in rows]
 
-    def enqueue(self, case, request_key=None):
+    def jobs_for_roots(self, roots):
+        roots = list(set(roots))
+        result = []
+        with self.connect() as db:
+            for start in range(0, len(roots), 500):
+                batch = roots[start:start + 500]
+                result.extend(json.loads(r[0]) for r in db.execute(
+                    'SELECT body FROM jobs WHERE case_root IN (%s) ORDER BY created' %
+                    ','.join('?' for _ in batch), batch))
+        return result
+
+    def ticket_changes(self):
+        with self.connect() as db:
+            return dict(db.execute('SELECT case_root, MAX(id) FROM ticket_changes GROUP BY case_root'))
+
+    def acknowledge_ticket_changes(self, changes):
+        with self.connect() as db:
+            db.executemany('DELETE FROM ticket_changes WHERE case_root=? AND id<=?', changes.items())
+
+    def tracked_observations(self):
+        with self.connect() as db:
+            rows = db.execute("SELECT case_root, body FROM observed_tracking JOIN kv "
+                              "ON key='observed:' || case_root")
+            return {r[0]: json.loads(r[1]) for r in rows}
+
+    def finish_observation(self, root, run_id):
+        with self.connect() as db:
+            db.execute("DELETE FROM observed_tracking WHERE case_root=? AND EXISTS "
+                       "(SELECT 1 FROM kv WHERE key=? AND json_extract(body,'$.id')=?)",
+                       (root, 'observed:' + root, run_id))
+
+    def enqueue(self, case, request_key=None, priority='queue', queue_lane=1):
         if not case.get('command') and not (Path(case['_root']) / 'Allrun').is_file():
             raise ValueError(load_ui(case.get('_ui_dir')).text('scenarios.diagnostics.storage.read_only'))
         job = dict(id=uuid.uuid4().hex[:12], case=case, case_root=case['_root'], status='queued',
-                   created=time.time(), reason='', telemetry={})
+                   created=time.time(), reason='', telemetry={}, priority=priority,
+                   queue_lane=queue_lane)
         try:
             with self.connect() as db:
                 db.execute('BEGIN IMMEDIATE')
@@ -137,7 +197,7 @@ class Store:
                 'scenarios.diagnostics.storage.already_active')) from exc
         return job
 
-    def enqueue_batch(self, cases, request):
+    def enqueue_batch(self, cases, request, priority='queue', queue_lane=1):
         """Commit every member of a macro in order, or none of them."""
         jobs = []
         try:
@@ -156,7 +216,8 @@ class Store:
                             'scenarios.diagnostics.storage.missing_command', name=case['name']))
                     job = dict(id=uuid.uuid4().hex[:12], case=case, case_root=case['_root'],
                                status='queued', created=time.time(), reason='', telemetry={},
-                               batch=request, batch_index=index)
+                               batch=request, batch_index=index, priority=priority,
+                               queue_lane=queue_lane)
                     db.execute('INSERT INTO jobs VALUES (?,?,?,?,?)',
                                (job['id'], job['case_root'], job['status'], job['created'], json.dumps(job)))
                     db.execute('INSERT INTO kv VALUES (?,?)', (key, json.dumps(job['id'])))

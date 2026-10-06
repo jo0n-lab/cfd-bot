@@ -237,28 +237,34 @@ class WebTests(Environment):
             (root / 'system/controlDict').write_text('endTime 10;')
         (self.root / 'batch/two/postProcessing').mkdir()
         self.scan.return_value = {'cases': {str(self.root / 'batch/running'): {}}}
-        found = self.post('/api/discover', dict(case_dir=str(self.root / 'batch')))
-        self.assertEqual([r['case_dir'].split('/')[-1] for r in found['cases']], ['one', 'two'])
+        found = self.post('/api/discover', dict(
+            case_dir=str(self.root / 'batch'), include_patterns='one\ntwo',
+            exclude_patterns='one'))
+        self.assertEqual([r['case_dir'].split('/')[-1] for r in found['cases']], ['two'])
         self.assertEqual(found['postprocessed'], [str(self.root / 'batch/two')])
-        self.assertEqual(len(found['skipped']), 1)
+        self.assertEqual(len(found['skipped']), 2)
         draft = self.post('/api/new', {'kind': 'macro'})
         draft['values'].update(case_dir=str(self.root / 'batch'), macro_cores='2',
-                               name='batch', cases=found['cases'])
+                               name='batch', cases=found['cases'],
+                               case_include_patterns='one\ntwo', case_exclude_patterns='one')
         draft.update(request_id='macro-save')
         saved = self.post('/api/save', draft)
         self.assertEqual(saved['filename'], 'macro-batch.json')
-        self.assertEqual(len(saved['values']['cases']), 2)
+        self.assertEqual(len(saved['values']['cases']), 1)
         macro = read_json(self.app.service.path(saved['filename']))
-        self.assertTrue(macro['queue']['submit'])
+        self.assertFalse(macro['queue']['submit'])
+        self.assertEqual(macro['discovery'], {
+            'include_patterns': ['one', 'two'], 'exclude_patterns': ['one']})
         for row in macro['cases']:
             child = load_case(self.app.service.path(row['ticket']))
             self.assertEqual(child['role'], 'child')
             self.assertEqual(child['cores'], 2)
             self.assertEqual(child['cpu_policy'], 'auto')
             self.assertTrue(child['allow_cross_socket'])
+            self.assertNotIn('discovery', child)
         # Same request is safe to retry; no child duplicates or running solver.
         self.post('/api/save', draft)
-        self.assertEqual(len(self.app.service.listing()), 4)
+        self.assertEqual(len(self.app.service.listing()), 3)
         self.assertEqual(self.store.jobs(), [])
 
     def test_artifacts_allow_only_declared_files_and_reject_symlink_escape(self):

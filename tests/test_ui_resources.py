@@ -35,6 +35,7 @@ class UiResourceTests(unittest.TestCase):
         self.assertTrue(catalog.has('menus.tickets.card.body'))
         self.assertTrue(catalog.has('scenarios.status.compact'))
         self.assertTrue(catalog.has('scenarios.notifications.external_started'))
+        self.assertTrue(catalog.has('scenarios.notifications.external_restarted'))
         self.assertGreater(len(catalog.keys()), 400)
 
     def test_every_literal_resource_reference_exists(self):

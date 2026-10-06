@@ -14,7 +14,8 @@
   },
   "scheduler": {
     "enabled": false,
-    "max_parallel": 1,
+    "max_parallel": 51,
+    "cpu_capacity": 51,
     "openfoam_bashrc": "../deploy/openfoam-env.sh"
   }
 }

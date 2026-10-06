@@ -521,7 +521,7 @@ scan_once()
                 $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
         }
         END { finish_case() }
-    ' "$supervisors_file" <(LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3n "$output_file")
+    ' "$supervisors_file" <(LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k9,9n -k3,3n "$output_file")
     fi
 
     if [[ -s $supervisors_file ]]; then

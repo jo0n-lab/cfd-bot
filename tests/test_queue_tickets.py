@@ -86,6 +86,27 @@ class QueueTicketTests(Environment):
         self.assertEqual([row['case_dir'] for row in rows], [str(direct)])
         self.assertEqual(skipped, [])
 
+    def test_discovery_filters_direct_children_by_include_and_exclude_globs(self):
+        keep = self.case_dir('DS_CART_NQ_001')
+        blocked = self.case_dir('DS_CART_NQ_debug')
+        lhs = self.case_dir('DS_ID_LHS_vN-Q_fC12')
+        self.case_dir('OTHER')
+
+        rows, skipped = discover_cases(
+            self.parent, {}, include_patterns=['DS_CART_NQ_*'],
+            exclude_patterns=['*_debug'])
+
+        self.assertEqual([row['case_dir'] for row in rows], [str(keep)])
+        reasons = dict(skipped)
+        self.assertEqual(reasons[str(blocked)], '제외 패턴 일치')
+        self.assertEqual(reasons[str(lhs)], '포함 패턴 불일치')
+        self.assertEqual(len(skipped), 3)
+
+        rows, _ = discover_cases(
+            self.parent, {}, exclude_patterns=['DS_ID_LHS_vN-Q_fC*'])
+        self.assertNotIn(str(lhs), [row['case_dir'] for row in rows])
+        self.assertIn(str(keep), [row['case_dir'] for row in rows])
+
     def test_postprocessing_cases_without_end_time_are_selectable_and_publishable(self):
         unknown = self.case_dir('a-unknown', post=10)
         (unknown / 'system/controlDict').unlink()
@@ -127,6 +148,7 @@ class QueueTicketTests(Environment):
             self.assertEqual(child['residual_pattern'], 'plots/residual*.png')
             self.assertEqual(child['exports'][0]['pattern'], 'metrics.csv')
             self.assertEqual(child['queue']['state'], 'waiting')
+            self.assertNotIn('discovery', child)
         self.assertEqual(ticket_name('previous.json', 'alone'), 'alone-previous.json')
 
     def test_submission_is_ordered_idempotent_and_survives_restart(self):
@@ -460,26 +482,33 @@ class QueueTicketTests(Environment):
         env = dict(os.environ, CFD_BOT_CONFIG=str(config))
         wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'
         case_root = macro['cases'][0]['case_dir']
-        solver = subprocess.Popen(
-            ['taskset', '-c', self.cpu, 'bash', '-c',
-             'cd "$1" && exec -a simpleFoam sleep 30', 'ofps-test', case_root],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Set argv[0]/cwd directly: a busy host or a slow bash startup file
+        # must not make the scanner run before the fixture reaches its case.
+        solver = subprocess.Popen(['simpleFoam', '30'], executable=shutil.which('sleep'),
+                                  cwd=case_root, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         try:
+            os.sched_setaffinity(solver.pid, {int(self.cpu)})
+            ready = False
             for _ in range(100):
                 cmdline = Path(f'/proc/{solver.pid}/cmdline')
                 cwd = Path(f'/proc/{solver.pid}/cwd')
                 if (cmdline.exists() and cmdline.read_bytes().split(b'\0', 1)[0] == b'simpleFoam'
                         and cwd.resolve() == Path(case_root)):
+                    ready = True
                     break
+                if solver.poll() is not None:
+                    self.fail(solver.stderr.read().decode())
                 time.sleep(0.01)
+            self.assertTrue(ready, 'fixture process did not become visible in /proc')
             result = subprocess.run([str(wrapper), '--check', self.cpu], env=env,
                                     capture_output=True, text=True, timeout=10)
         finally:
             solver.terminate()
             solver.wait(timeout=5)
+            solver.stderr.close()
         self.assertEqual(result.returncode, 4, result.stderr)
         self.assertIn('BLOCKED: overlaps PID', result.stderr)
-        self.assertEqual(read_json(path)['cases'][0]['state'], 'running')
+        self.assertEqual(read_json(path)['cases'][0]['state'], 'running', result.stderr + f'\nfixture_in_snapshot={case_root in result.stdout}')
 
     def test_integrated_ofps_ignores_openfoam_name_outside_a_case(self):
         wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'
@@ -585,9 +614,9 @@ class QueueTicketTests(Environment):
 
     def test_ticket_state_sync_loads_catalog_once(self):
         self.macro([self.case_dir('single-load')])
-        with patch('cfd_bot.config.tickets_for', wraps=tickets_for) as catalog:
+        with patch('cfd_bot.catalog.load_case', wraps=load_case) as catalog:
             sync_ticket_states(self.config, self.store, {'cases': {}})
-        self.assertEqual(catalog.call_count, 1)
+        self.assertEqual(catalog.call_count, 2)  # one macro + one child, once each
 
     def test_queued_ticket_rename_keeps_the_same_job(self):
         root = self.case_dir('renamed')

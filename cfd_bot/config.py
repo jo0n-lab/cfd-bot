@@ -73,6 +73,19 @@ def patterns(value, label):
     return value
 
 
+def glob_patterns(value, label):
+    """Validate basename-only glob patterns used by macro discovery."""
+    if not isinstance(value, list):
+        raise ConfigError(_message('array', label=label))
+    for pattern in value:
+        if (not isinstance(pattern, str) or not pattern or len(pattern) > 255
+                or '\0' in pattern or '/' in pattern or '\\' in pattern):
+            raise ConfigError(_message('glob_patterns', label=label))
+    if len(value) != len(set(value)):
+        raise ConfigError(_message('glob_duplicate', label=label))
+    return value
+
+
 def inside(root, relative):
     root = Path(root).resolve()
     if not isinstance(relative, str) or not relative or Path(relative).is_absolute():
@@ -101,7 +114,7 @@ def cpu_set(value):
 def load_case(path):
     path = Path(path).resolve()
     c = read_json(path)
-    keys(c, "version case_dir name log residual_pattern cores cpu_set cpu_policy allow_cross_socket command expected_seconds simulation exports preprocess postprocess monitoring require_end watcher notifications task_type role macro_ticket end_time queue cases resource_source", "case")
+    keys(c, "version case_dir name log residual_pattern cores cpu_set cpu_policy allow_cross_socket command expected_seconds simulation exports preprocess postprocess monitoring require_end watcher notifications task_type role macro_ticket end_time queue cases resource_source discovery", "case")
     if type(c.get("version")) is not int or c['version'] != 1:
         raise ConfigError(_message('case_version'))
     case_dir = c.get('case_dir')
@@ -133,12 +146,16 @@ def load_case(path):
     if c.get('end_time') is not None:
         number(c['end_time'], 'end_time')
     queue = c.setdefault('queue', {})
-    keys(queue, 'state result reason job_id request_id submit updated_at', 'queue')
+    keys(queue, 'state result reason job_id request_id submit mode lane updated_at', 'queue')
     if queue.get('state', 'waiting') not in ('waiting', 'running', 'finished'):
         raise ConfigError(_message('queue_state'))
     boolean(queue.get('submit', False), 'queue.submit')
     if 'request_id' in queue and (not isinstance(queue['request_id'], str) or not queue['request_id']):
         raise ConfigError(_message('request_id'))
+    if queue.get('mode', 'queue') not in ('run', 'queue'):
+        raise ConfigError(_message('queue_mode'))
+    if type(queue.get('lane', 1)) is not int or not 1 <= queue.get('lane', 1) <= 3:
+        raise ConfigError(_message('queue_lane'))
     if c['task_type'] == 'macro':
         if c['role'] == 'child' or not isinstance(c.setdefault('cases', []), list):
             raise ConfigError(_message('macro_shape'))
@@ -156,6 +173,17 @@ def load_case(path):
                 raise ConfigError(_message('macro_state'))
             if 'ticket' in item:
                 inside(path.parent, item['ticket'])
+        if 'discovery' in c:
+            discovery = c['discovery']
+            keys(discovery, 'include_patterns exclude_patterns', 'discovery')
+            glob_patterns(discovery.setdefault('include_patterns', []),
+                          'discovery.include_patterns')
+            glob_patterns(discovery.setdefault('exclude_patterns', []),
+                          'discovery.exclude_patterns')
+            if not discovery['include_patterns'] and not discovery['exclude_patterns']:
+                c.pop('discovery')
+    elif 'discovery' in c:
+        raise ConfigError(_message('discovery_macro'))
     c.setdefault("name", root.name)
     if not isinstance(c['name'], str) or not c['name'].strip():
         raise ConfigError(_message('case_name'))
@@ -356,9 +384,11 @@ def load_bot(path):
             raise ConfigError(_message('id_array', name=key))
         t[key] = list(dict.fromkeys(t[key]))
     s = b.setdefault('scheduler', {})
-    keys(s, 'enabled max_parallel openfoam_bashrc', 'scheduler')
+    keys(s, 'enabled max_parallel cpu_capacity openfoam_bashrc', 'scheduler')
     boolean(s.setdefault('enabled', False), 'scheduler.enabled')
     number(s.setdefault('max_parallel', 1), 'scheduler.max_parallel', 1, True)
+    if s.setdefault('cpu_capacity', None) is not None:
+        number(s['cpu_capacity'], 'scheduler.cpu_capacity', 1, True)
     bashrc = s.setdefault('openfoam_bashrc', None)
     if bashrc is not None:
         if not isinstance(bashrc, str) or not bashrc.strip() or '\0' in bashrc:
@@ -367,43 +397,13 @@ def load_bot(path):
     return b
 
 
-def cases_for(bot, tickets=None):
-    tickets = tickets_for(bot) if tickets is None else tickets
-    for case in tickets:
-        case['_ui_dir'] = bot['_ui_dir']
-    macros = {c['_config']: c for c in tickets if c['task_type'] == 'macro'}
-    cases = []
-    for case in tickets:
-        if case['task_type'] == 'macro':
-            continue
-        if case['role'] == 'child':
-            parent_path = str((Path(case['_config']).parent / case['macro_ticket']).resolve())
-            parent = macros.get(parent_path)
-            if parent is None:
-                continue  # Children staged before the macro commit are not active yet.
-            if not any(str((Path(parent_path).parent / item.get('ticket', '')).resolve()) == case['_config']
-                       and item['case_dir'] == case['_root'] for item in parent['cases']):
-                continue
-        cases.append(case)
-    roots = [c['_root'] for c in cases]
-    if len(roots) != len(set(roots)):
-        raise ConfigError(_message('duplicate_case'))
-    return cases
+def cases_for(bot, tickets=None, *, force=False):
+    from .catalog import active_cases, ticket_index
+    if tickets is not None:
+        return active_cases(tickets, bot.get('_ui_dir'))
+    return ticket_index(bot, force=force).cases()
 
 
-def tickets_for(bot):
-    import glob
-    from contextlib import ExitStack
-    from .tickets import ticket_lock
-    folders = {Path(p).parent for p in bot['cases']}
-    for pattern in bot['case_globs']:
-        folders.update(Path(p).parent for p in glob.glob(pattern, recursive=True))
-        if not glob.has_magic(str(Path(pattern).parent)):
-            folders.add(Path(pattern).parent)
-    with ExitStack() as stack:
-        for folder in sorted(folders):
-            stack.enter_context(ticket_lock(folder))
-        paths = set(bot['cases'])
-        for pattern in bot['case_globs']:
-            paths.update(glob.glob(pattern, recursive=True))
-        return [load_case(p) for p in sorted(paths)]
+def tickets_for(bot, *, force=False):
+    from .catalog import ticket_index
+    return ticket_index(bot, force=force).tickets()

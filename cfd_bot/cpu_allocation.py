@@ -100,5 +100,50 @@ def select_cpus(count, layout, allowed, busy):
                 numa_nodes=sorted({layout[c][1] for c in selected}))
 
 
-def allocate_cpus(count, observed, active):
-    return select_cpus(count, topology(), os.sched_getaffinity(0), occupied_cpus(observed, active))
+def managed_cpus(config, affinity=None):
+    """Return the bot-managed CPU pool, leaving higher-numbered CPUs reserved."""
+    available = sorted(os.sched_getaffinity(0) if affinity is None else affinity)
+    configured = config.get('scheduler', {}).get('cpu_capacity')
+    limit = len(available) if configured is None else min(configured, len(available))
+    return set(available[:limit])
+
+
+def capacity_status(case, observed, active, config):
+    """Describe whether one resolved case can start inside the managed pool."""
+    pool = managed_cpus(config)
+    try:
+        busy = occupied_cpus(observed, active)
+    except ValueError as exc:
+        required = case['cores'] + int(bool(case.get('monitoring', {}).get('allocate_cpu')))
+        return dict(capacity=len(pool), used_cores=None, free_cores=None,
+                    required_cores=required, can_run=False, capacity_reason=str(exc))
+    used = len(pool & busy)
+    monitor_requested = bool(case.get('monitoring', {}).get('allocate_cpu'))
+    automatic = case.get('cpu_policy') == 'auto'
+    requested = set() if automatic else cpu_set(case['cpu_set'])
+    required = case['cores'] + int(monitor_requested) if automatic else len(requested) + int(monitor_requested)
+    can_run = True
+    reason = ''
+    try:
+        if automatic:
+            select_cpus(required, topology(), pool, busy)
+        else:
+            unavailable = requested - pool
+            overlap = requested & busy
+            if unavailable:
+                can_run = False
+                reason = f"CPU {format_cpus(unavailable)} is outside the managed pool"
+            elif overlap:
+                can_run = False
+                reason = f"CPU {format_cpus(overlap)} is already occupied"
+            elif monitor_requested:
+                select_cpus(1, topology(), pool, busy | requested)
+    except ValueError as exc:
+        can_run, reason = False, str(exc)
+    return dict(capacity=len(pool), used_cores=used, free_cores=max(0, len(pool) - used),
+                required_cores=required, can_run=can_run, capacity_reason=reason)
+
+
+def allocate_cpus(count, observed, active, *, allowed=None):
+    pool = os.sched_getaffinity(0) if allowed is None else allowed
+    return select_cpus(count, topology(), pool, occupied_cpus(observed, active))

@@ -1,0 +1,41 @@
+digraph system {
+ graph [rankdir=LR,bgcolor="white",pad=0.3,nodesep=0.45,ranksep=0.8,fontname="Noto Sans CJK KR",fontsize=24,label="CFD bot HLD · 프로세스 / thread / 공유 자원 (#20 운영 반영)",labelloc=t];
+ node [shape=box,style="rounded,filled",fillcolor="#eff6ff",color="#93c5fd",fontname="Noto Sans CJK KR",fontsize=16,margin="0.18,0.12"];
+ edge [fontname="Noto Sans CJK KR",fontsize=13,color="#475569"];
+ tg [label="Telegram 사용자 / Bot API",fillcolor="#dcfce7"];
+ browser [label="브라우저\nWindows / macOS / Linux",fillcolor="#dcfce7"];
+ ssh [label="SSH local forwarding"];
+ gui [label="Tk GUI 프로세스\nmain: 편집/저장/큐\nworker: 검색/실행 요청"];
+ cli [label="CLI / standalone ofps"];
+ subgraph cluster_bot {
+  label="cfd-bot.service · Python process";color="#94a3b8";style=rounded;
+  main [label="Main thread\nserve → Bot.handle → dispatch\n요청과 일반 전송 순차 처리"];
+  mon [label="Monitor thread\n관측 → 접수 → Scheduler → sync"];
+  delivery [label="Delivery thread\noutbox 순차 전송 / checkpoint"];
+  ack [label="callback ACK / 검색 workers"];
+ }
+ web [label="cfd-bot-web.service\nThreadingHTTPServer / loopback\nMonitor·Scheduler 없음"];
+ scan [label="bin/ofps 프로세스\n/proc scan → stdout / exit\nmanaged는 내부 sync 생략",fillcolor="#fef3c7"];
+ worker [label="Detached worker process\n설정 → hooks → solver → verdict"];
+ calc [label="계산 프로세스\nsolver + opt-in monitor\n외부에서 시작한 계산도 존재",fillcolor="#fef3c7"];
+ db [shape=cylinder,label="SQLite (WAL)\njobs / kv / outbox / history\nticket_changes / observed_tracking",fillcolor="#f1f5f9"];
+ tickets [shape=folder,label="tickets/*.json\n폴더 flock / revision / replace",fillcolor="#f1f5f9"];
+ files [shape=folder,label="case settings / logs / artifacts\nstate/events frozen attachments",fillcolor="#f1f5f9"];
+ tg -> main [label="updates / 응답",dir=both];main -> ack [label="async"];
+ browser -> ssh -> web;
+ main -> scan [label="fresh stat"];
+ mon -> scan [label="snapshot / CPU check"];
+ web -> scan [label="overview / mutation / run"];
+ gui -> scan [label="검색 / 실행 시"];
+ cli -> scan;
+ mon -> worker [label="Popen / new session"];
+ worker -> calc [label="taskset / wait"];
+ scan -> calc [label="/proc 관측",style=dashed];
+ main -> db;mon -> db;web -> db;gui -> db;worker -> db;
+ db -> delivery [label="pending"];delivery -> tg [label="send / retry"];
+ index [label="TicketIndex (프로세스별)\nfull path → ticket / membership set\ninotify 변경 감지 · fallback metadata"];
+ main -> index;mon -> index;web -> index;gui -> index;index -> tickets;
+ worker -> files;mon -> files;web -> files;
+ note [shape=note,label="SNAPSHOT_LOCK: 프로세스 내부만 공유\n.tickets.lock: 프로세스 간 배타 flock\nSQLite: 단일 writer, 연결 timeout 30초",fillcolor="#fff7ed"];
+ scan -> note [style=dotted,arrowhead=none];
+}

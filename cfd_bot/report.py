@@ -129,37 +129,54 @@ def queue_text(store, enabled=True, ui=None):
     lines = [ui.text('menus.queue.title') + ('' if enabled else ui.text('menus.queue.paused_suffix'))]
     if not jobs:
         return lines[0] + '\n' + ui.text('menus.queue.empty')
-    # Conservative FIFO estimate: sum all active remaining time, then queued durations.
-    wait = 0
-    for job in jobs:
-        if job['status'] != 'queued':
-            eta = estimate(job['case'], job.get('telemetry', {}), time.time() - job.get('started', time.time()),
-                           store.runtime_history(job['case'], job.get('actual_cores')))
-            remaining = eta['remaining_seconds']
-            wait = wait + remaining if wait is not None and remaining is not None else None
-    for job in jobs:
+
+    def detail(job, wait=None):
         case = job['case']
         status = ui.text('strings.status.' + job['status'])
-        detail = ui.text('menus.queue.job', job_id=job['id'], case_name=case['name'], status=status)
+        text = ui.text('menus.queue.job', job_id=job['id'], case_name=case['name'], status=status)
         if case.get('role') == 'child':
-            detail += ui.text('menus.queue.child', macro=case.get('macro_ticket', ''),
-                              index=job.get('batch_index', 0) + 1)
+            text += ui.text('menus.queue.child', macro=case.get('macro_ticket', ''),
+                            index=job.get('batch_index', 0) + 1)
         if job['status'] == 'queued' and case.get('cpu_policy') == 'auto':
-            detail += ui.text('menus.queue.separator',
-                              value=ui.text('menus.queue.auto_cpu', cores=case['cores']))
+            text += ui.text('menus.queue.separator',
+                            value=ui.text('menus.queue.auto_cpu', cores=case['cores']))
         elif case.get('cpu_set'):
-            detail += ui.text('menus.queue.separator', value=ui.text(
+            text += ui.text('menus.queue.separator', value=ui.text(
                 'menus.queue.manual_cpu', cores=case['cores'], cpu_set=case['cpu_set']))
         if job['status'] == 'queued':
+            expected = estimate(case, {}, 0, store.runtime_history(case)).get('expected_seconds')
+            text += ui.text('menus.queue.separator', value=ui.text(
+                'menus.queue.timing', wait=duration(wait, ui), expected=duration(expected, ui)))
+        if job.get('reason'):
+            text += ui.text('menus.queue.reason', reason=job['reason'][-500:])
+        return text
+
+    active = [job for job in jobs if job['status'] != 'queued']
+    if active:
+        lines += ['', ui.text('menus.queue.active_title')]
+        lines.extend(detail(job) for job in active)
+    for lane in range(1, 4):
+        lane_jobs = [job for job in jobs if job['status'] == 'queued'
+                     and job.get('queue_lane', 1) == lane]
+        lines += ['', ui.text('menus.queue.lane_title', lane=lane, count=len(lane_jobs))]
+        if not lane_jobs:
+            lines.append(ui.text('menus.queue.lane_empty'))
+            continue
+        running = next((job for job in active if job.get('priority') != 'run'
+                        and job.get('queue_lane', 1) == lane), None)
+        wait = 0
+        if running:
+            eta = estimate(running['case'], running.get('telemetry', {}),
+                           time.time() - running.get('started', time.time()),
+                           store.runtime_history(running['case'], running.get('actual_cores')))
+            wait = eta['remaining_seconds']
+        for job in lane_jobs:
             if job.get('reason') or not enabled:
                 wait = None
-            expected = estimate(case, {}, 0, store.runtime_history(case)).get('expected_seconds')
-            detail += ui.text('menus.queue.separator', value=ui.text(
-                'menus.queue.timing', wait=duration(wait, ui), expected=duration(expected, ui)))
+            lines.append(detail(job, wait))
+            expected = estimate(job['case'], {}, 0,
+                                store.runtime_history(job['case'])).get('expected_seconds')
             wait = wait + expected if wait is not None and expected is not None else None
-        if job.get('reason'):
-            detail += ui.text('menus.queue.reason', reason=job['reason'][-500:])
-        lines.append(detail)
     lines.append(ui.text('menus.queue.estimate_notice'))
     return '\n'.join(lines)
 

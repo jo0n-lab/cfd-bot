@@ -8,5 +8,6 @@
   "ticket_deleted": "대기 취소: {case_name} · 티켓이 삭제됨",
   "waiting": "⏳ {case_name}: {reason}",
   "waiting_suffix": "⏳ {case_name}: {reason} · 실행 대기",
-  "cpu_policy_waiting": "⏳ {case_name}: CPU 정책 검사로 실행 대기\n{report}"
+  "cpu_policy_waiting": "⏳ {case_name}: CPU 정책 검사로 실행 대기\n{report}",
+  "external_restarted": "같은 CASE에서 새 실행을 감지했습니다. 이전 실행의 종료 결과를 확인할 수 없어 중단으로 기록합니다."
 }

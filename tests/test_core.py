@@ -460,7 +460,9 @@ class SchedulerTests(Environment):
         second_root.mkdir()
         second_config = second_root / 'ofps.json'
         second_config.write_text(json.dumps(self.case_data))
-        second = self.store.enqueue(load_case(second_config))
+        # A different lane is eligible for parallel admission; this isolates
+        # the CPU reservation guard from the same-lane FIFO constraint.
+        second = self.store.enqueue(load_case(second_config), queue_lane=2)
         self.config['scheduler']['max_parallel'] = 2
         with patch('cfd_bot.jobs.check_cpus') as check:
             Scheduler(self.config, self.store).tick({})
@@ -689,7 +691,7 @@ class BotTests(Environment):
         snap = dict(raw='No active OpenFOAM calculations found.\n', cases={})
         bot = Bot(self.config, self.store, FakeAPI())
         with patch('cfd_bot.bot.process_snapshot', return_value=snap), \
-                patch('cfd_bot.bot.tickets_for', wraps=tickets_for) as catalog:
+                patch('cfd_bot.catalog.load_case', wraps=load_case) as catalog:
             current, runs, error = bot.fresh_runs()
         self.assertEqual(catalog.call_count, 1)
         self.assertEqual(runs, [])

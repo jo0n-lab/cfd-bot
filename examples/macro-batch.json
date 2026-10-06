@@ -12,6 +12,10 @@
   "preprocess": [{"command": ["./Allclean"]}],
   "postprocess": [{"command": ["./Allpost"]}],
   "end_time": null,
+  "discovery": {
+    "include_patterns": ["DS_CART_NQ_*"],
+    "exclude_patterns": ["DS_ID_LHS_vN-Q_fC*"]
+  },
   "watcher": {"logs": ["log.solver"], "failure": {"patterns": ["failed stage:"]}},
   "residual_pattern": "plots/residual*.png",
   "exports": [],

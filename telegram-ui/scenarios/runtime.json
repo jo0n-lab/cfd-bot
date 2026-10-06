@@ -10,8 +10,10 @@
   },
   "ticket_state": {
     "running": "계산중 · 실행 불가",
-    "queued": "실행 (이미 대기 중)",
-    "idle": "실행"
+    "queued": "대기열 등록됨",
+    "idle": "▶ 즉시 실행",
+    "insufficient": "코어 부족",
+    "queue_action": "대기열 등록"
   },
   "ticket": {
     "state_failed": "실행 상태 확인 실패: {error}",
@@ -19,7 +21,11 @@
     "macro_empty": "실행할 하위 케이스가 없습니다.",
     "changed": "다른 편집기에서 티켓이 변경되었습니다. 다시 열어 확인하세요.",
     "already_running": "이미 계산 중입니다. 실행이 비활성화되었습니다.",
-    "missing_command": "{name}: Allrun 또는 command가 없습니다."
+    "missing_command": "{name}: Allrun 또는 command가 없습니다.",
+    "request_mode": "실행 요청 종류를 확인하세요.",
+    "queue_lane": "작업큐는 1, 2, 3 중에서 선택하세요.",
+    "capacity_available": "현재 잔여 코어 {free}개 ({used}/{capacity} 사용 중) · 요청 {required}개",
+    "capacity_insufficient": "현재 잔여 코어 {free}개 ({used}/{capacity} 사용 중)가 부족합니다. 코어 수를 낮추거나 대기열에 등록하세요."
   },
   "cpu": {
     "topology_missing": "CPU {cpu}의 소켓/코어/NUMA 구성을 확인할 수 없습니다.",

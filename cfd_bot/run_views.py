@@ -35,7 +35,8 @@ def job_view(job, registry):
                 case_id=tracked['case_id'] if tracked else None,
                 ticket=tracked['ticket'] if tracked else None,
                 **{key: job.get(key) for key in ('status', 'created', 'started', 'finished',
-                                                'reason', 'actual_cores', 'actual_cpu_list')})
+                                                'reason', 'actual_cores', 'actual_cpu_list',
+                                                'priority', 'queue_lane')})
 
 
 def _remaining(case, job, store, now):

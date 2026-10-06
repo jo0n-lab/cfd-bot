@@ -259,11 +259,11 @@ class AutomaticSchedulerTests(Environment):
         self.config['scheduler']['max_parallel'] = 2
         self.case_data['cores'] = 3
         self.write_case()
-        self.store.enqueue(self.case)
+        self.store.enqueue(self.case, queue_lane=1)
         other = deepcopy(self.case)
         other.pop('_config')
         other['_root'] = str(self.root / 'another')
-        self.store.enqueue(other)
+        self.store.enqueue(other, queue_lane=2)
         with patch('cfd_bot.jobs.snapshot', return_value={'cases': {}}), \
                 patch('cfd_bot.jobs.check_cpus', return_value=(True, 'SAFE')), \
                 patch('cfd_bot.jobs.subprocess.Popen') as launch:
@@ -276,12 +276,12 @@ class AutomaticSchedulerTests(Environment):
         self.config['scheduler']['max_parallel'] = 3
         self.case_data['cores'] = 5
         self.write_case()
-        self.store.enqueue(self.case)
-        for name, count in [('second', 3), ('third', 1)]:
+        self.store.enqueue(self.case, queue_lane=1)
+        for lane, (name, count) in enumerate([('second', 3), ('third', 1)], start=2):
             other = deepcopy(self.case)
             other.pop('_config')
             other.update(_root=str(self.root / name), cores=count)
-            self.store.enqueue(other)
+            self.store.enqueue(other, queue_lane=lane)
         with patch('cfd_bot.jobs.snapshot', return_value={'cases': {}}), \
                 patch('cfd_bot.jobs.check_cpus', return_value=(True, 'SAFE')), \
                 patch('cfd_bot.jobs.subprocess.Popen') as launch:

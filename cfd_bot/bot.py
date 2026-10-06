@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .artifacts import MAX_DOCUMENT, export_files, residual_files
 from .config import cases_for, tickets_for
+from .catalog import ticket_index
 from .monitor import Monitor
 from .processes import DaemonLock, snapshot as process_snapshot
 from .queue_control import cancel_queued_jobs
@@ -79,7 +80,7 @@ class Bot:
         """Translate the current ofps snapshot directly; watcher state is irrelevant."""
         snapshot = snapshot if snapshot is not None else (self.store.get('snapshot') or {})
         runs = []
-        cases = self.cases().values() if cases is None else cases
+        cases = ticket_index(self.config).cases(snapshot.get('cases', {})) if cases is None else cases
         registered = {case['_root']: case for case in cases}
         observed_at = snapshot.get('at', time.time())
         for root, record in snapshot.get('cases', {}).items():
@@ -108,8 +109,7 @@ class Bot:
         try:
             snap = process_snapshot(self.config['ofps_command'])
             snap['at'] = time.time()
-            tickets = tickets_for(self.config)
-            cases = cases_for(self.config, tickets)
+            cases = ticket_index(self.config).cases(snap['cases'])
             return snap, self.active_runs(snap, cases), None
         except (OSError, RuntimeError) as exc:
             snap = {'at': time.time(), 'cases': {}}
@@ -132,7 +132,10 @@ class Bot:
         page = max(0, min(int(page), max(0, (len(jobs) - 1) // QUEUE_PAGE)))
         visible = jobs[page * QUEUE_PAGE:(page + 1) * QUEUE_PAGE]
         rows = [[button(self.ui.text('strings.common.checked' if job['id'] in selected
-                                     else 'strings.common.unchecked') + job['case']['name'],
+                                     else 'strings.common.unchecked') +
+                               self.ui.text('menus.queue.selection_item',
+                                            lane=job.get('queue_lane', 1),
+                                            case_name=job['case']['name']),
                         'qtoggle:' + job['id'])] for job in visible]
         navigation = []
         if page:
@@ -210,7 +213,7 @@ class Bot:
         rows += [[button(e['name'], 'export:' + cid + ':' + e['name'])] for e in case['exports']]
         if case.get('command') or (Path(case['_root']) / 'Allrun').is_file():
             state = self.case_runner(case).state(Path(case['_config']).name)
-            rows.append([button(state['label'], ('prepare:' if state['enabled'] else 'case:') + cid)])
+            rows.append([button(state['label'], ('prepare:' if state.get('queue_enabled') else 'case:') + cid)])
         ticket_key = hashlib.sha256(case['_config'].encode()).hexdigest()[:16]
         rows.append([button(self.ui.text('menus.cases.edit_ticket'), 'ticketopen:' + ticket_key)])
         self.send(chat, self.ui.text('scenarios.data.case_header', case_name=case['name'],
@@ -309,7 +312,8 @@ class Bot:
                                 'resume' if self.store.get('queue_paused', False) else 'pause')])
             if self.store.jobs(('queued',)):
                 rows.append([button(self.ui.text('menus.queue.multi_select'), 'qselect')])
-            rows += [[button(self.ui.text('menus.queue.cancel_case', case_name=j['case']['name']),
+            rows += [[button(self.ui.text('menus.queue.cancel_case', case_name=j['case']['name'],
+                                          lane=j.get('queue_lane', 1)),
                              'cancel:' + j['id'])]
                      for j in self.store.jobs(('queued',))[:20]]
             rows += [[button(self.ui.text('menus.queue.result_data', case_name=j['case']['name']),
@@ -396,26 +400,38 @@ class Bot:
         elif parts[0] == 'prepare':
             from .execution import execution_case
             state = self.case_runner(case).state(Path(case['_config']).name, fresh=True)
-            if not state['enabled']:
+            if state['state'] == 'running':
                 raise ValueError(self.ui.text('scenarios.launch.already_running'))
             if state['state'] == 'queued':
                 self.send(chat, self.ui.text('scenarios.launch.already_queued'))
                 return
             execution = execution_case(case)
+            actions = []
+            if state['run_enabled']:
+                actions.append([button(self.ui.text('scenarios.launch.run'), 'enqueue:' + cid + ':run')])
+            if state['queue_enabled']:
+                actions.append([button(self.ui.text('scenarios.launch.register', lane=lane),
+                                       f'enqueue:{cid}:queue:{lane}') for lane in range(1, 4)])
             self.send(chat, self.ui.text(
                 'scenarios.launch.confirm', case_name=case['name'], cores=execution['cores'],
                 cpu_set=execution.get('cpu_set', self.ui.text('scenarios.launch.automatic_cpu')),
-                command=execution['command']),
-                keyboard([[button(self.ui.text('scenarios.launch.register'), 'enqueue:' + cid)]]))
+                command=execution['command'], availability=state.get('availability_message', '')),
+                keyboard(actions))
         elif parts[0] == 'enqueue':
+            mode = parts[2] if len(parts) > 2 else 'queue'
+            lane = int(parts[3]) if len(parts) > 3 else 1
             state = self.case_runner(case).state(Path(case['_config']).name, fresh=True)
-            if not state['enabled']:
+            if state['state'] == 'running':
                 raise ValueError(self.ui.text('scenarios.launch.already_running'))
             if state['state'] == 'queued':
                 self.send(chat, self.ui.text('scenarios.launch.already_queued'))
                 return
-            job = self.store.enqueue(case, request_key=request_key)
-            self.send(chat, self.ui.text('scenarios.launch.queued', case_name=case['name'], job_id=job['id']))
+            if mode == 'run' and not state['run_enabled']:
+                raise ValueError(state['availability_message'])
+            job = self.store.enqueue(case, request_key=request_key, priority=mode, queue_lane=lane)
+            self.send(chat, self.ui.text('scenarios.launch.run_requested' if mode == 'run'
+                                         else 'scenarios.launch.queued',
+                                         case_name=case['name'], job_id=job['id'], lane=lane))
         elif parts[0] == 'residual':
             if not case.get('residual_pattern'):
                 self.send(chat, self.ui.text('scenarios.data.residual_path_required'))

@@ -2,6 +2,7 @@
 from contextlib import contextmanager, nullcontext
 from copy import deepcopy
 import fcntl
+from fnmatch import fnmatchcase
 import hashlib
 import json
 import math
@@ -10,9 +11,10 @@ from pathlib import Path
 import re
 import tempfile
 import time
+import threading
 import uuid
 
-from .config import load_case, read_json
+from .config import glob_patterns, load_case, read_json
 from .control import control_times
 from .ui import load_ui
 
@@ -20,13 +22,26 @@ STATES = {name: load_ui().text('scenarios.diagnostics.tickets.state_' + name)
           for name in ('waiting', 'running', 'finished')}
 
 
+_held_locks = threading.local()
+
+
 @contextmanager
 def ticket_lock(folder):
-    folder = Path(folder)
+    folder = Path(folder).resolve()
+    held = getattr(_held_locks, 'folders', None)
+    if held is None:
+        held = _held_locks.folders = set()
+    if folder in held:
+        yield
+        return
     folder.mkdir(parents=True, exist_ok=True)
     with (folder / '.tickets.lock').open('a') as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)
-        yield
+        held.add(folder)
+        try:
+            yield
+        finally:
+            held.remove(folder)
 
 
 def atomic_json(path, data):
@@ -131,8 +146,16 @@ def postprocess_time(root):
     return latest
 
 
-def discover_cases(root, observed, end_time=None):
+def discover_cases(root, observed, end_time=None, include_patterns=None, exclude_patterns=None):
+    """Find direct child cases and apply basename glob filters.
+
+    Empty include patterns admit every existing candidate. Any exclude match wins.
+    """
     ui = load_ui()
+    include_patterns = [] if include_patterns is None else include_patterns
+    exclude_patterns = [] if exclude_patterns is None else exclude_patterns
+    glob_patterns(include_patterns, 'discovery.include_patterns')
+    glob_patterns(exclude_patterns, 'discovery.exclude_patterns')
     root = Path(root).expanduser().resolve()
     if not root.is_dir():
         raise ValueError(ui.text('scenarios.diagnostics.tickets.root_missing'))
@@ -140,6 +163,15 @@ def discover_cases(root, observed, end_time=None):
     for case in sorted(root.iterdir(), key=lambda path: path.name):
         if (not case.is_dir() or case.is_symlink() or case.name.startswith('.')
                 or case.name.endswith('-template') or not (case / 'Allrun').is_file()):
+            continue
+        if any(fnmatchcase(case.name, pattern) for pattern in exclude_patterns):
+            skipped.append((str(case), ui.text(
+                'scenarios.diagnostics.tickets.discovery_excluded')))
+            continue
+        if include_patterns and not any(
+                fnmatchcase(case.name, pattern) for pattern in include_patterns):
+            skipped.append((str(case), ui.text(
+                'scenarios.diagnostics.tickets.discovery_not_included')))
             continue
         if str(case) in observed:
             skipped.append((str(case), ui.text('scenarios.diagnostics.tickets.discovery_running')))
@@ -163,7 +195,7 @@ def discover_cases(root, observed, end_time=None):
     return rows, skipped
 
 
-def publish_macro(path, data, previous=None, *, request_id=None, locked=False):
+def publish_macro(path, data, previous=None, *, request_id=None, submit=True, locked=False):
     """Publish children first and commit their macro last; rollback on error."""
     ui = load_ui()
     path = Path(path)
@@ -183,7 +215,8 @@ def publish_macro(path, data, previous=None, *, request_id=None, locked=False):
                         or (queue.get('state') == 'waiting' and queue.get('request_id'))):
                     raise ValueError(ui.text('scenarios.diagnostics.tickets.macro_order_busy'))
                 reconfigured = True
-        existing = [load_case(p) for p in path.parent.glob('*.json') if p != path]
+        from .catalog import folder_index
+        existing = [c for c in folder_index(path.parent).tickets() if c['_config'] != str(path)]
         by_root = {c['_root']: c for c in existing if c['task_type'] == 'single'}
         saved_rows = {str(Path(r['case_dir']).resolve()): r for r in saved['cases']} if editing else {}
         selected_roots = {str(Path(row['case_dir']).resolve()) for row in rows}
@@ -212,10 +245,13 @@ def publish_macro(path, data, previous=None, *, request_id=None, locked=False):
                 staged[target] = detached
                 if target != original:
                     removed.append(original)
-        request = saved['queue'].get('request_id') if editing else request_id or uuid.uuid4().hex
+        request = (saved['queue'].get('request_id') if editing else
+                   (request_id or uuid.uuid4().hex) if submit else None)
         macro = deepcopy(data)
-        macro.update(task_type='macro', role='alone', cases=[],
-                     queue=dict(state='waiting', submit=True, request_id=request))
+        queue = dict(state='waiting', submit=bool(submit))
+        if request:
+            queue['request_id'] = request
+        macro.update(task_type='macro', role='alone', cases=[], queue=queue)
         if editing:
             macro['queue'] = saved['queue']
         if reconfigured:
@@ -234,6 +270,7 @@ def publish_macro(path, data, previous=None, *, request_id=None, locked=False):
             name = (Path(old['_config']).name if editing and old and old['role'] == 'child' else
                     ticket_name(Path(root).name + '-' + suffix, 'child'))
             child = clone_document(data, root)
+            child.pop('discovery', None)
             if data.get('resource_source') != 'macro':
                 for key in ('command', 'cores', 'cpu_set', 'cpu_policy'):
                     child.pop(key, None)
@@ -295,12 +332,25 @@ def publish_macro(path, data, previous=None, *, request_id=None, locked=False):
 
 def sync_ticket_states(config, store, snapshot, tickets=None):
     """Publish known states after a successful scan; absence alone is not success."""
+    # Serialize whole publications, not just each file: an older publisher must
+    # not overwrite a newer child/parent pair after its journal was acknowledged.
+    with ticket_lock(store.root):
+        _sync_ticket_states(config, store, snapshot, tickets)
+
+
+def _sync_ticket_states(config, store, snapshot, tickets=None):
     ui = load_ui(config.get('_ui_dir'))
-    from .config import cases_for, tickets_for
+    from .config import cases_for
+    from .catalog import ticket_index
     from .storage import LIVE
-    tickets = tickets_for(config) if tickets is None else tickets
-    cases = cases_for(config, tickets)
-    jobs = store.jobs()
+    index = ticket_index(config) if tickets is None else None
+    changes = index.changes() if index else {}
+    pending_changes = store.ticket_changes()
+    roots = set(snapshot['cases']) | set(changes) | set(pending_changes)
+    cases = index.cases(roots) if index else cases_for(config, tickets)
+    macros = index.related_macros(roots) if index else [t for t in tickets if t['task_type'] == 'macro']
+    jobs = store.jobs_for_roots(c['_root'] for c in cases)
+    skipped = set()
     jobs_by_root = {}
     for job in jobs:
         jobs_by_root.setdefault(job['case_root'], []).append(job)
@@ -338,14 +388,22 @@ def sync_ticket_states(config, store, snapshot, tickets=None):
             # Preserve an explicit new submission written since the scan started.
             old = data.get('queue', {})
             if old.get('request_id') != case.get('queue', {}).get('request_id'):
+                skipped.add(case['_root'])
+                states.pop(case['_root'], None)
                 continue
             if queue != old:
                 data['queue'] = dict(queue, updated_at=time.time())
                 atomic_json(path, data)
-    for macro in (ticket for ticket in tickets if ticket['task_type'] == 'macro'):
+    for macro in macros:
         path = Path(macro['_config'])
         with ticket_lock(path.parent):
+            if not path.exists():
+                continue
             data = read_json(path)
+            if data.get('queue', {}).get('request_id') != macro.get('queue', {}).get('request_id'):
+                skipped.update(row['case_dir'] for row in macro['cases'])
+                skipped.add(macro['_root'])
+                continue
             changed = False
             for row in data['cases']:
                 state = states.get(row['case_dir'])
@@ -365,12 +423,22 @@ def sync_ticket_states(config, store, snapshot, tickets=None):
                 data['queue']['updated_at'] = time.time()
                 atomic_json(path, data)
 
+    # A crash before this point retries both the child and its parent. A newer
+    # DB event survives the watermark even if it arrives during JSON publication.
+    store.acknowledge_ticket_changes({r: v for r, v in pending_changes.items() if r not in skipped})
+    if index:
+        index.acknowledge({r: v for r, v in changes.items() if r not in skipped})
+
 
 def accept_submissions(config, store):
     ui = load_ui(config.get('_ui_dir'))
-    from .config import cases_for, tickets_for
-    by_path = {c['_config']: c for c in cases_for(config)}
-    for ticket in tickets_for(config):
+    from .catalog import ticket_index
+    index = ticket_index(config)
+    submissions = index.tickets(submit_only=True)
+    if not submissions:
+        return
+    by_path = {c['_config']: c for c in index.cases()}
+    for ticket in submissions:
         queue = ticket.get('queue', {})
         if not queue.get('submit'):
             continue
@@ -386,7 +454,8 @@ def accept_submissions(config, store):
             raise ValueError(ui.text('scenarios.diagnostics.tickets.children_missing', name=ticket['name']))
         path = Path(ticket['_config'])
         try:
-            store.enqueue_batch(children, request)
+            store.enqueue_batch(children, request, priority=queue.get('mode', 'queue'),
+                                queue_lane=queue.get('lane', 1))
         except ValueError as exc:
             with ticket_lock(path.parent):
                 data = read_json(path)

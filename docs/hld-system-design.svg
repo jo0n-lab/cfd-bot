@@ -1,165 +1,331 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="960" viewBox="0 0 1400 960" role="img" aria-labelledby="title desc">
-  <title id="title">ofps Telegram CFD bot High-Level Design</title>
-  <desc id="desc">외부 사용자와 시스템, bot service 내부 컨테이너, 영속 저장소와 주요 설계 원칙을 한 장에 표시한다.</desc>
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0 0L10 5L0 10Z" fill="#334155"/>
-    </marker>
-    <marker id="purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0 0L10 5L0 10Z" fill="#7c3aed"/>
-    </marker>
-    <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
-      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.1"/>
-    </filter>
-    <style>
-      text { font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; fill: #0f172a; }
-      .title { font-size: 30px; font-weight: 700; }
-      .subtitle { font-size: 15px; fill: #475569; }
-      .section { font-size: 18px; font-weight: 700; }
-      .section-sub { font-size: 12px; fill: #64748b; }
-      .card-title { font-size: 14px; font-weight: 700; text-anchor: middle; }
-      .card-sub { font-size: 12px; fill: #475569; text-anchor: middle; }
-      .small { font-size: 12px; fill: #475569; }
-      .badge { font-size: 12px; font-weight: 700; text-anchor: middle; }
-      .card { stroke-width: 2; rx: 11; }
-      .user { fill: #ffffff; stroke: #3b82f6; }
-      .bot { fill: #fcfbff; stroke: #8b5cf6; }
-      .domain { fill: #f0fdf4; stroke: #10b981; }
-      .external { fill: #fffaf5; stroke: #f97316; }
-      .data { fill: #ffffff; stroke: #64748b; }
-      .arrow { fill: none; stroke: #334155; stroke-width: 1.7; marker-end: url(#arrow); }
-      .flow { fill: none; stroke: #7c3aed; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#purple); }
-      .rule { stroke: #cbd5e1; stroke-width: 1; }
-    </style>
-  </defs>
-
-  <rect width="1400" height="960" fill="#f8fafc"/>
-  <text class="title" x="42" y="50">High-Level Design</text>
-  <text class="subtitle" x="42" y="78">ofps Telegram CFD bot · 시스템 경계, 런타임 컨테이너, 데이터 소유권</text>
-
-  <text class="section" x="48" y="126">1. 외부 사용자와 시스템</text>
-  <text class="section-sub" x="48" y="148">bot service 바깥의 입력·출력 경계</text>
-
-  <g transform="translate(48 170)">
-    <rect rx="10" class="card user" width="250" height="84"/>
-    <text class="card-title" x="125" y="29">Telegram 사용자</text>
-    <text class="card-sub" x="125" y="51">/stat · /data · /queue · /tickets</text>
-    <text class="card-sub" x="125" y="69">상태 · 데이터 · 자동 알림 수신</text>
-  </g>
-  <g transform="translate(372 170)">
-    <rect rx="10" class="card user" width="250" height="84"/>
-    <text class="card-title" x="125" y="29">운영자</text>
-    <text class="card-sub" x="125" y="51">Web · GUI · CLI · JSON 관리</text>
-    <text class="card-sub" x="125" y="69">systemd user service 운영</text>
-  </g>
-  <g transform="translate(778 170)">
-    <rect rx="10" class="card external" width="250" height="84"/>
-    <text class="card-title" x="125" y="29">ofps · Linux /proc</text>
-    <text class="card-sub" x="125" y="51">활성 CASE · PID · owner</text>
-    <text class="card-sub" x="125" y="69">CPU affinity · socket · NUMA</text>
-  </g>
-  <g transform="translate(1102 170)">
-    <rect rx="10" class="card external" width="250" height="84"/>
-    <text class="card-title" x="125" y="29">OpenFOAM 케이스</text>
-    <text class="card-sub" x="125" y="51">controlDict · solver 로그</text>
-    <text class="card-sub" x="125" y="69">Residual · 후처리 결과</text>
-  </g>
-
-  <line class="rule" x1="48" y1="290" x2="1352" y2="290"/>
-  <text class="section" x="48" y="326">2. cfd-bot service</text>
-  <text class="section-sub" x="48" y="348">하나의 daemon process + 독립 calculation worker</text>
-
-  <rect x="42" y="370" width="1316" height="330" rx="18" fill="#f5f3ff"/>
-  <text class="section" x="68" y="404">Runtime containers</text>
-
-  <g transform="translate(72 430)">
-    <rect rx="10" class="card bot" width="250" height="92"/>
-    <text class="card-title" x="125" y="29">Telegram Router</text>
-    <text class="card-sub" x="125" y="51">allowlist · command · callback</text>
-    <text class="card-sub" x="125" y="70">요청 시 즉시 ofps snapshot</text>
-  </g>
-  <g transform="translate(374 430)">
-    <rect rx="10" class="card bot" width="250" height="92"/>
-    <text class="card-title" x="125" y="29">Monitor + Scheduler</text>
-    <text class="card-sub" x="125" y="51">등록·미등록 CASE 추적</text>
-    <text class="card-sub" x="125" y="70">FIFO · CPU 예약 · worker 복구</text>
-  </g>
-  <g transform="translate(676 430)">
-    <rect rx="10" class="card bot" width="250" height="92"/>
-    <text class="card-title" x="125" y="29">Notification Delivery</text>
-    <text class="card-sub" x="125" y="51">SQLite outbox 소비</text>
-    <text class="card-sub" x="125" y="70">중복 방지 · retry · 파일 전송</text>
-  </g>
-  <g transform="translate(1028 430)">
-    <rect rx="10" class="card external" width="280" height="92"/>
-    <text class="card-title" x="140" y="29">Detached Worker</text>
-    <text class="card-sub" x="140" y="51">.process-core → solver + 선택 monitor</text>
-    <text class="card-sub" x="140" y="70">pre/post · 독립 process group</text>
-  </g>
-
-  <g transform="translate(164 570)">
-    <rect rx="10" class="card domain" width="250" height="88"/>
-    <text class="card-title" x="125" y="29">UiCatalog</text>
-    <text class="card-sub" x="125" y="51">menus · scenarios · strings</text>
-    <text class="card-sub" x="125" y="69">manifest · template 검증</text>
-  </g>
-  <g transform="translate(488 570)">
-    <rect rx="10" class="card domain" width="250" height="88"/>
-    <text class="card-title" x="125" y="29">TicketService</text>
-    <text class="card-sub" x="125" y="51">검증 · 저장 · 복제 · macro</text>
-    <text class="card-sub" x="125" y="69">Telegram · GUI · Web 공용</text>
-  </g>
-  <g transform="translate(812 570)">
-    <rect rx="10" class="card domain" width="250" height="88"/>
-    <text class="card-title" x="125" y="29">Logs + Outcomes</text>
-    <text class="card-sub" x="125" y="51">증분 parser · 실패 증거</text>
-    <text class="card-sub" x="125" y="69">final Time ≥ endTime 판정</text>
-  </g>
-
-  <path class="arrow" d="M173 254V430"/>
-  <path class="arrow" d="M497 254V360H613V570"/>
-  <path class="flow" d="M903 254V330H499V430"/>
-  <path class="flow" d="M1227 254V348H937V570"/>
-  <path class="arrow" d="M322 476H374"/>
-  <path class="arrow" d="M624 476H676"/>
-  <path class="arrow" d="M624 500H1028"/>
-
-  <line class="rule" x1="48" y1="728" x2="1352" y2="728"/>
-  <text class="section" x="48" y="764">3. 영속 설정과 상태</text>
-  <text class="section-sub" x="48" y="786">정적 구성과 런타임 상태의 소유권 분리</text>
-
-  <g transform="translate(48 808)">
-    <rect rx="10" class="card data" width="240" height="76"/>
-    <text class="card-title" x="120" y="28">bot.json</text>
-    <text class="card-sub" x="120" y="50">service · allowlist · scheduler</text>
-  </g>
-  <g transform="translate(314 808)">
-    <rect rx="10" class="card data" width="240" height="76"/>
-    <text class="card-title" x="120" y="28">tickets/*.json</text>
-    <text class="card-sub" x="120" y="50">케이스별 watcher · data · 실행</text>
-  </g>
-  <g transform="translate(580 808)">
-    <rect rx="10" class="card data" width="240" height="76"/>
-    <text class="card-title" x="120" y="28">telegram-ui/**/*.json</text>
-    <text class="card-sub" x="120" y="50">문구 · 버튼 · template · manifest</text>
-  </g>
-  <g transform="translate(846 808)">
-    <rect rx="10" class="card data" width="240" height="76"/>
-    <text class="card-title" x="120" y="28">state.sqlite3</text>
-    <text class="card-sub" x="120" y="50">jobs · observed · outbox · history</text>
-  </g>
-  <g transform="translate(1112 808)">
-    <rect rx="10" class="card data" width="240" height="76"/>
-    <text class="card-title" x="120" y="28">state/events</text>
-    <text class="card-sub" x="120" y="50">종료 시점 Residual snapshot</text>
-  </g>
-
-  <rect x="48" y="910" width="304" height="30" rx="15" fill="#dbeafe"/>
-  <text class="badge" x="200" y="930" fill="#1d4ed8">실행 중 여부 = 현재 ofps snapshot</text>
-  <rect x="370" y="910" width="304" height="30" rx="15" fill="#dcfce7"/>
-  <text class="badge" x="522" y="930" fill="#15803d">티켓 없이도 외부 계산 자동 감시</text>
-  <rect x="692" y="910" width="304" height="30" rx="15" fill="#ede9fe"/>
-  <text class="badge" x="844" y="930" fill="#6d28d9">상태 변경과 Telegram 전송 분리</text>
-  <rect x="1014" y="910" width="338" height="30" rx="15" fill="#ffedd5"/>
-  <text class="badge" x="1183" y="930" fill="#c2410c">정상 종료 = controlDict + 최종 Time</text>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.44.0 (0)
+ -->
+<!-- Title: system Pages: 1 -->
+<svg width="1932pt" height="1077pt"
+ viewBox="0.00 0.00 1932.20 1077.33" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(21.6 1055.73)">
+<title>system</title>
+<polygon fill="white" stroke="transparent" points="-21.6,21.6 -21.6,-1055.73 1910.6,-1055.73 1910.6,21.6 -21.6,21.6"/>
+<text text-anchor="middle" x="944.5" y="-1010.93" font-family="Noto Sans CJK KR" font-size="24.00">CFD bot HLD · 프로세스 / thread / 공유 자원 (#20 운영 반영)</text>
+<g id="clust1" class="cluster">
+<title>cluster_bot</title>
+<path fill="white" stroke="#94a3b8" d="M683,-698.13C683,-698.13 1423,-698.13 1423,-698.13 1429,-698.13 1435,-704.13 1435,-710.13 1435,-710.13 1435,-980.13 1435,-980.13 1435,-986.13 1429,-992.13 1423,-992.13 1423,-992.13 683,-992.13 683,-992.13 677,-992.13 671,-986.13 671,-980.13 671,-980.13 671,-710.13 671,-710.13 671,-704.13 677,-698.13 683,-698.13"/>
+<text text-anchor="middle" x="1053" y="-968.93" font-family="Noto Sans CJK KR" font-size="24.00">cfd&#45;bot.service · Python process</text>
+</g>
+<!-- tg -->
+<g id="node1" class="node">
+<title>tg</title>
+<path fill="#dcfce7" stroke="#93c5fd" d="M477,-884.13C477,-884.13 288,-884.13 288,-884.13 282,-884.13 276,-878.13 276,-872.13 276,-872.13 276,-860.13 276,-860.13 276,-854.13 282,-848.13 288,-848.13 288,-848.13 477,-848.13 477,-848.13 483,-848.13 489,-854.13 489,-860.13 489,-860.13 489,-872.13 489,-872.13 489,-878.13 483,-884.13 477,-884.13"/>
+<text text-anchor="middle" x="382.5" y="-862.33" font-family="Noto Sans CJK KR" font-size="16.00">Telegram 사용자 / Bot API</text>
+</g>
+<!-- main -->
+<g id="node6" class="node">
+<title>main</title>
+<path fill="#eff6ff" stroke="#93c5fd" d="M930.5,-950.13C930.5,-950.13 693.5,-950.13 693.5,-950.13 687.5,-950.13 681.5,-944.13 681.5,-938.13 681.5,-938.13 681.5,-890.13 681.5,-890.13 681.5,-884.13 687.5,-878.13 693.5,-878.13 693.5,-878.13 930.5,-878.13 930.5,-878.13 936.5,-878.13 942.5,-884.13 942.5,-890.13 942.5,-890.13 942.5,-938.13 942.5,-938.13 942.5,-944.13 936.5,-950.13 930.5,-950.13"/>
+<text text-anchor="middle" x="812" y="-928.33" font-family="Noto Sans CJK KR" font-size="16.00">Main thread</text>
+<text text-anchor="middle" x="812" y="-910.33" font-family="Noto Sans CJK KR" font-size="16.00">serve → Bot.handle → dispatch</text>
+<text text-anchor="middle" x="812" y="-892.33" font-family="Noto Sans CJK KR" font-size="16.00">요청과 일반 전송 순차 처리</text>
+</g>
+<!-- tg&#45;&gt;main -->
+<g id="edge1" class="edge">
+<title>tg&#45;&gt;main</title>
+<path fill="none" stroke="#475569" d="M499.18,-879.12C552.28,-885.08 615.68,-892.2 671.4,-898.46"/>
+<polygon fill="#475569" stroke="#475569" points="499.5,-875.64 489.17,-878 498.72,-882.59 499.5,-875.64"/>
+<polygon fill="#475569" stroke="#475569" points="671.03,-901.94 681.35,-899.58 671.81,-894.98 671.03,-901.94"/>
+<text text-anchor="middle" x="581.5" y="-897.73" font-family="Noto Sans CJK KR" font-size="13.00">updates / 응답</text>
+</g>
+<!-- browser -->
+<g id="node2" class="node">
+<title>browser</title>
+<path fill="#dcfce7" stroke="#93c5fd" d="M205,-339.13C205,-339.13 12,-339.13 12,-339.13 6,-339.13 0,-333.13 0,-327.13 0,-327.13 0,-297.13 0,-297.13 0,-291.13 6,-285.13 12,-285.13 12,-285.13 205,-285.13 205,-285.13 211,-285.13 217,-291.13 217,-297.13 217,-297.13 217,-327.13 217,-327.13 217,-333.13 211,-339.13 205,-339.13"/>
+<text text-anchor="middle" x="108.5" y="-317.33" font-family="Noto Sans CJK KR" font-size="16.00">브라우저</text>
+<text text-anchor="middle" x="108.5" y="-299.33" font-family="Noto Sans CJK KR" font-size="16.00">Windows / macOS / Linux</text>
+</g>
+<!-- ssh -->
+<g id="node3" class="node">
+<title>ssh</title>
+<path fill="#eff6ff" stroke="#93c5fd" d="M462,-330.13C462,-330.13 303,-330.13 303,-330.13 297,-330.13 291,-324.13 291,-318.13 291,-318.13 291,-306.13 291,-306.13 291,-300.13 297,-294.13 303,-294.13 303,-294.13 462,-294.13 462,-294.13 468,-294.13 474,-300.13 474,-306.13 474,-306.13 474,-318.13 474,-318.13 474,-324.13 468,-330.13 462,-330.13"/>
+<text text-anchor="middle" x="382.5" y="-308.33" font-family="Noto Sans CJK KR" font-size="16.00">SSH local forwarding</text>
+</g>
+<!-- browser&#45;&gt;ssh -->
+<g id="edge3" class="edge">
+<title>browser&#45;&gt;ssh</title>
+<path fill="none" stroke="#475569" d="M217,-312.13C237.93,-312.13 259.8,-312.13 280.51,-312.13"/>
+<polygon fill="#475569" stroke="#475569" points="280.57,-315.63 290.57,-312.13 280.57,-308.63 280.57,-315.63"/>
+</g>
+<!-- web -->
+<g id="node10" class="node">
+<title>web</title>
+<path fill="#eff6ff" stroke="#93c5fd" d="M938,-348.13C938,-348.13 686,-348.13 686,-348.13 680,-348.13 674,-342.13 674,-336.13 674,-336.13 674,-288.13 674,-288.13 674,-282.13 680,-276.13 686,-276.13 686,-276.13 938,-276.13 938,-276.13 944,-276.13 950,-282.13 950,-288.13 950,-288.13 950,-336.13 950,-336.13 950,-342.13 944,-348.13 938,-348.13"/>
+<text text-anchor="middle" x="812" y="-326.33" font-family="Noto Sans CJK KR" font-size="16.00">cfd&#45;bot&#45;web.service</text>
+<text text-anchor="middle" x="812" y="-308.33" font-family="Noto Sans CJK KR" font-size="16.00">ThreadingHTTPServer / loopback</text>
+<text text-anchor="middle" x="812" y="-290.33" font-family="Noto Sans CJK KR" font-size="16.00">Monitor·Scheduler 없음</text>
+</g>
+<!-- ssh&#45;&gt;web -->
+<g id="edge4" class="edge">
+<title>ssh&#45;&gt;web</title>
+<path fill="none" stroke="#475569" d="M474.16,-312.13C529.18,-312.13 600.71,-312.13 663.69,-312.13"/>
+<polygon fill="#475569" stroke="#475569" points="663.72,-315.63 673.72,-312.13 663.72,-308.63 663.72,-315.63"/>
+</g>
+<!-- gui -->
+<g id="node4" class="node">
+<title>gui</title>
+<path fill="#eff6ff" stroke="#93c5fd" d="M893.5,-502.13C893.5,-502.13 730.5,-502.13 730.5,-502.13 724.5,-502.13 718.5,-496.13 718.5,-490.13 718.5,-490.13 718.5,-442.13 718.5,-442.13 718.5,-436.13 724.5,-430.13 730.5,-430.13 730.5,-430.13 893.5,-430.13 893.5,-430.13 899.5,-430.13 905.5,-436.13 905.5,-442.13 905.5,-442.13 905.5,-490.13 905.5,-490.13 905.5,-496.13 899.5,-502.13 893.5,-502.13"/>
+<text text-anchor="middle" x="812" y="-480.33" font-family="Noto Sans CJK KR" font-size="16.00">Tk GUI 프로세스</text>
+<text text-anchor="middle" x="812" y="-462.33" font-family="Noto Sans CJK KR" font-size="16.00">main: 편집/저장/큐</text>
+<text text-anchor="middle" x="812" y="-444.33" font-family="Noto Sans CJK KR" font-size="16.00">worker: 검색/실행 요청</text>
+</g>
+<!-- scan -->
+<g id="node11" class="node">
+<title>scan</title>
+<path fill="#fef3c7" stroke="#93c5fd" d="M1409,-260.13C1409,-260.13 1215,-260.13 1215,-260.13 1209,-260.13 1203,-254.13 1203,-248.13 1203,-248.13 1203,-200.13 1203,-200.13 1203,-194.13 1209,-188.13 1215,-188.13 1215,-188.13 1409,-188.13 1409,-188.13 1415,-188.13 1421,-194.13 1421,-200.13 1421,-200.13 1421,-248.13 1421,-248.13 1421,-254.13 1415,-260.13 1409,-260.13"/>
+<text text-anchor="middle" x="1312" y="-238.33" font-family="Noto Sans CJK KR" font-size="16.00">bin/ofps 프로세스</text>
+<text text-anchor="middle" x="1312" y="-220.33" font-family="Noto Sans CJK KR" font-size="16.00">/proc scan → stdout / exit</text>
+<text text-anchor="middle" x="1312" y="-202.33" font-family="Noto Sans CJK KR" font-size="16.00">managed는 내부 sync 생략</text>
+</g>
+<!-- gui&#45;&gt;scan -->
+<g id="edge8" class="edge">
+<title>gui&#45;&gt;scan</title>
+<path fill="none" stroke="#475569" d="M879.64,-430.01C905.11,-413.12 932.27,-390.8 950,-364.13 979.67,-319.52 937.97,-281.58 979,-247.13 1010.64,-220.56 1110.57,-216.5 1192.6,-218.09"/>
+<polygon fill="#475569" stroke="#475569" points="1192.69,-221.6 1202.76,-218.32 1192.84,-214.6 1192.69,-221.6"/>
+<text text-anchor="middle" x="1057.5" y="-250.73" font-family="Noto Sans CJK KR" font-size="13.00">검색 / 실행 시</text>
+</g>
+<!-- db -->
+<g id="node14" class="node">
+<title>db</title>
+<path fill="#f1f5f9" stroke="#93c5fd" d="M1459,-525.63C1459,-530.6 1393.11,-534.63 1312,-534.63 1230.89,-534.63 1165,-530.6 1165,-525.63 1165,-525.63 1165,-444.63 1165,-444.63 1165,-439.67 1230.89,-435.63 1312,-435.63 1393.11,-435.63 1459,-439.67 1459,-444.63 1459,-444.63 1459,-525.63 1459,-525.63"/>
+<path fill="none" stroke="#93c5fd" d="M1459,-525.63C1459,-520.67 1393.11,-516.63 1312,-516.63 1230.89,-516.63 1165,-520.67 1165,-525.63"/>
+<text text-anchor="middle" x="1312" y="-499.33" font-family="Noto Sans CJK KR" font-size="16.00">SQLite (WAL)</text>
+<text text-anchor="middle" x="1312" y="-481.33" font-family="Noto Sans CJK KR" font-size="16.00">jobs / kv / outbox / history</text>
+<text text-anchor="middle" x="1312" y="-463.33" font-family="Noto Sans CJK KR" font-size="16.00">ticket_changes / observed_tracking</text>
+</g>
+<!-- gui&#45;&gt;db -->
+<g id="edge16" class="edge">
+<title>gui&#45;&gt;db</title>
+<path fill="none" stroke="#475569" d="M905.5,-469.66C975.23,-472.32 1072.5,-476.03 1154.29,-479.15"/>
+<polygon fill="#475569" stroke="#475569" points="1154.57,-482.67 1164.7,-479.55 1154.84,-475.67 1154.57,-482.67"/>
+</g>
+<!-- index -->
+<g id="node17" class="node">
+<title>index</title>
+<path fill="#eff6ff" stroke="#93c5fd" d="M1447,-690.13C1447,-690.13 1177,-690.13 1177,-690.13 1171,-690.13 1165,-684.13 1165,-678.13 1165,-678.13 1165,-630.13 1165,-630.13 1165,-624.13 1171,-618.13 1177,-618.13 1177,-618.13 1447,-618.13 1447,-618.13 1453,-618.13 1459,-624.13 1459,-630.13 1459,-630.13 1459,-678.13 1459,-678.13 1459,-684.13 1453,-690.13 1447,-690.13"/>
+<text text-anchor="middle" x="1312" y="-668.33" font-family="Noto Sans CJK KR" font-size="16.00">TicketIndex (프로세스별)</text>
+<text text-anchor="middle" x="1312" y="-650.33" font-family="Noto Sans CJK KR" font-size="16.00">full path → ticket / membership set</text>
+<text text-anchor="middle" x="1312" y="-632.33" font-family="Noto Sans CJK KR" font-size="16.00">inotify 변경 감지 · fallback metadata</text>
+</g>
+<!-- gui&#45;&gt;index -->
+<g id="edge23" class="edge">
+<title>gui&#45;&gt;index</title>
+<path fill="none" stroke="#475569" d="M832.51,-502.39C858.94,-547.21 910.76,-621.32 979,-652.13 1033.02,-676.52 1097.21,-681.64 1154.68,-679.04"/>
+<polygon fill="#475569" stroke="#475569" points="1155.15,-682.51 1164.95,-678.48 1154.78,-675.52 1155.15,-682.51"/>
+</g>
+<!-- cli -->
+<g id="node5" class="node">
+<title>cli</title>
+<path fill="#eff6ff" stroke="#93c5fd" d="M892,-163.13C892,-163.13 732,-163.13 732,-163.13 726,-163.13 720,-157.13 720,-151.13 720,-151.13 720,-139.13 720,-139.13 720,-133.13 726,-127.13 732,-127.13 732,-127.13 892,-127.13 892,-127.13 898,-127.13 904,-133.13 904,-139.13 904,-139.13 904,-151.13 904,-151.13 904,-157.13 898,-163.13 892,-163.13"/>
+<text text-anchor="middle" x="812" y="-141.33" font-family="Noto Sans CJK KR" font-size="16.00">CLI / standalone ofps</text>
+</g>
+<!-- cli&#45;&gt;scan -->
+<g id="edge9" class="edge">
+<title>cli&#45;&gt;scan</title>
+<path fill="none" stroke="#475569" d="M904.29,-144.89C969.42,-146.21 1058.78,-151.08 1136,-166.13 1159.37,-170.69 1183.93,-177.49 1207.01,-184.85"/>
+<polygon fill="#475569" stroke="#475569" points="1206.22,-188.27 1216.81,-188.04 1208.38,-181.62 1206.22,-188.27"/>
+</g>
+<!-- ack -->
+<g id="node9" class="node">
+<title>ack</title>
+<path fill="#eff6ff" stroke="#93c5fd" d="M1415,-932.13C1415,-932.13 1209,-932.13 1209,-932.13 1203,-932.13 1197,-926.13 1197,-920.13 1197,-920.13 1197,-908.13 1197,-908.13 1197,-902.13 1203,-896.13 1209,-896.13 1209,-896.13 1415,-896.13 1415,-896.13 1421,-896.13 1427,-902.13 1427,-908.13 1427,-908.13 1427,-920.13 1427,-920.13 1427,-926.13 1421,-932.13 1415,-932.13"/>
+<text text-anchor="middle" x="1312" y="-910.33" font-family="Noto Sans CJK KR" font-size="16.00">callback ACK / 검색 workers</text>
+</g>
+<!-- main&#45;&gt;ack -->
+<g id="edge2" class="edge">
+<title>main&#45;&gt;ack</title>
+<path fill="none" stroke="#475569" d="M942.54,-914.13C1017.82,-914.13 1112.19,-914.13 1186.58,-914.13"/>
+<polygon fill="#475569" stroke="#475569" points="1186.94,-917.63 1196.94,-914.13 1186.94,-910.63 1186.94,-917.63"/>
+<text text-anchor="middle" x="1057.5" y="-917.73" font-family="Noto Sans CJK KR" font-size="13.00">async</text>
+</g>
+<!-- main&#45;&gt;scan -->
+<g id="edge5" class="edge">
+<title>main&#45;&gt;scan</title>
+<path fill="none" stroke="#475569" d="M934.67,-877.9C940.39,-873.26 945.57,-868.03 950,-862.13 998.33,-797.78 941.99,-572.6 979,-501.13 1034.76,-393.46 1152.32,-311.39 1231.51,-265.47"/>
+<polygon fill="#475569" stroke="#475569" points="1233.55,-268.34 1240.48,-260.33 1230.07,-262.26 1233.55,-268.34"/>
+<text text-anchor="middle" x="1057.5" y="-504.73" font-family="Noto Sans CJK KR" font-size="13.00">fresh stat</text>
+</g>
+<!-- main&#45;&gt;db -->
+<g id="edge13" class="edge">
+<title>main&#45;&gt;db</title>
+<path fill="none" stroke="#475569" d="M932.57,-878.12C938.97,-873.42 944.87,-868.12 950,-862.13 990.49,-814.87 945.06,-777.3 979,-725.13 1032.66,-642.64 1125.32,-579.2 1199.13,-538.33"/>
+<polygon fill="#475569" stroke="#475569" points="1200.94,-541.32 1208.03,-533.45 1197.58,-535.18 1200.94,-541.32"/>
+</g>
+<!-- main&#45;&gt;index -->
+<g id="edge20" class="edge">
+<title>main&#45;&gt;index</title>
+<path fill="none" stroke="#475569" d="M916.32,-878.04C927.87,-873.09 939.31,-867.76 950,-862.13 1039.02,-815.27 1063.7,-803.09 1136,-733.13 1149.46,-720.11 1147.97,-709.51 1162.87,-696.45"/>
+<polygon fill="#475569" stroke="#475569" points="1165.16,-699.11 1170.98,-690.26 1160.91,-693.55 1165.16,-699.11"/>
+</g>
+<!-- mon -->
+<g id="node7" class="node">
+<title>mon</title>
+<path fill="#eff6ff" stroke="#93c5fd" d="M933,-760.13C933,-760.13 691,-760.13 691,-760.13 685,-760.13 679,-754.13 679,-748.13 679,-748.13 679,-718.13 679,-718.13 679,-712.13 685,-706.13 691,-706.13 691,-706.13 933,-706.13 933,-706.13 939,-706.13 945,-712.13 945,-718.13 945,-718.13 945,-748.13 945,-748.13 945,-754.13 939,-760.13 933,-760.13"/>
+<text text-anchor="middle" x="812" y="-738.33" font-family="Noto Sans CJK KR" font-size="16.00">Monitor thread</text>
+<text text-anchor="middle" x="812" y="-720.33" font-family="Noto Sans CJK KR" font-size="16.00">관측 → 접수 → Scheduler → sync</text>
+</g>
+<!-- mon&#45;&gt;scan -->
+<g id="edge6" class="edge">
+<title>mon&#45;&gt;scan</title>
+<path fill="none" stroke="#475569" d="M835.9,-706.03C867.34,-667.19 923.04,-592.16 950,-518.13 966.87,-471.8 945.48,-334.3 979,-298.13 1027.46,-245.83 1066.4,-280.6 1136,-265.13 1154.42,-261.04 1173.9,-256.59 1192.91,-252.19"/>
+<polygon fill="#475569" stroke="#475569" points="1193.85,-255.56 1202.8,-249.89 1192.27,-248.74 1193.85,-255.56"/>
+<text text-anchor="middle" x="1057.5" y="-301.73" font-family="Noto Sans CJK KR" font-size="13.00">snapshot / CPU check</text>
+</g>
+<!-- worker -->
+<g id="node12" class="node">
+<title>worker</title>
+<path fill="#eff6ff" stroke="#93c5fd" d="M934.5,-95.13C934.5,-95.13 689.5,-95.13 689.5,-95.13 683.5,-95.13 677.5,-89.13 677.5,-83.13 677.5,-83.13 677.5,-53.13 677.5,-53.13 677.5,-47.13 683.5,-41.13 689.5,-41.13 689.5,-41.13 934.5,-41.13 934.5,-41.13 940.5,-41.13 946.5,-47.13 946.5,-53.13 946.5,-53.13 946.5,-83.13 946.5,-83.13 946.5,-89.13 940.5,-95.13 934.5,-95.13"/>
+<text text-anchor="middle" x="812" y="-73.33" font-family="Noto Sans CJK KR" font-size="16.00">Detached worker process</text>
+<text text-anchor="middle" x="812" y="-55.33" font-family="Noto Sans CJK KR" font-size="16.00">설정 → hooks → solver → verdict</text>
+</g>
+<!-- mon&#45;&gt;worker -->
+<g id="edge10" class="edge">
+<title>mon&#45;&gt;worker</title>
+<path fill="none" stroke="#475569" d="M780.95,-705.91C690.99,-623.66 443.5,-371.4 556,-177.13 579.9,-135.86 623.44,-110.21 667.92,-94.27"/>
+<polygon fill="#475569" stroke="#475569" points="669.09,-97.57 677.41,-91.02 666.82,-90.95 669.09,-97.57"/>
+<text text-anchor="middle" x="581.5" y="-180.73" font-family="Noto Sans CJK KR" font-size="13.00">Popen / new session</text>
+</g>
+<!-- mon&#45;&gt;db -->
+<g id="edge14" class="edge">
+<title>mon&#45;&gt;db</title>
+<path fill="none" stroke="#475569" d="M825.91,-706.01C849.3,-660.18 903.37,-568.33 979,-526.13 1009.4,-509.18 1084.11,-499.11 1154.98,-493.2"/>
+<polygon fill="#475569" stroke="#475569" points="1155.26,-496.69 1164.95,-492.39 1154.7,-489.71 1155.26,-496.69"/>
+</g>
+<!-- files -->
+<g id="node16" class="node">
+<title>files</title>
+<polygon fill="#f1f5f9" stroke="#93c5fd" points="1447,-94.13 1444,-98.13 1423,-98.13 1420,-94.13 1177,-94.13 1177,-40.13 1447,-40.13 1447,-94.13"/>
+<text text-anchor="middle" x="1312" y="-72.33" font-family="Noto Sans CJK KR" font-size="16.00">case settings / logs / artifacts</text>
+<text text-anchor="middle" x="1312" y="-54.33" font-family="Noto Sans CJK KR" font-size="16.00">state/events frozen attachments</text>
+</g>
+<!-- mon&#45;&gt;files -->
+<g id="edge26" class="edge">
+<title>mon&#45;&gt;files</title>
+<path fill="none" stroke="#475569" d="M836.65,-705.88C868.72,-667.14 924.86,-592.56 950,-518.13 974.55,-445.45 931.27,-234.19 979,-174.13 1003.66,-143.1 1089.91,-115.83 1168.31,-96.59"/>
+<polygon fill="#475569" stroke="#475569" points="1169.43,-99.92 1178.32,-94.16 1167.78,-93.11 1169.43,-99.92"/>
+</g>
+<!-- mon&#45;&gt;index -->
+<g id="edge21" class="edge">
+<title>mon&#45;&gt;index</title>
+<path fill="none" stroke="#475569" d="M945.2,-722.97C1003.91,-717.39 1073.68,-709.29 1136,-698.13 1145.6,-696.41 1155.45,-694.46 1165.35,-692.36"/>
+<polygon fill="#475569" stroke="#475569" points="1166.23,-695.75 1175.26,-690.21 1164.74,-688.91 1166.23,-695.75"/>
+</g>
+<!-- delivery -->
+<g id="node8" class="node">
+<title>delivery</title>
+<path fill="#eff6ff" stroke="#93c5fd" d="M922.5,-846.13C922.5,-846.13 701.5,-846.13 701.5,-846.13 695.5,-846.13 689.5,-840.13 689.5,-834.13 689.5,-834.13 689.5,-804.13 689.5,-804.13 689.5,-798.13 695.5,-792.13 701.5,-792.13 701.5,-792.13 922.5,-792.13 922.5,-792.13 928.5,-792.13 934.5,-798.13 934.5,-804.13 934.5,-804.13 934.5,-834.13 934.5,-834.13 934.5,-840.13 928.5,-846.13 922.5,-846.13"/>
+<text text-anchor="middle" x="812" y="-824.33" font-family="Noto Sans CJK KR" font-size="16.00">Delivery thread</text>
+<text text-anchor="middle" x="812" y="-806.33" font-family="Noto Sans CJK KR" font-size="16.00">outbox 순차 전송 / checkpoint</text>
+</g>
+<!-- delivery&#45;&gt;tg -->
+<g id="edge19" class="edge">
+<title>delivery&#45;&gt;tg</title>
+<path fill="none" stroke="#475569" d="M689.4,-830.93C636.68,-836.22 574.26,-842.7 518,-849.13 511.86,-849.83 505.57,-850.57 499.22,-851.33"/>
+<polygon fill="#475569" stroke="#475569" points="498.71,-847.86 489.2,-852.53 499.54,-854.81 498.71,-847.86"/>
+<text text-anchor="middle" x="581.5" y="-852.73" font-family="Noto Sans CJK KR" font-size="13.00">send / retry</text>
+</g>
+<!-- web&#45;&gt;scan -->
+<g id="edge7" class="edge">
+<title>web&#45;&gt;scan</title>
+<path fill="none" stroke="#475569" d="M850.2,-275.96C881.64,-248.09 929.37,-211.76 979,-196.13 1047.74,-174.49 1128.2,-180.55 1192.7,-192.47"/>
+<polygon fill="#475569" stroke="#475569" points="1192.43,-195.98 1202.91,-194.43 1193.75,-189.1 1192.43,-195.98"/>
+<text text-anchor="middle" x="1057.5" y="-199.73" font-family="Noto Sans CJK KR" font-size="13.00">overview / mutation / run</text>
+</g>
+<!-- web&#45;&gt;db -->
+<g id="edge15" class="edge">
+<title>web&#45;&gt;db</title>
+<path fill="none" stroke="#475569" d="M867.52,-348.2C899.02,-367.68 940.01,-390.81 979,-406.13 1034.79,-428.06 1098.34,-444.99 1154.8,-457.45"/>
+<polygon fill="#475569" stroke="#475569" points="1154.38,-460.94 1164.89,-459.65 1155.86,-454.1 1154.38,-460.94"/>
+</g>
+<!-- web&#45;&gt;files -->
+<g id="edge27" class="edge">
+<title>web&#45;&gt;files</title>
+<path fill="none" stroke="#475569" d="M860.76,-276.04C890.18,-251.57 926.62,-216.9 950,-179.13 972.34,-143.04 945.54,-114.25 979,-88.13 1008.08,-65.43 1090.83,-60.16 1166.43,-60.57"/>
+<polygon fill="#475569" stroke="#475569" points="1166.54,-64.07 1176.57,-60.66 1166.6,-57.07 1166.54,-64.07"/>
+</g>
+<!-- web&#45;&gt;index -->
+<g id="edge22" class="edge">
+<title>web&#45;&gt;index</title>
+<path fill="none" stroke="#475569" d="M881.63,-348.37C906.92,-365.09 933.41,-387.26 950,-414.13 988.87,-477.12 927.99,-524.5 979,-578.13 1024.07,-625.51 1092.15,-646.14 1154.95,-654.29"/>
+<polygon fill="#475569" stroke="#475569" points="1154.64,-657.77 1164.98,-655.49 1155.47,-650.82 1154.64,-657.77"/>
+</g>
+<!-- calc -->
+<g id="node13" class="node">
+<title>calc</title>
+<path fill="#fef3c7" stroke="#93c5fd" d="M1830.5,-103.13C1830.5,-103.13 1636.5,-103.13 1636.5,-103.13 1630.5,-103.13 1624.5,-97.13 1624.5,-91.13 1624.5,-91.13 1624.5,-43.13 1624.5,-43.13 1624.5,-37.13 1630.5,-31.13 1636.5,-31.13 1636.5,-31.13 1830.5,-31.13 1830.5,-31.13 1836.5,-31.13 1842.5,-37.13 1842.5,-43.13 1842.5,-43.13 1842.5,-91.13 1842.5,-91.13 1842.5,-97.13 1836.5,-103.13 1830.5,-103.13"/>
+<text text-anchor="middle" x="1733.5" y="-81.33" font-family="Noto Sans CJK KR" font-size="16.00">계산 프로세스</text>
+<text text-anchor="middle" x="1733.5" y="-63.33" font-family="Noto Sans CJK KR" font-size="16.00">solver + opt&#45;in monitor</text>
+<text text-anchor="middle" x="1733.5" y="-45.33" font-family="Noto Sans CJK KR" font-size="16.00">외부에서 시작한 계산도 존재</text>
+</g>
+<!-- scan&#45;&gt;calc -->
+<g id="edge12" class="edge">
+<title>scan&#45;&gt;calc</title>
+<path fill="none" stroke="#475569" stroke-dasharray="5,2" d="M1409.24,-188.11C1474.03,-163.87 1559.49,-131.88 1626.27,-106.89"/>
+<polygon fill="#475569" stroke="#475569" points="1627.84,-110.04 1635.98,-103.26 1625.39,-103.48 1627.84,-110.04"/>
+<text text-anchor="middle" x="1518.5" y="-158.73" font-family="Noto Sans CJK KR" font-size="13.00">/proc 관측</text>
+</g>
+<!-- note -->
+<g id="node18" class="node">
+<title>note</title>
+<polygon fill="#fff7ed" stroke="#93c5fd" points="1883,-260.13 1578,-260.13 1578,-188.13 1889,-188.13 1889,-254.13 1883,-260.13"/>
+<polyline fill="none" stroke="#93c5fd" points="1883,-260.13 1883,-254.13 "/>
+<polyline fill="none" stroke="#93c5fd" points="1889,-254.13 1883,-254.13 "/>
+<text text-anchor="middle" x="1733.5" y="-238.33" font-family="Noto Sans CJK KR" font-size="16.00">SNAPSHOT_LOCK: 프로세스 내부만 공유</text>
+<text text-anchor="middle" x="1733.5" y="-220.33" font-family="Noto Sans CJK KR" font-size="16.00">.tickets.lock: 프로세스 간 배타 flock</text>
+<text text-anchor="middle" x="1733.5" y="-202.33" font-family="Noto Sans CJK KR" font-size="16.00">SQLite: 단일 writer, 연결 timeout 30초</text>
+</g>
+<!-- scan&#45;&gt;note -->
+<g id="edge28" class="edge">
+<title>scan&#45;&gt;note</title>
+<path fill="none" stroke="#475569" stroke-dasharray="1,5" d="M1421.03,-224.13C1468.73,-224.13 1525.7,-224.13 1577.79,-224.13"/>
+</g>
+<!-- worker&#45;&gt;calc -->
+<g id="edge11" class="edge">
+<title>worker&#45;&gt;calc</title>
+<path fill="none" stroke="#475569" d="M946.6,-44.57C957.56,-42.71 968.46,-40.87 979,-39.13 1189.86,-4.28 1246.4,11.79 1459,-10.13 1510.46,-15.44 1566.51,-26.22 1614.4,-36.99"/>
+<polygon fill="#475569" stroke="#475569" points="1613.65,-40.4 1624.17,-39.21 1615.2,-33.58 1613.65,-40.4"/>
+<text text-anchor="middle" x="1312" y="-13.73" font-family="Noto Sans CJK KR" font-size="13.00">taskset / wait</text>
+</g>
+<!-- worker&#45;&gt;db -->
+<g id="edge17" class="edge">
+<title>worker&#45;&gt;db</title>
+<path fill="none" stroke="#475569" d="M932.45,-95.15C938.98,-99.69 944.92,-104.98 950,-111.13 1022.86,-199.46 904.27,-280.38 979,-367.13 1026.14,-421.86 1067.8,-385.35 1136,-409.13 1156.21,-416.18 1177.36,-424.51 1197.69,-433.03"/>
+<polygon fill="#475569" stroke="#475569" points="1196.4,-436.28 1206.97,-436.95 1199.12,-429.83 1196.4,-436.28"/>
+</g>
+<!-- worker&#45;&gt;files -->
+<g id="edge25" class="edge">
+<title>worker&#45;&gt;files</title>
+<path fill="none" stroke="#475569" d="M946.53,-51.51C957.5,-50.55 968.43,-49.74 979,-49.13 1048.66,-45.16 1066.31,-45.56 1136,-49.13 1146.05,-49.65 1156.42,-50.33 1166.85,-51.13"/>
+<polygon fill="#475569" stroke="#475569" points="1166.62,-54.62 1176.87,-51.92 1167.18,-47.64 1166.62,-54.62"/>
+</g>
+<!-- db&#45;&gt;delivery -->
+<g id="edge18" class="edge">
+<title>db&#45;&gt;delivery</title>
+<path fill="none" stroke="#475569" d="M1164.92,-516.93C1155.13,-519.04 1145.43,-521.12 1136,-523.13 1066.27,-538.03 1027.46,-503.83 979,-556.13 911.97,-628.47 1013.45,-700.63 950,-776.13 947.03,-779.66 943.78,-782.91 940.3,-785.89"/>
+<polygon fill="#475569" stroke="#475569" points="938.13,-783.14 932.33,-792.01 942.39,-788.7 938.13,-783.14"/>
+<text text-anchor="middle" x="1057.5" y="-559.73" font-family="Noto Sans CJK KR" font-size="13.00">pending</text>
+</g>
+<!-- tickets -->
+<g id="node15" class="node">
+<title>tickets</title>
+<polygon fill="#f1f5f9" stroke="#93c5fd" points="1852.5,-681.13 1849.5,-685.13 1828.5,-685.13 1825.5,-681.13 1614.5,-681.13 1614.5,-627.13 1852.5,-627.13 1852.5,-681.13"/>
+<text text-anchor="middle" x="1733.5" y="-659.33" font-family="Noto Sans CJK KR" font-size="16.00">tickets/*.json</text>
+<text text-anchor="middle" x="1733.5" y="-641.33" font-family="Noto Sans CJK KR" font-size="16.00">폴더 flock / revision / replace</text>
+</g>
+<!-- index&#45;&gt;tickets -->
+<g id="edge24" class="edge">
+<title>index&#45;&gt;tickets</title>
+<path fill="none" stroke="#475569" d="M1459.13,-654.13C1506.29,-654.13 1558.18,-654.13 1603.96,-654.13"/>
+<polygon fill="#475569" stroke="#475569" points="1604.24,-657.63 1614.24,-654.13 1604.24,-650.63 1604.24,-657.63"/>
+</g>
+</g>
 </svg>

@@ -1,0 +1,132 @@
+{
+  "stat_stages": {
+    "measured_at": "2026-10-04T18:49:41.565034+09:00",
+    "timings_s": {
+      "managed_ofps_1": 1.054114,
+      "managed_ofps_2": 1.061452,
+      "managed_ofps_3": 1.05695,
+      "parse_snapshot": 0.001941,
+      "tickets_for": 1.007557,
+      "cases_for_membership_1": 16.561555,
+      "cases_for_membership_2": 19.684277,
+      "membership_index_prototype": 0.095186,
+      "active_runs": 0.000515,
+      "status_format_and_history": 0.004208,
+      "queued_jobs_read_and_decode": 0.032303
+    },
+    "proc_count_before": 758,
+    "poll_seconds": 5,
+    "live_cases": 1,
+    "solver_processes": 1,
+    "supervisor_processes": 1,
+    "ticket_lock_wait_s": 8e-06,
+    "ticket_count": 1007,
+    "ticket_types": {
+      "single:alone": 61,
+      "single:child": 945,
+      "macro:alone": 1
+    },
+    "macro_member_counts": [
+      921
+    ],
+    "registered_cases": 982,
+    "prototype_same_case_order": true,
+    "job_counts": {
+      "cancelled": 47,
+      "failed": 34,
+      "queued": 918,
+      "running": 1,
+      "succeeded": 106
+    },
+    "run_history_count": 128,
+    "queued_jobs_read": 918,
+    "notes": [
+      "Actual host read-only measurements; no Telegram API calls.",
+      "ofps invoked with CFD_BOT_OFPS_MANAGED=1: no ticket synchronization.",
+      "Does not include the running daemon SNAPSHOT_LOCK wait or Telegram request queue.",
+      "Indexed prototype only checks this sample; no product source changed."
+    ]
+  },
+  "queue_text": {
+    "measured_at": "2026-10-04T18:51:10.506122+09:00",
+    "queue_text_seconds": 5.534994,
+    "runtime_history_calls": 919,
+    "sqlite_connections": 1839,
+    "text_characters": 119378,
+    "sendMessage_parts_before_macro_summary": 35,
+    "notes": [
+      "Only queue_text measured; no catalog traversal, macro summary, dispatcher or Telegram transport.",
+      "Read-only SQL against current production data. No message was sent."
+    ]
+  },
+  "membership_counts": {
+    "ticket_count": 1007,
+    "child_tickets": 945,
+    "valid_children": 921,
+    "unlisted_children": 24,
+    "missing_parent_children": 0,
+    "membership_row_comparisons": 446685,
+    "membership_Path_resolve_calls": 447630,
+    "method": "Calculated from current loaded tickets using the exact ordered predicate; each macro row path resolved once for this audit. Counts are not syscall traces."
+  },
+  "snapshot_cadence": {
+    "completed_at": "2026-10-04T18:55:31.620152+09:00",
+    "window_s": 125,
+    "samples": [
+      {
+        "snapshot_at": 1791107545.583093,
+        "observed_at": 1791107605.889581,
+        "age_s": 60.306,
+        "cases": 1
+      },
+      {
+        "snapshot_at": 1791107622.206783,
+        "observed_at": 1791107623.0869462,
+        "age_s": 0.88,
+        "cases": 1,
+        "interval_s": 76.624
+      },
+      {
+        "snapshot_at": 1791107694.2660062,
+        "observed_at": 1791107694.34763,
+        "age_s": 0.082,
+        "cases": 1,
+        "interval_s": 72.059
+      }
+    ],
+    "note": "Passive read-only kv.snapshot observation; writers are not identified by this record."
+  },
+  "queue_dispatch": {
+    "measured_at": "2026-10-04T19:05:15.165384+09:00",
+    "dispatch_seconds": 35.888069,
+    "timings": {
+      "tickets_for": {
+        "calls": 2,
+        "seconds": 2.505997
+      },
+      "cases_for": {
+        "calls": 1,
+        "seconds": 21.837179
+      },
+      "running_macro_views": {
+        "calls": 1,
+        "seconds": 7.873708
+      },
+      "queue_text": {
+        "calls": 1,
+        "seconds": 4.586155
+      }
+    },
+    "sqlite_connections": 3681,
+    "runtime_history_calls": 1837,
+    "fake_sendMessage_calls": 35,
+    "text_characters": 119470,
+    "keyboard_payloads": 1,
+    "notes": [
+      "Real Bot.dispatch(queue) and Telegram.send; transport replaced by a fake.",
+      "SQL read-only/query_only; no sends, snapshot, scheduler, or message tracking writes.",
+      "cases_for includes its tickets_for time; timing rows overlap, do not sum them.",
+      "Sandbox process; queue path does not inspect host /proc. No request backlog or network time."
+    ]
+  }
+}

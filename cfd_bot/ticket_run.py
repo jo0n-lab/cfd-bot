@@ -5,6 +5,8 @@ import time
 import uuid
 
 from .config import load_case, read_json
+from .cpu_allocation import capacity_status
+from .execution import execution_case
 from .processes import snapshot
 from .storage import LIVE
 from .tickets import atomic_json, ticket_lock
@@ -24,14 +26,17 @@ class TicketRunner:
         except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
             raise ValueError(self.ui.text('scenarios.runtime.ticket.state_failed', error=exc)) from None
 
-    def _members(self, name):
+    def _members(self, name, *, fresh=True):
+        from .catalog import folder_index
+        index = None if fresh else folder_index(self.service.folder)
+        read = load_case if fresh else index.document
         path = self.service.path(name)
-        ticket = load_case(path)
+        ticket = read(path)
         if ticket['task_type'] != 'macro':
             return ticket, [ticket]
         members = []
         for row in ticket['cases']:
-            child = load_case(self.service.path(row['ticket']))
+            child = read(self.service.path(row['ticket']))
             if (child['role'] != 'child' or Path(child['_root']) != Path(row['case_dir'])
                     or (Path(child['_config']).parent / child['macro_ticket']).resolve() != path):
                 raise ValueError(self.ui.text('scenarios.runtime.ticket.macro_members_invalid'))
@@ -40,32 +45,98 @@ class TicketRunner:
             raise ValueError(self.ui.text('scenarios.runtime.ticket.macro_empty'))
         return ticket, members
 
-    def _state(self, ticket, members, observed):
+    def _capacity(self, members, observed, active):
+        resources = [(member if member.get('resource_source') in ('macro', 'ticket')
+                      else execution_case(member)) for member in members]
+        statuses = [capacity_status(member, observed.get('cases', {}), active, self.config)
+                    for member in resources]
+        status = max(statuses, key=lambda item: item['required_cores'])
+        status = dict(status, can_run=all(item['can_run'] for item in statuses))
+        if status['free_cores'] is None:
+            status['availability_message'] = status['capacity_reason']
+        else:
+            key = ('scenarios.runtime.ticket.capacity_available' if status['can_run']
+                   else 'scenarios.runtime.ticket.capacity_insufficient')
+            status['availability_message'] = self.ui.text(
+                key, free=status['free_cores'], used=status['used_cores'],
+                capacity=status['capacity'], required=status['required_cores'])
+        return status
+
+    def _state(self, ticket, members, observed, *, jobs_by_root=None, external=None, active=None):
         roots = {member['_root'] for member in members}
-        jobs = [job for job in self.store.jobs((*LIVE, 'queued')) if job['case_root'] in roots]
+        jobs = ([job for job in self.store.jobs_for_roots(roots) if job['status'] in (*LIVE, 'queued')]
+                if jobs_by_root is None else [j for root in roots for j in jobs_by_root.get(root, [])])
+        active = self.store.jobs(LIVE) if active is None else active
+        if external is None:
+            external = self.store.get_many('observed:' + root for root in roots)
         running = (roots & set(observed.get('cases', {}))) or any(job['status'] in LIVE for job in jobs)
         # Keep a briefly disappearing external process blocked until the monitor
         # has completed its normal missing-poll checks.
-        running = running or any((self.store.get('observed:' + root) or {}).get('status') in LIVE
+        running = running or any((external.get('observed:' + root) or {}).get('status') in LIVE
                                  for root in roots)
         if running:
-            return dict(state='running', enabled=False,
-                        label=self.ui.text('scenarios.runtime.ticket_state.running'))
+            return dict(state='running', enabled=False, run_enabled=False, queue_enabled=False,
+                        label=self.ui.text('scenarios.runtime.ticket_state.running'),
+                        queue_label=self.ui.text('scenarios.runtime.ticket_state.queue_action'))
         if jobs or ticket.get('queue', {}).get('submit') or any(member.get('queue', {}).get('submit') for member in members):
-            return dict(state='queued', enabled=True,
-                        label=self.ui.text('scenarios.runtime.ticket_state.queued'))
+            return dict(state='queued', enabled=False, run_enabled=False, queue_enabled=False,
+                        label=self.ui.text('scenarios.runtime.ticket_state.queued'),
+                        queue_label=self.ui.text('scenarios.runtime.ticket_state.queue_action'))
         if not observed and any(member.get('queue', {}).get('state') == 'running' for member in members):
-            return dict(state='running', enabled=False,
-                        label=self.ui.text('scenarios.runtime.ticket_state.running'))
-        return dict(state='idle', enabled=True, label=self.ui.text('scenarios.runtime.ticket_state.idle'))
+            return dict(state='running', enabled=False, run_enabled=False, queue_enabled=False,
+                        label=self.ui.text('scenarios.runtime.ticket_state.running'),
+                        queue_label=self.ui.text('scenarios.runtime.ticket_state.queue_action'))
+        capacity = self._capacity(members, observed, active)
+        enabled = capacity['can_run']
+        return dict(state='idle', enabled=enabled, run_enabled=enabled, queue_enabled=True,
+                    label=self.ui.text('scenarios.runtime.ticket_state.idle' if enabled
+                                       else 'scenarios.runtime.ticket_state.insufficient'),
+                    queue_label=self.ui.text('scenarios.runtime.ticket_state.queue_action'), **capacity)
 
     def state(self, name, *, fresh=False):
         observed = self._snapshot() if fresh else self.store.get('snapshot', {})
         with ticket_lock(self.service.folder):
-            ticket, members = self._members(name)
+            ticket, members = self._members(name, fresh=False)
             return self._state(ticket, members, observed)
 
-    def request(self, name, *, expected_revision=None, request_id=None):
+    def states(self, tickets):
+        """One DB read per data set for a page showing many ticket buttons."""
+        by_path = {c['_config']: c for c in tickets}
+        jobs = {}
+        all_jobs = self.store.jobs((*LIVE, 'queued'))
+        active = [job for job in all_jobs if job['status'] in LIVE]
+        for job in all_jobs:
+            jobs.setdefault(job['case_root'], []).append(job)
+        external = self.store.get_many('observed:' + c['_root'] for c in tickets)
+        observed = self.store.get('snapshot', {})
+        result = {}
+        for ticket in tickets:
+            name = Path(ticket['_config']).name
+            try:
+                if ticket['task_type'] == 'macro':
+                    members = []
+                    for row in ticket['cases']:
+                        child = by_path.get(str(self.service.path(row['ticket'])))
+                        if (child is None or child['role'] != 'child' or child['_root'] != row['case_dir']
+                                or str((Path(child['_config']).parent / child['macro_ticket']).resolve()) != ticket['_config']):
+                            raise ValueError(self.ui.text('scenarios.runtime.ticket.macro_members_invalid'))
+                        members.append(child)
+                    if not members:
+                        raise ValueError(self.ui.text('scenarios.runtime.ticket.macro_empty'))
+                else:
+                    members = [ticket]
+                result[name] = self._state(ticket, members, observed, jobs_by_root=jobs,
+                                           external=external, active=active)
+            except (ValueError, OSError) as exc:
+                result[name] = dict(state='invalid', enabled=False, run_enabled=False,
+                                    queue_enabled=False, error=str(exc))
+        return result
+
+    def request(self, name, *, expected_revision=None, request_id=None, mode='run', lane=1):
+        if mode not in ('run', 'queue'):
+            raise ValueError(self.ui.text('scenarios.runtime.ticket.request_mode'))
+        if type(lane) is not int or not 1 <= lane <= 3:
+            raise ValueError(self.ui.text('scenarios.runtime.ticket.queue_lane'))
         # Never trust a previously displayed button or just the ticket's state.
         observed = self._snapshot()
         with ticket_lock(self.service.folder):
@@ -77,6 +148,8 @@ class TicketRunner:
                 raise ValueError(self.ui.text('scenarios.runtime.ticket.already_running'))
             if status['state'] == 'queued':
                 return dict(already_queued=True, request_id=ticket.get('queue', {}).get('request_id'))
+            if mode == 'run' and not status['run_enabled']:
+                raise ValueError(status['availability_message'])
             if request_id and ticket.get('queue', {}).get('request_id') == request_id:
                 return dict(already_queued=True, request_id=request_id)
             for member in members:
@@ -96,7 +169,8 @@ class TicketRunner:
                     for key in ('result', 'reason', 'job_id'):
                         row.pop(key, None)
                     row['state'] = 'waiting'
-            data['queue'] = dict(state='waiting', submit=True, request_id=request_id, updated_at=time.time())
+            data['queue'] = dict(state='waiting', submit=True, request_id=request_id,
+                                 mode=mode, lane=lane, updated_at=time.time())
             staged[path] = data
             backups = {target: target.read_bytes() for target in staged}
             try:
@@ -106,4 +180,5 @@ class TicketRunner:
                 for target, before in backups.items():
                     target.write_bytes(before)
                 raise
-            return dict(already_queued=False, request_id=request_id, count=len(members))
+            return dict(already_queued=False, request_id=request_id, count=len(members),
+                        mode=mode, lane=lane)

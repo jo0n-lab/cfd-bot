@@ -16,9 +16,9 @@ from urllib.parse import parse_qs, urlencode, urlsplit, quote
 
 from .artifacts import MAX_DOCUMENT, export_files, residual_files
 from .bot import Bot, case_id
-from .config import inside, load_case
+from .config import glob_patterns, inside, load_case
 from .control import control_times
-from .editor import TicketService, case_browser_start, validate_export
+from .editor import TicketService, case_browser_start, lines, validate_export
 from .logs import estimate, recent_case_log
 from .patterns import PatternLibrary
 from .queue_control import cancel_queued_jobs
@@ -48,18 +48,21 @@ class WebApp:
         return snap
 
     def ticket_rows(self):
+        from .catalog import folder_index
+        index = folder_index(self.service.folder)
+        tickets = index.tickets()
+        states = self.runner.states(tickets)
         rows = []
-        for name in self.service.listing():
-            try:
-                case = load_case(self.service.path(name))
-                rows.append(dict(filename=name, name=case['name'], case_dir=case['_root'],
-                                 task_type=case['task_type'], role=case['role'],
-                                 count=len(case.get('cases', [])), queue=case.get('queue', {}),
-                                 revision=self.service.revision(name), **self.runner.state(name)))
-            except (OSError, ValueError) as exc:
-                rows.append(dict(filename=name, name=name, state='invalid', enabled=False,
-                                 error=str(exc)))
-        return rows
+        for case in tickets:
+            name = Path(case['_config']).name
+            rows.append(dict(filename=name, name=case['name'], case_dir=case['_root'],
+                             task_type=case['task_type'], role=case['role'],
+                             count=len(case.get('cases', [])), queue=case.get('queue', {}),
+                             revision=self.service.revision(name, data=index.document(self.service.path(name), raw=True)), **states[name]))
+        rows.extend(dict(filename=Path(path).name, name=Path(path).name, state='invalid',
+                         enabled=False, run_enabled=False, queue_enabled=False, error=error)
+                    for path, error in index.errors.copy().items())
+        return sorted(rows, key=lambda row: row['filename'])
 
     def overview(self):
         error = None
@@ -70,7 +73,7 @@ class WebApp:
         cases = list(self.bot.cases().values())
         registry = tracking_registry(cases)
         live = []
-        for run in self.bot.active_runs(snap):
+        for run in self.bot.active_runs(snap, cases):
             case = run['case']
             item = job_view(run, registry)
             item.update(case_id=case_id(case), registered=run['registered'], owner=run['owner'])
@@ -86,7 +89,8 @@ class WebApp:
         macro_documents = []
         for row in macros:
             try:
-                macro_documents.append(load_case(self.service.path(row['filename'])))
+                from .catalog import folder_index
+                macro_documents.append(folder_index(self.service.folder).document(self.service.path(row['filename'])))
             except (OSError, ValueError):
                 continue
         return dict(at=snap.get('at'), error=error, live=live, tickets=tickets,
@@ -273,11 +277,19 @@ class WebApp:
             return self.service.delete_many(data['names'], data['revisions'])
         if path == '/api/run':
             return self.runner.request(data['name'], expected_revision=self.revision(data),
-                                       request_id=data.get('request_id'))
+                                       request_id=data.get('request_id'), mode=data.get('mode', 'run'),
+                                       lane=data.get('lane', 1))
         if path == '/api/discover':
             snap = self.fresh()
             end = data.get('end_time')
-            rows, skipped = discover_cases(data['case_dir'], snap['cases'], float(end) if end else None)
+            include = data.get('include_patterns', [])
+            exclude = data.get('exclude_patterns', [])
+            include = lines(include) if isinstance(include, str) else include
+            exclude = lines(exclude) if isinstance(exclude, str) else exclude
+            glob_patterns(include, 'discovery.include_patterns')
+            glob_patterns(exclude, 'discovery.exclude_patterns')
+            rows, skipped = discover_cases(data['case_dir'], snap['cases'],
+                                           float(end) if end else None, include, exclude)
             return dict(cases=rows, skipped=skipped,
                         postprocessed=[r['case_dir'] for r in rows if has_postprocessing(r['case_dir'])])
         if path == '/api/patterns':

@@ -150,6 +150,8 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     await page.locator('[data-tab="resources"]').click();
     await page.locator('#f-macro_cores').fill('2');
     await page.locator('[data-tab="macro"]').click();
+    await page.locator('#f-case_include_patterns').fill('alpha\nbeta');
+    await page.locator('#f-case_exclude_patterns').fill('skip*');
     await page.locator('[data-action="discover"]').click();
     await page.waitForFunction(()=>document.querySelectorAll('.macro-row').length===2);
     assert.equal(await page.locator('.has-post').count(),1);
@@ -162,6 +164,8 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
       const r=await fetch('/api/overview');return (await r.json()).tickets.find(t=>t.task_type==='macro');
     });
     assert.equal(macro.state,'queued');
+    const macroFile=JSON.parse(fs.readFileSync(fixture.root+'/tickets/'+macro.filename,'utf8'));
+    assert.deepEqual(macroFile.discovery,{include_patterns:['alpha','beta'],exclude_patterns:['skip*']});
     await page.locator('[data-action="open-ticket"]').filter({hasText:'alpha'}).click();
     await page.locator('#f-name').waitFor();
     await page.locator('[data-tab="resources"]').click();

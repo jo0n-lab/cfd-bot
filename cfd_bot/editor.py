@@ -50,6 +50,7 @@ def form_values(data, tickets_dir):
     """Expose shared ticket settings, retaining legacy case-based execution."""
     watcher = data.get('watcher', {})
     failure = watcher.get('failure', {})
+    discovery = data.get('discovery', {})
     case_dir = data.get('case_dir', str(tickets_dir))
     return {
         '_source': deepcopy(data),
@@ -59,6 +60,8 @@ def form_values(data, tickets_dir):
         'execution_source': 'ticket' if data.get('resource_source') in ('ticket', 'macro') else 'case',
         'end_time': '' if data.get('end_time') is None else str(data['end_time']),
         'cases': deepcopy(data.get('cases', [])),
+        'case_include_patterns': '\n'.join(discovery.get('include_patterns', [])),
+        'case_exclude_patterns': '\n'.join(discovery.get('exclude_patterns', [])),
         'macro_cores': str(data.get('cores', '')),
         'macro_cpu_policy': data.get('cpu_policy', 'manual' if data.get('cpu_set') else 'auto'),
         'macro_cpu_set': data.get('cpu_set', ''),
@@ -119,8 +122,18 @@ def form_document(values):
         data.pop('macro_ticket', None)
     if data['task_type'] == 'macro':
         data['cases'] = deepcopy(values.get('cases', []))
+        include = lines(values.get('case_include_patterns', ''))
+        exclude = lines(values.get('case_exclude_patterns', ''))
+        if include or exclude:
+            data['discovery'] = {
+                'include_patterns': include,
+                'exclude_patterns': exclude,
+            }
+        else:
+            data.pop('discovery', None)
     else:
         data.pop('cases', None)
+        data.pop('discovery', None)
     execution_source = values.get('execution_source',
                                   'ticket' if data.get('resource_source') in ('ticket', 'macro') else 'case')
     if execution_source not in ('case', 'ticket'):
@@ -218,6 +231,14 @@ class TicketService:
     def __init__(self, folder):
         self.folder = Path(folder).resolve()
         self.folder.mkdir(parents=True, exist_ok=True)
+        self._save_requests = {}
+
+    def _remember_save(self, request_id, name, data):
+        if not request_id:
+            return
+        self._save_requests[request_id] = (name, deepcopy(data))
+        while len(self._save_requests) > 256:
+            self._save_requests.pop(next(iter(self._save_requests)))
 
     def path(self, name):
         if not isinstance(name, str) or Path(name).name != name or not name.endswith('.json'):
@@ -231,8 +252,8 @@ class TicketService:
         with ticket_lock(self.folder):
             return [p.name for p in sorted(self.folder.glob('*.json')) if not p.is_symlink()]
 
-    def revision(self, name):
-        data = read_json(self.path(name))
+    def revision(self, name, *, data=None):
+        data = read_json(self.path(name)) if data is None else deepcopy(data)
         data.pop('queue', None)
         for row in data.get('cases', []):
             for key in ('state', 'result', 'reason', 'job_id'):
@@ -288,12 +309,10 @@ class TicketService:
         destination = self.path(self.filename(values, name))
         original = self.path(current) if current else None
         root = (self.folder / Path(data['case_dir']).expanduser()).resolve()
-        for path in self.folder.glob('*.json'):
+        from .catalog import folder_index
+        for other in folder_index(self.folder).tickets():
+            path = Path(other['_config'])
             if path in (original, destination):
-                continue
-            try:
-                other = load_case(path)
-            except (ValueError, OSError):
                 continue
             if other['task_type'] == data['task_type'] and Path(other['_root']) == root:
                 raise ValueError(load_ui().text('scenarios.diagnostics.editor.duplicate_case',
@@ -306,9 +325,13 @@ class TicketService:
         destination = self.path(name)
         original = self.path(current) if current else None
         with ticket_lock(self.folder):
+            if request_id in self._save_requests:
+                saved_name, saved = self._save_requests[request_id]
+                return saved_name, deepcopy(saved)
             if request_id and destination.exists():
                 saved = read_json(destination)
                 if saved.get('queue', {}).get('request_id') == request_id:
+                    self._remember_save(request_id, name, saved)
                     return name, saved
             if current and expected_revision and self.revision(current) != expected_revision:
                 raise ValueError(load_ui().text('scenarios.diagnostics.editor.changed'))
@@ -316,8 +339,10 @@ class TicketService:
             if destination != original and destination.exists() and not overwrite:
                 raise FileExistsError(load_ui().text('scenarios.diagnostics.editor.exists', name=name))
             if data['task_type'] == 'macro':
-                return name, publish_macro(destination, data, original,
-                                           request_id=request_id, locked=True)
+                saved = publish_macro(destination, data, original,
+                                      request_id=request_id, submit=submit, locked=True)
+                self._remember_save(request_id, name, saved)
+                return name, saved
             if original and original.exists():
                 saved = read_json(original)
                 data['queue'] = saved.get('queue', {})
@@ -328,7 +353,8 @@ class TicketService:
                 if data['queue'].get('state') == 'running' and execution_settings(data) != execution_settings(saved):
                     raise ValueError(load_ui().text('scenarios.diagnostics.editor.running_execution'))
             if submit:
-                data['queue'] = dict(state='waiting', submit=True, request_id=request_id or uuid.uuid4().hex)
+                data['queue'] = dict(state='waiting', submit=True,
+                                     request_id=request_id or uuid.uuid4().hex)
             else:
                 data.setdefault('queue', {}).setdefault('state', 'waiting')
             parent_path, parent = None, None
@@ -351,6 +377,7 @@ class TicketService:
                 atomic_json(parent_path, parent)
             if original and original != destination:
                 original.unlink(missing_ok=True)
+            self._remember_save(request_id, name, data)
         return name, data
 
     def delete(self, name, expected_revision=None):

@@ -1,0 +1,66 @@
+{
+  "members": 921,
+  "tickets": 922,
+  "fixture": "synthetic temporary files only",
+  "cold_catalog": {
+    "seconds_median": 0.687912,
+    "load_case_calls": [
+      922
+    ],
+    "samples": 1
+  },
+  "old_membership_only": {
+    "seconds_median": 15.160291,
+    "load_case_calls": [
+      0
+    ],
+    "samples": 1
+  },
+  "new_membership_only": {
+    "seconds_median": 0.072068,
+    "load_case_calls": [
+      0
+    ],
+    "samples": 1
+  },
+  "warm_catalog": {
+    "seconds_median": 0.047339,
+    "load_case_calls": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "samples": 5
+  },
+  "warm_one_case_lookup": {
+    "seconds_median": 0.000359,
+    "load_case_calls": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "samples": 5
+  },
+  "one_changed_ticket": {
+    "seconds_median": 0.067036,
+    "load_case_calls": [
+      1
+    ],
+    "samples": 1
+  },
+  "warm_sync_one_active_case": {
+    "seconds_median": 0.007414,
+    "load_case_calls": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "samples": 5
+  }
+}

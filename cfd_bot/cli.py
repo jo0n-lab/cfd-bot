@@ -62,8 +62,8 @@ def main(argv=None):
         config = load_bot(args.config)
         from .texts import load_text
         load_text(config.get('_text_file'))
-        cases = cases_for(config)
         if args.command == 'check':
+            cases = cases_for(config, force=True)
             if args.mpi_probe and not args.execution_env:
                 raise ValueError('--mpi-probe에는 --execution-env가 필요합니다.')
             if args.execution_env:
@@ -129,7 +129,7 @@ def main(argv=None):
                                                time.time() - job.get('started', time.time()),
                                                store.runtime_history(job['case'], job.get('actual_cores')))
                 print(json.dumps(dict(snapshot=snap, jobs=jobs,
-                                      observed=[store.get('observed:' + c['_root']) for c in cases],
+                                      observed=[store.get('observed:' + c['_root']) for c in cases_for(config)],
                                       scheduler=config['scheduler'], queue_paused=store.get('queue_paused', False)),
                                  ensure_ascii=False, indent=2))
             else:
@@ -139,6 +139,7 @@ def main(argv=None):
         elif args.command == 'queue':
             print(queue_text(store, config['scheduler']['enabled'] and not store.get('queue_paused', False)))
         elif args.command == 'enqueue':
+            cases = cases_for(config)
             selected = Path(args.case).resolve()
             case = next((c for c in cases if selected in (Path(c['_root']), Path(c['_config']))), None)
             if case is None:

@@ -1,0 +1,794 @@
+[
+  {
+    "key": "D-01",
+    "title": "공용 티켓 색인 · 변경된 JSON 검증",
+    "platform": "공용",
+    "trigger": "cases_for / tickets_for / ticket_index",
+    "outcome": "cold rebuild / 변경분 재검증; warm 조회는 JSON load_case 0회",
+    "error": "잘못된 등록 문서는 fail closed; 편집용 folder_index는 invalid entry를 별도 표시"
+  },
+  {
+    "key": "D-02",
+    "title": "저장·revision·원자적 파일 반영",
+    "platform": "공용",
+    "trigger": "TicketService.save(values, ...)",
+    "outcome": "저장된 document; 실행 제출은 submit 호출 인자로만 결정",
+    "error": "revision/중복/실행 설정 guard 실패 → ValueError; 파일 실패 → OSError"
+  },
+  {
+    "key": "D-03",
+    "title": "공용 실행 요청",
+    "platform": "공용",
+    "trigger": "TicketRunner.request(name, revision, request_id, mode, lane)",
+    "outcome": "JSON 제출 기록 완료; Monitor.accept_submissions가 나중에 DB 큐 접수",
+    "error": "scan/revision/running/command/member 오류 → ValueError; 쓰기 실패 → rollback"
+  },
+  {
+    "key": "D-04",
+    "title": "fresh snapshot과 lock 대기",
+    "platform": "공용",
+    "trigger": "processes.snapshot(command)",
+    "outcome": "호출 시점 모든 CASE; 티켓 상태 동기화는 수행하지 않음",
+    "error": "TimeoutExpired/OSError/RuntimeError → caller; caller별 오류 처리 다름"
+  },
+  {
+    "key": "D-05",
+    "title": "삭제 preview와 최종 삭제",
+    "platform": "공용",
+    "trigger": "deletion_preview → 사용자 확인 → delete_many",
+    "outcome": "티켓 JSON만 삭제; 케이스/결과 유지",
+    "error": "busy macro/child/running/queued/revision 충돌은 쓰기 전 거절; OSError rollback"
+  },
+  {
+    "key": "D-06",
+    "title": "직계 하위 케이스 검색",
+    "platform": "공용",
+    "trigger": "discover_cases(root, observed, end, include, exclude)",
+    "outcome": "정렬된 후보 rows와 제외 이유; 완주 케이스도 선택 가능",
+    "error": "root/패턴/파일 오류 → caller; 깊은 재귀 case 탐색 없음"
+  },
+  {
+    "key": "D-07",
+    "title": "로그·진행률·ETA",
+    "platform": "공용",
+    "trigger": "recent_case_log / estimate",
+    "outcome": "caller가 estimate(case, telemetry, elapsed, history)로 ETA 산출",
+    "error": "missing/실제 backlog는 live rate 보류; 최종 판정은 D-12"
+  },
+  {
+    "key": "D-08",
+    "title": "다중 대기 취소",
+    "platform": "공용",
+    "trigger": "cancel_queued_jobs(store, ids)",
+    "outcome": "시작되었거나 사라진 ID는 unavailable; solver kill 없음",
+    "error": "빈/잘못된 선택 ValueError; SQLite 실패 caller로 전달"
+  },
+  {
+    "key": "D-09",
+    "title": "매크로 발행·멤버 재구성",
+    "platform": "공용",
+    "trigger": "publish_macro(path, data, previous, submit)",
+    "outcome": "submit 호출값에 따라 저장과 실행 제출을 분리; 기존 편집은 제출 상태 유지",
+    "error": "검증 실패/쓰기 실패 → 원본 복원; 다중 파일 crash-atomic 보장은 아님"
+  },
+  {
+    "key": "D-10",
+    "title": "선언된 artifact 찾기",
+    "platform": "공용",
+    "trigger": "residual_files / export_files",
+    "outcome": "Residual 파일 항목; export 요청은 export_files 직접 호출",
+    "error": "path/symlink/확장자/크기 실패 ValueError; 파일 없음은 []"
+  },
+  {
+    "key": "D-11",
+    "title": "폼 변환과 티켓 검증",
+    "platform": "공용",
+    "trigger": "TicketService.validate(values, name, current)",
+    "outcome": "정규화할 JSON 원문; 저장은 수행하지 않음",
+    "error": "ConfigError/ValueError/OSError; validation .tmp는 finally 삭제"
+  },
+  {
+    "key": "D-12",
+    "title": "수치 기반 종료 판정",
+    "platform": "공용",
+    "trigger": "outcomes.decide(case, telemetry, started, ...)",
+    "outcome": "succeeded 또는 failed; End 문자열만으로 성공하지 않음",
+    "error": "코드상 end_time override 존재; AGENTS 원칙과 차이를 ARCHITECTURE에 기록"
+  },
+  {
+    "key": "D-13",
+    "title": "큐 전체 ETA 조회 · 대량 응답 생성",
+    "platform": "Telegram 공용 report",
+    "trigger": "report.queue_text(store, enabled)",
+    "outcome": "caller가 macro 요약을 붙여 Bot.send → chunks → 순차 sendMessage; 관측 본문만 35조각",
+    "error": "생성/전송 오류는 caller로 전파; 중간 sendMessage 실패 시 이후 조각 전송 안 됨"
+  },
+  {
+    "key": "D-14",
+    "title": "매크로 진행 ETA · 큐 본문과 중복 조회",
+    "platform": "공용 run_views",
+    "trigger": "running_macro_views(macros,cases,jobs,store)",
+    "outcome": "macro별 요약 list; 19:05 queue dispatcher 표본에서 이 함수 7.874초",
+    "error": "실행 중 로그의 OSError/ValueError는 _remaining이 무시; 나머지는 caller 오류 처리"
+  },
+  {
+    "key": "UC-01-tg",
+    "title": "진입·도움말",
+    "platform": "Telegram",
+    "trigger": "/start /help home",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-01-gui",
+    "title": "편집기 기동",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → __init__",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-01-web",
+    "title": "초기 화면",
+    "platform": "web",
+    "trigger": "start → /api/bootstrap",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-02-tg",
+    "title": "실시간 현재 CASE",
+    "platform": "Telegram",
+    "trigger": "/stat / status",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "fresh_runs는 OSError/RuntimeError만 catch. TimeoutExpired는 serve catch로 가며 사용자 오류 응답이 없을 수 있음"
+  },
+  {
+    "key": "UC-02-web",
+    "title": "대시보드·현황 갱신",
+    "platform": "web",
+    "trigger": "refresh → /api/overview",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-03-tg",
+    "title": "등록 케이스 목록·선택",
+    "platform": "Telegram",
+    "trigger": "/data /cases cases:page case:id",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-03-web",
+    "title": "등록 케이스 목록",
+    "platform": "web",
+    "trigger": "start / reload-data → /api/cases",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-04-tg",
+    "title": "상태 상세",
+    "platform": "Telegram",
+    "trigger": "detail:case-id",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-04-web",
+    "title": "상태 상세·ETA",
+    "platform": "web",
+    "trigger": "loadData → /api/detail?case=id",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-05-tg",
+    "title": "Residual 조회",
+    "platform": "Telegram",
+    "trigger": "residual:case-id[:name]",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-05-gui",
+    "title": "Residual 조회",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → open_queue_result_data",
+    "outcome": "파일 경로 표시; 이미지 preview/다운로드는 구현 없음",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-05-web",
+    "title": "Residual 조회",
+    "platform": "web",
+    "trigger": "loadData / download → /api/artifacts → /api/file",
+    "outcome": "파일 목록 JSON; 후속 파일 HTTP는 binary inline/attachment",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-06-tg",
+    "title": "결과 파일 조회",
+    "platform": "Telegram",
+    "trigger": "export:case-id[:name]",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-06-gui",
+    "title": "결과 파일 조회",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → open_queue_result_data",
+    "outcome": "파일 경로 표시; 이미지 preview/다운로드는 구현 없음",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-06-web",
+    "title": "결과 파일 조회",
+    "platform": "web",
+    "trigger": "loadData / download → /api/artifacts → /api/file",
+    "outcome": "파일 목록 JSON; 후속 파일 HTTP는 binary inline/attachment",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-07-tg",
+    "title": "티켓 목록·다중 선택",
+    "platform": "Telegram",
+    "trigger": "/tickets /ticket tickets",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-07-gui",
+    "title": "티켓 목록·다중 선택",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → refresh",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-07-web",
+    "title": "티켓 목록·선택",
+    "platform": "web",
+    "trigger": "refresh / ticketList → /api/overview",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-08-tg",
+    "title": "새 티켓",
+    "platform": "Telegram",
+    "trigger": "new",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-08-gui",
+    "title": "새 티켓",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → new",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-08-web",
+    "title": "새 티켓",
+    "platform": "web",
+    "trigger": "newTicket → /api/new",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-09-tg",
+    "title": "티켓 열기",
+    "platform": "Telegram",
+    "trigger": "open",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-09-gui",
+    "title": "티켓 열기",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → open_selected",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-09-web",
+    "title": "티켓 열기",
+    "platform": "web",
+    "trigger": "openTicket → /api/ticket?name=...",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-13-tg",
+    "title": "티켓 복제",
+    "platform": "Telegram",
+    "trigger": "duplicate",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-13-gui",
+    "title": "티켓 복제",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → duplicate",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-13-web",
+    "title": "티켓 복제",
+    "platform": "web",
+    "trigger": "action(duplicate-ticket) → /api/duplicate",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-10-tg",
+    "title": "기본·감시·알림·스크립트 편집",
+    "platform": "Telegram",
+    "trigger": "field / event / scripts / scriptdefault",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-10-gui",
+    "title": "기본·감시·알림·스크립트 편집",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → values",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-10-web",
+    "title": "기본·감시·알림·스크립트 편집",
+    "platform": "web",
+    "trigger": "controlHint → /api/control?path=...",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-11-tg",
+    "title": "티켓 검증",
+    "platform": "Telegram",
+    "trigger": "validate",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-11-gui",
+    "title": "티켓 검증",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → validate",
+    "outcome": "True/False + status/messagebox",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-11-web",
+    "title": "티켓 검증",
+    "platform": "web",
+    "trigger": "action(validate) → /api/validate",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-12-tg",
+    "title": "저장·이름 변경",
+    "platform": "Telegram",
+    "trigger": "review → save",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-12-gui",
+    "title": "저장·이름 변경",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → save",
+    "outcome": "True/False; 저장된 폼/status",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-12-web",
+    "title": "저장·이름 변경",
+    "platform": "web",
+    "trigger": "saveNow → /api/save",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-14-tg",
+    "title": "개별·다중 티켓 삭제",
+    "platform": "Telegram",
+    "trigger": "delete/breview → deleteyes/bdelete",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-14-gui",
+    "title": "개별·다중 티켓 삭제",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → delete",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-14-web",
+    "title": "개별·다중 티켓 삭제",
+    "platform": "web",
+    "trigger": "action(delete-selected) → /api/delete/preview → /api/delete",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-15-tg",
+    "title": "매크로 검색·필터·취소",
+    "platform": "Telegram",
+    "trigger": "scan / stopscan",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-15-gui",
+    "title": "매크로 검색·필터",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → scan_cases",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-15-web",
+    "title": "매크로 검색·필터",
+    "platform": "web",
+    "trigger": "action(discover) → /api/discover",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-16-tg",
+    "title": "매크로 구성원 선택",
+    "platform": "Telegram",
+    "trigger": "members / remove",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-16-gui",
+    "title": "매크로 구성원 선택",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → remove_case_row",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-16-web",
+    "title": "매크로 구성원 순서·제거",
+    "platform": "web",
+    "trigger": "remove-case / case-up / case-down",
+    "outcome": "S.draft.values.cases 변경; 저장 시 D-09로 반영",
+    "error": "바쁜 macro 구성 변경은 저장 시 publish_macro가 거절"
+  },
+  {
+    "key": "UC-17-tg",
+    "title": "실행 설정·상속·monitor opt-in",
+    "platform": "Telegram",
+    "trigger": "execsource / cpupolicy / toggle / field",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-17-gui",
+    "title": "실행 설정·상속·monitor opt-in",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → update_execution_visibility",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-17-web",
+    "title": "실행 설정·상속·monitor opt-in",
+    "platform": "web",
+    "trigger": "input/change → resources 탭",
+    "outcome": "draft 변경 후 저장 D-11; child는 부모에서 수정",
+    "error": "NP/CPU/명령/monitor 검증은 서버에서 수행"
+  },
+  {
+    "key": "UC-18-tg",
+    "title": "즉시 실행·3개 작업큐 등록",
+    "platform": "Telegram",
+    "trigger": "runstate / runreview / queuelanes / runyes",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-18-gui",
+    "title": "즉시 실행·3개 작업큐 등록",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → submit / enqueue",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-18-web",
+    "title": "즉시 실행·3개 작업큐 등록",
+    "platform": "web",
+    "trigger": "requestRun(mode) → /api/run",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-18-legacy-tg",
+    "title": "케이스 메뉴 실행(우회 경로)",
+    "platform": "Telegram",
+    "trigger": "prepare:cid → enqueue:cid",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-19-tg",
+    "title": "큐·이력·매크로 진행",
+    "platform": "Telegram",
+    "trigger": "queue",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-19-web",
+    "title": "큐·이력·매크로 진행",
+    "platform": "web",
+    "trigger": "refresh → /api/overview",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-20-tg",
+    "title": "자동 시작 pause/resume",
+    "platform": "Telegram",
+    "trigger": "pause/resume",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-20-web",
+    "title": "자동 시작 pause/resume",
+    "platform": "web",
+    "trigger": "action(pause/resume) → /api/queue",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-19-gui",
+    "title": "큐·이력·매크로 진행",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → refresh_queue_manager",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-21-tg",
+    "title": "대기 작업 선택·취소",
+    "platform": "Telegram",
+    "trigger": "qselect/qall/qnone/qcancel/qcancelyes/cancel:id",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-21-gui",
+    "title": "대기 작업 선택·취소",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → cancel_queue_selection",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-21-web",
+    "title": "대기 작업 선택·취소",
+    "platform": "web",
+    "trigger": "action(cancel-selected-jobs / cancel-job) → /api/queue",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-22-tg",
+    "title": "실패 패턴 템플릿",
+    "platform": "Telegram",
+    "trigger": "templates/template/savetemplate",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-22-gui",
+    "title": "실패 패턴 템플릿",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → save_pattern",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-22-web",
+    "title": "실패 패턴 템플릿",
+    "platform": "web",
+    "trigger": "action(save-preset) → /api/patterns",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-23-tg",
+    "title": "폴더·로그·Residual 선택",
+    "platform": "Telegram",
+    "trigger": "browse/bd/bf/bapply/bcancel",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-23-gui",
+    "title": "폴더·로그·Residual 선택",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → choose_logs",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-23-web",
+    "title": "폴더·파일 선택",
+    "platform": "web",
+    "trigger": "showBrowser → /api/browse",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-24-tg",
+    "title": "입력 취소·초안 폐기·검색 취소",
+    "platform": "Telegram",
+    "trigger": "/cancel / backinput / discard / stopscan",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-24-gui",
+    "title": "저장/폐기/취소·닫기",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → confirm_switch",
+    "outcome": "bool → new/open/duplicate/close 진행 여부",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-24-web",
+    "title": "초안 폐기·modal 취소",
+    "platform": "web",
+    "trigger": "confirmDiscard / close-modal / beforeunload",
+    "outcome": "확인 시 다음 action; 취소 시 draft 유지; 서버 rollback 동작 아님",
+    "error": "진행 중 fetch의 서버 작업을 취소하는 기능은 없음"
+  },
+  {
+    "key": "UC-25-tg",
+    "title": "대화 일괄 정리",
+    "platform": "Telegram",
+    "trigger": "/clean",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-26",
+    "title": "외부 PC 접속과 브라우저",
+    "platform": "Windows / macOS / Linux",
+    "trigger": "launcher / cfd-web-tunnel",
+    "outcome": "포트 열림 확인 → 브라우저 http://127.0.0.1 → UC-01-web; 종료 시 자신이 만든 SSH 종료",
+    "error": "잘못된 선택·포트 충돌·SSH 종료 시 실패; HTTP health 확인과 단순 포트 열림은 다름"
+  },
+  {
+    "key": "UC-27",
+    "title": "운영 CLI 명령 분기",
+    "platform": "CLI",
+    "trigger": "python -m cfd_bot [command]",
+    "outcome": "check는 검증/stdout만; identify는 Telegram 조회; gui는 config 분기 전에 launch",
+    "error": "OSError/ValueError/RuntimeError → stderr, exit 2; _worker는 별도 worker 반환"
+  },
+  {
+    "key": "BG-01",
+    "title": "scanner managed / standalone",
+    "platform": "Bash + Python",
+    "trigger": "bin/ofps options",
+    "outcome": "managed는 stdout만; --check는 scan 뒤 check_cpu_set; --watch는 반복",
+    "error": "유효 case root 없는 후보 제외; standalone sync 실패가 CPU 검사 exit를 덮어쓰지 않음"
+  },
+  {
+    "key": "BG-02",
+    "title": "현재 CASE · 이전 실행/종료 확인 중 CASE 감시",
+    "platform": "Monitor thread",
+    "trigger": "run_once 완료 후 poll_seconds 대기",
+    "outcome": "종료 확정·outbox 완료 대상은 다음 tick 감시에서 제외; 새 실행 identity 구분",
+    "error": "scan 실패는 missing 증가 없음; state/outbox 사이 실패는 persisted tracking으로 재시도"
+  },
+  {
+    "key": "BG-03",
+    "title": "변경된 제출 티켓 접수",
+    "platform": "Monitor",
+    "trigger": "submit=True 티켓",
+    "outcome": "DB 큐 순서·request 멱등성 유지; 이후 D-15에서 대상 상태 반영",
+    "error": "batch 충돌: reason/outbox; 실제 solver 시작은 Scheduler가 결정"
+  },
+  {
+    "key": "D-15",
+    "title": "증분 상태 반영 · 종료 child와 부모 macro 재시도",
+    "platform": "공용",
+    "trigger": "Monitor / Web / CLI / standalone ofps",
+    "outcome": "종료·취소·전후처리도 DB 이벤트로 반영; 완료된 과거 티켓 반복 검사 없음",
+    "error": "동기화 중 새 제출의 request_id가 바뀌면 보존·재시도; DB/JSON 분리 장애는 journal 재생"
+  },
+  {
+    "key": "BG-04",
+    "title": "용량 기반 병렬 admission·worker 시작",
+    "platform": "Monitor thread",
+    "trigger": "Scheduler.tick(observed)",
+    "outcome": "승인된 작업을 병렬 worker로 시작; 막힌 lane은 이유 저장 후 다른 lane 계속 검토",
+    "error": "환경/CPU 실패 queued 유지; worker spawn OSError → failed + terminal_event"
+  },
+  {
+    "key": "BG-05",
+    "title": "worker·solver·hooks·판정",
+    "platform": "detached process",
+    "trigger": "cli.main(_worker)",
+    "outcome": "다음 Scheduler.tick이 terminal_event로 outbox 접수; worker는 직접 Telegram 전송 안 함",
+    "error": "preprocess 실패 solver 시작 안 함; except → child cleanup, failed; monitor/post 오류는 별도"
+  },
+  {
+    "key": "BG-06",
+    "title": "outbox 알림 전달·checkpoint",
+    "platform": "Delivery thread",
+    "trigger": "deliver 완료 후 1초 대기",
+    "outcome": "recipient별 pending/완료; API 성공 후 offset 저장 사이 crash는 중복 전송 가능",
+    "error": "TelegramError → retry_after+backoff; 첨부 파일 유실 → skip 안내; 기타 오류도 retry"
+  },
+  {
+    "key": "BG-07",
+    "title": "worker 소실·재시작 복구",
+    "platform": "Monitor / Scheduler",
+    "trigger": "Scheduler.recover",
+    "outcome": "starting 60초 grace; hook/solver 살아 있으면 예약 유지; 죽은 실행은 로그로 판정",
+    "error": "preprocess/startup 소실은 failed; PID 재사용은 boot/starttick identity로 구분"
+  },
+  {
+    "key": "UC-05-file-web",
+    "title": "Residual 실제 HTTP 전송",
+    "platform": "web",
+    "trigger": "GET /api/file?case&source&file[&download=1]",
+    "outcome": "브라우저 inline 이미지 또는 attachment 다운로드",
+    "error": "현재 선언 목록 제외/경로/크기 오류 400; 연결 종료는 stream 정리"
+  },
+  {
+    "key": "UC-06-file-web",
+    "title": "결과 파일 실제 HTTP 전송",
+    "platform": "web",
+    "trigger": "GET /api/file?case&source&file[&download=1]",
+    "outcome": "브라우저 inline 이미지 또는 attachment 다운로드",
+    "error": "현재 선언 목록 제외/경로/크기 오류 400; 연결 종료는 stream 정리"
+  },
+  {
+    "key": "UC-10-exports-tg",
+    "title": "요청 데이터 정의 편집",
+    "platform": "Telegram",
+    "trigger": "exports / xe / xnew / xkind / xapply / xdelete",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-10-exports-web",
+    "title": "요청 데이터 정의 검증",
+    "platform": "web",
+    "trigger": "validateExports → /api/exports/validate",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
+    "key": "UC-10-exports-gui",
+    "title": "요청 데이터 정의 편집",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → edit_item",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  }
+]

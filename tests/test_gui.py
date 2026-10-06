@@ -174,6 +174,8 @@ class FormTests(unittest.TestCase):
     def test_macro_form_requires_shared_execution_and_preserves_selected_order(self):
         fields = dict(self.fields, task_type='macro', macro_cores='4', macro_cpu_set='0-3',
                       macro_command='./Allrun --foreground', end_time='1250',
+                      case_include_patterns='DS_CART_NQ_*\nDS_CART_ALT_*',
+                      case_exclude_patterns='DS_ID_LHS_vN-Q_fC*',
                       cases=[{'case_dir': str(self.case / 'b'), 'state': 'waiting'},
                              {'case_dir': str(self.case / 'a'), 'state': 'waiting'}])
         data = self.validate(fields)
@@ -184,9 +186,29 @@ class FormTests(unittest.TestCase):
         self.assertEqual(data['end_time'], 1250)
         self.assertEqual([row['case_dir'] for row in data['cases']],
                          [str(self.case / 'b'), str(self.case / 'a')])
+        self.assertEqual(data['discovery'], {
+            'include_patterns': ['DS_CART_NQ_*', 'DS_CART_ALT_*'],
+            'exclude_patterns': ['DS_ID_LHS_vN-Q_fC*'],
+        })
+        reopened = form_values(data, self.tickets)
+        self.assertEqual(reopened['case_include_patterns'], fields['case_include_patterns'])
+        self.assertEqual(reopened['case_exclude_patterns'], fields['case_exclude_patterns'])
+        reopened['task_type'] = 'single'
+        reopened['role'] = 'alone'
+        reopened['execution_source'] = 'case'
+        self.assertNotIn('discovery', self.validate(reopened))
         fields['macro_cores'] = ''
         with self.assertRaisesRegex(ValueError, '공통 코어 수'):
             self.validate(fields)
+
+    def test_macro_discovery_filters_reject_paths_and_duplicates(self):
+        fields = dict(self.fields, task_type='macro', macro_cores='1',
+                      macro_command='./Allrun', cases=[])
+        for key, value in (
+                ('case_include_patterns', 'group/DS_*'),
+                ('case_exclude_patterns', 'DS_*\nDS_*')):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                self.validate(dict(fields, **{key: value}))
 
     def test_legacy_manual_mapping_is_preserved_until_auto_is_selected(self):
         data = dict(TEMPLATE, task_type='macro', case_dir=str(self.case), resource_source='macro',
@@ -414,14 +436,22 @@ class WidgetTests(unittest.TestCase):
             openfoam_bashrc='deploy/openfoam-env.sh'))))
         variable, choices = editor.variables['task_type']
         variable.set(choices['macro'])
+        editor.update_execution_visibility()
+        self.root.update_idletasks()
+        self.assertTrue(editor.discovery_filters.winfo_ismapped())
+        editor.texts['case_include_patterns'].insert('1.0', 'DS_CART_NQ_*')
+        editor.texts['case_exclude_patterns'].insert('1.0', 'DS_ID_LHS_vN-Q_fC*')
         editor.case_entry.insert(0, str(self.folder))
         with patch('cfd_bot.processes.snapshot', return_value={'cases': {}}):
-            editor.scan_cases()
-            deadline = time.monotonic() + 3
-            while editor.scan_in_progress and time.monotonic() < deadline:
-                self.root.update()
-                time.sleep(0.01)
+            with patch('cfd_bot.gui.discover_cases', return_value=([], [])) as discover:
+                editor.scan_cases()
+                deadline = time.monotonic() + 3
+                while editor.scan_in_progress and time.monotonic() < deadline:
+                    self.root.update()
+                    time.sleep(0.01)
         self.assertFalse(editor.scan_in_progress)
+        self.assertEqual(discover.call_args.args[3:],
+                         (['DS_CART_NQ_*'], ['DS_ID_LHS_vN-Q_fC*']))
         self.errors.assert_not_called()
 
     def test_folder_picker_retains_other_fields_and_custom_names(self):

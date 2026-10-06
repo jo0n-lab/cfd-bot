@@ -4,6 +4,10 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-10-06 | [CPU 용량 기반 병렬 실행과 다중 실행 상태](2026-10-06-capacity-aware-parallel-execution.md) | [#21](https://github.com/jo0n-lab/cfd-bot/issues/21), [#22](https://github.com/jo0n-lab/cfd-bot/issues/22) |
+| 2026-10-04 | [티켓 색인·증분 감시로 전역 재검증 제거](2026-10-04-ticket-index-incremental-monitor.md) | [#20](https://github.com/jo0n-lab/cfd-bot/issues/20) |
+| 2026-10-04 | [함수 요청·응답과 유즈케이스·플랫폼별 아키텍처 전면 재작성](2026-10-04-architecture-function-flows.md) | [#19](https://github.com/jo0n-lab/cfd-bot/issues/19) |
+| 2026-10-04 | [매크로 하위 케이스 이름 포함·제외 필터](2026-10-04-macro-case-name-filters.md) | [#17](https://github.com/jo0n-lab/cfd-bot/issues/17) |
 | 2026-10-04 | [모니터링 전용 CPU의 명시적 활성화와 입력란 표시](2026-10-04-monitoring-opt-in-visibility.md) | [#16](https://github.com/jo0n-lab/cfd-bot/issues/16) |
 | 2026-10-04 | [케이스별 `.process-core` 자동 생성과 동기화](2026-10-04-process-core-generation.md) | [#15](https://github.com/jo0n-lab/cfd-bot/issues/15) |
 | 2026-10-02 | [case 실행 설정의 NP 보존](2026-10-02-case-np-preservation.md) | [#14](https://github.com/jo0n-lab/cfd-bot/issues/14) |

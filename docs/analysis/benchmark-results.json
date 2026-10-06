@@ -1,0 +1,108 @@
+{
+  "date": "2026-10-04",
+  "python": "3.9.25",
+  "platform": "Linux",
+  "snapshot": "synthetic; no subprocess or API",
+  "jobs": 0,
+  "macro": 0,
+  "log": "2 short Time/ClockTime pairs per case",
+  "warmup": 3,
+  "results": [
+    {
+      "path": "telegram_stat_backend",
+      "cases": 1,
+      "samples": 20,
+      "p50_ms": 1.691,
+      "p95_ms": 1.978,
+      "min_ms": 1.594,
+      "max_ms": 2.009,
+      "calls": {
+        "Store.get": 2,
+        "Store.runtime_history": 1,
+        "load_case": 1,
+        "sqlite3.connect": 3
+      }
+    },
+    {
+      "path": "web_overview_backend",
+      "cases": 1,
+      "samples": 20,
+      "p50_ms": 11.73,
+      "p95_ms": 13.926,
+      "min_ms": 10.814,
+      "max_ms": 14.216,
+      "calls": {
+        "Store.get": 4,
+        "Store.jobs": 3,
+        "Store.runtime_history": 1,
+        "TicketRunner.state": 1,
+        "load_case": 5,
+        "sqlite3.connect": 10
+      }
+    },
+    {
+      "path": "telegram_stat_backend",
+      "cases": 10,
+      "samples": 20,
+      "p50_ms": 13.324,
+      "p95_ms": 15.042,
+      "min_ms": 12.602,
+      "max_ms": 15.357,
+      "calls": {
+        "Store.get": 11,
+        "Store.runtime_history": 10,
+        "load_case": 10,
+        "sqlite3.connect": 21
+      }
+    },
+    {
+      "path": "web_overview_backend",
+      "cases": 10,
+      "samples": 20,
+      "p50_ms": 48.493,
+      "p95_ms": 55.296,
+      "min_ms": 45.103,
+      "max_ms": 56.177,
+      "calls": {
+        "Store.get": 22,
+        "Store.jobs": 12,
+        "Store.runtime_history": 10,
+        "TicketRunner.state": 10,
+        "load_case": 50,
+        "sqlite3.connect": 46
+      }
+    },
+    {
+      "path": "telegram_stat_backend",
+      "cases": 40,
+      "samples": 20,
+      "p50_ms": 50.951,
+      "p95_ms": 55.991,
+      "min_ms": 47.044,
+      "max_ms": 57.427,
+      "calls": {
+        "Store.get": 41,
+        "Store.runtime_history": 40,
+        "load_case": 40,
+        "sqlite3.connect": 81
+      }
+    },
+    {
+      "path": "web_overview_backend",
+      "cases": 40,
+      "samples": 20,
+      "p50_ms": 169.397,
+      "p95_ms": 176.248,
+      "min_ms": 162.38,
+      "max_ms": 176.668,
+      "calls": {
+        "Store.get": 82,
+        "Store.jobs": 42,
+        "Store.runtime_history": 40,
+        "TicketRunner.state": 40,
+        "load_case": 200,
+        "sqlite3.connect": 166
+      }
+    }
+  ]
+}

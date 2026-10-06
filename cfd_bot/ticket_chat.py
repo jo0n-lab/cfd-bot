@@ -7,7 +7,7 @@ import shlex
 import threading
 import uuid
 
-from .config import cpu_set, inside, patterns
+from .config import cpu_set, glob_patterns, inside, patterns
 from .control import control_times
 from .editor import (DEFAULT_SCRIPTS, EVENTS, TicketService, case_browser_start,
                      lines, numeric, script_commands, validate_export)
@@ -23,9 +23,10 @@ FIELD_KEYS = {
     'failure_patterns', 'updated_files', 'macro_ticket', 'macro_cores',
     'macro_cpu_set', 'macro_command', 'preprocess', 'postprocess', 'x.name',
     'monitoring_command', 'x.pattern', 'x.max_files', 'template_name', 'browse_path',
+    'case_include_patterns', 'case_exclude_patterns',
 }
 CLEARABLE = {'name', 'residual_pattern', 'end_time', 'failure_patterns', 'updated_files', 'macro_ticket',
-             'preprocess', 'postprocess'}
+             'preprocess', 'postprocess', 'case_include_patterns', 'case_exclude_patterns'}
 COMMANDS = {'/start', '/help', '/stat', '/clean', '/queue', '/cases', '/data'}
 
 
@@ -253,21 +254,24 @@ class TicketChat:
                 [(self.t('card.exports'), 'exports', 0), (self.t('card.queue'), 'queue', None)],
                 [(self.t('card.scripts'), 'scripts', None)],
                 [(self.t('card.mode'), 'mode', None), (self.t('card.filename'), 'field', 'filename')],
-                [(self.t('card.validate'), 'validate', None), (self.t('card.save'), 'review', 'save'),
-                 (self.t('card.save_run'), 'review', 'submit')]]
+                [(self.t('card.validate'), 'validate', None), (self.t('card.save'), 'review', 'save')]]
+        state = None
         if d['current']:
             try:
                 state = self.runner.state(d['current'])
             except (OSError, ValueError):
-                state = dict(enabled=False, label=self.t('notices.run_check'))
-            run_label = self.t('notices.save_then_run') if d['dirty'] and state['enabled'] else state['label']
-            rows.insert(0, [(run_label, 'runreview' if state['enabled'] else 'runstate', None),
-                            (self.t('card.refresh_run'), 'runstate', None)])
-            if not state['enabled']:
-                rows[-1] = [(self.t('card.validate'), 'validate', None),
-                            (self.t('card.save'), 'review', 'save')]
+                state = dict(run_enabled=False, queue_enabled=False, label=self.t('notices.run_check'))
+            actions = [(self.t('notices.save_then_run') if d['dirty'] and state['run_enabled']
+                        else state['label'], 'runreview' if state['run_enabled'] else 'runstate', 'run')]
+            if state['queue_enabled']:
+                actions.append((state['queue_label'], 'queuelanes', None))
+            rows.insert(0, actions)
+            rows.insert(1, [(self.t('card.refresh_run'), 'runstate', None)])
             rows += [[(self.t('card.duplicate'), 'duplicate', None),
                       (self.t('card.delete'), 'delete', None)]]
+        else:
+            rows += [[(self.t('card.save_execute'), 'review', 'run'),
+                      (self.t('card.save_queue'), 'queuelanes', None)]]
         rows.append([(self.t('card.list'), 'list', 0)])
         kind = (self.t('card.macro') if v['task_type'] == 'macro'
                 else self.t('card.single', role=v['role']))
@@ -282,6 +286,8 @@ class TicketChat:
         if v['task_type'] == 'macro':
             existing = d['current'] and v['_source'].get('task_type') == 'macro'
             text += self.t('card.macro_existing' if existing else 'card.macro_new', count=len(v['cases']))
+        if state and state.get('availability_message'):
+            text += '\n\n' + state['availability_message']
         if notice:
             text = notice + '\n\n' + text
         self.render(chat, user, s, text, rows, 'card')
@@ -365,9 +371,14 @@ class TicketChat:
                              else 'strings.common.unchecked').strip()),
                            'toggle', 'macro_cross_socket')]]
         if macro:
-            rows.append([(self.t('queue.scan'), 'scan', None), (self.t('queue.members'), 'members', 0)])
+            rows += [[(self.t('queue.include_patterns'), 'field', 'case_include_patterns'),
+                      (self.t('queue.exclude_patterns'), 'field', 'case_exclude_patterns')],
+                     [(self.t('queue.scan'), 'scan', None),
+                      (self.t('queue.members'), 'members', 0)]]
             text = self.t('queue.macro_body', cores=v['macro_cores'] or unspecified,
-                          cpu=cpu_label, command=short(v['macro_command'], 600), count=len(v['cases']))
+                          cpu=cpu_label, command=short(v['macro_command'], 600), count=len(v['cases']),
+                          include=short(v.get('case_include_patterns') or unspecified, 300),
+                          exclude=short(v.get('case_exclude_patterns') or unspecified, 300))
         elif not child:
             text = self.t('queue.single_body', role=v['role'],
                           macro=short(v['macro_ticket'] or self.ui.text('strings.common.none'))) + '\n\n' + text
@@ -459,6 +470,10 @@ class TicketChat:
             elif key == 'failure_patterns':
                 patterns(lines(text, strip=False), self.t('fields.failure_patterns.title'))
                 value = text
+            elif key in ('case_include_patterns', 'case_exclude_patterns'):
+                values = lines(value)
+                glob_patterns(values, self.field_meta(key)[0])
+                value = '\n'.join(values)
             elif key in ('logs', 'updated_files'):
                 paths = lines(value)
                 if key == 'logs' and not paths:
@@ -643,15 +658,21 @@ class TicketChat:
         scan_id = uuid.uuid4().hex
         s['scan_id'] = scan_id
         s['scan_owner'] = self.instance_id
-        root = str((self.service.folder / Path(v['case_dir']).expanduser()).resolve())
+        case_dir = v['case_dir']
+        root = str((self.service.folder / Path(case_dir).expanduser()).resolve())
         end_text = v['end_time']
+        include_text = v.get('case_include_patterns', '')
+        exclude_text = v.get('case_exclude_patterns', '')
+        include_patterns = lines(include_text)
+        exclude_patterns = lines(exclude_text)
         end = numeric(end_text, self.t('fields.end_time.title')) if end_text.strip() else None
         self.render(chat, user, s, self.t('members.checking'),
                     [[(self.t('members.cancel'), 'stopscan', None)]], 'scanning')
         def work():
             try:
                 observed = snapshot(self.bot.config['ofps_command'])
-                result = discover_cases(root, observed['cases'], end)
+                result = discover_cases(root, observed['cases'], end,
+                                        include_patterns, exclude_patterns)
             except Exception as exc:
                 result = exc
             with self.lock:
@@ -660,7 +681,10 @@ class TicketChat:
                     return
                 current.pop('scan_id', None)
                 values = self.draft(current)['values']
-                if values['case_dir'] != v['case_dir'] or values['end_time'] != end_text or values['task_type'] != 'macro':
+                if (values['case_dir'] != case_dir or values['end_time'] != end_text
+                        or values.get('case_include_patterns', '') != include_text
+                        or values.get('case_exclude_patterns', '') != exclude_text
+                        or values['task_type'] != 'macro'):
                     self.persist(chat, user, current)
                     return
                 try:
@@ -718,10 +742,15 @@ class TicketChat:
         filename = self.service.filename(d['values'], d['filename'])
         destination = self.service.path(filename)
         overwrite = filename != d['current'] and destination.exists()
-        s['save_action'] = dict(mode=mode, request_id=uuid.uuid4().hex, overwrite=overwrite)
+        mode, _, lane_text = mode.partition(':')
+        lane = int(lane_text) if lane_text else 1
+        s['save_action'] = dict(mode=mode, lane=lane, request_id=uuid.uuid4().hex,
+                                overwrite=overwrite)
         existing_macro = (d['current'] and d['values']['_source'].get('task_type') == 'macro'
                           and data['task_type'] == 'macro')
-        queue = (mode == 'submit' or data['task_type'] == 'macro') and not existing_macro
+        request_mode = 'queue' if mode == 'submit' else mode
+        wants_request = request_mode in ('run', 'queue')
+        queue = wants_request and not existing_macro
         text = self.t('review.body', filename=filename, name=short(data['name']),
                       case_dir=short(data['case_dir'], 600))
         if data['task_type'] == 'macro':
@@ -735,7 +764,7 @@ class TicketChat:
         text += self.t('review.post', value=short(d['values'].get('postprocess') or unused, 300))
         text += self.t('review.monitor', value=(short(d['values'].get('monitoring_command'))
                                                if d['values'].get('monitoring_cpu') else unused))
-        will_run = mode == 'submit' or queue
+        will_run = wants_request or queue
         text += self.t('review.will_run' if will_run else 'review.save_only')
         if existing_macro:
             text += self.t('review.macro_run' if will_run else 'review.macro_save')
@@ -779,31 +808,48 @@ class TicketChat:
         elif op == 'runstate':
             d = self.draft(s)
             state = self.runner.state(d['current'], fresh=True)
-            self.card(chat, user, s, state['label'])
+            self.card(chat, user, s, state.get('availability_message', state['label']))
         elif op == 'runreview':
             d = self.draft(s)
             state = self.runner.state(d['current'], fresh=True)
-            if not state['enabled']:
-                self.card(chat, user, s, self.t('notices.already_running'))
+            mode, _, lane_text = (arg or 'run').partition(':')
+            lane = int(lane_text) if lane_text else 1
+            allowed = state['run_enabled'] if mode == 'run' else state['queue_enabled']
+            if not allowed:
+                self.card(chat, user, s,
+                          state.get('availability_message', self.t('notices.already_running')))
                 return
             if d['dirty']:
-                self.review(chat, user, s, 'submit')
+                self.review(chat, user, s, mode)
                 return
             if state['state'] == 'queued':
                 self.card(chat, user, s, self.t('notices.already_queued'))
                 return
             s['run_request'] = uuid.uuid4().hex
+            s['run_mode'] = mode
+            s['run_lane'] = lane
             detail = self.t('run.macro' if d['values']['task_type'] == 'macro' else 'run.single')
-            self.render(chat, user, s, self.t('run.confirm', filename=d['current'], detail=detail),
-                        [[(self.t('run.button'), 'runyes', None),
+            self.render(chat, user, s, self.t('run.confirm', filename=d['current'], detail=detail,
+                                             action=self.t('run.action_' + mode)),
+                        [[(self.t('run.button_' + mode), 'runyes', None),
                           (self.ui.text('strings.common.cancel'), 'card', None)]], 'run_confirm')
         elif op == 'runyes':
             d = self.draft(s)
-            result = self.runner.request(d['current'], expected_revision=d['revision'], request_id=s['run_request'])
+            mode = s.get('run_mode', 'run')
+            result = self.runner.request(d['current'], expected_revision=d['revision'],
+                                         request_id=s['run_request'], mode=mode,
+                                         lane=s.get('run_lane', 1))
             s['draft'] = self.service.open(d['current'])
             self.card(chat, user, s, self.t('notices.already_queued' if result['already_queued']
+                                            else 'notices.run_requested' if mode == 'run'
                                             else 'notices.queued'))
         elif op == 'basic': self.basic(chat, user, s)
+        elif op == 'queuelanes':
+            target = 'runreview' if self.draft(s)['current'] else 'review'
+            self.render(chat, user, s, self.t('run.lane_title'),
+                        [[(self.t('run.lane', lane=lane), target, f'queue:{lane}')]
+                         for lane in range(1, 4)] +
+                        [[(self.ui.text('strings.common.cancel'), 'card', None)]], 'queue_lane')
         elif op == 'rules': self.rules(chat, user, s)
         elif op == 'queue': self.queue(chat, user, s)
         elif op == 'field': self.field(chat, user, s, arg)
@@ -945,20 +991,28 @@ class TicketChat:
         elif op == 'save':
             d = self.draft(s)
             action = s['save_action']
-            if action['mode'] == 'submit' and d['current']:
-                if not self.runner.state(d['current'], fresh=True)['enabled']:
-                    raise ValueError(self.bot.ui.text('scenarios.launch.already_running'))
+            if action['mode'] in ('submit', 'run', 'queue') and d['current']:
+                state = self.runner.state(d['current'], fresh=True)
+                request_mode = 'queue' if action['mode'] == 'submit' else action['mode']
+                allowed = state['run_enabled'] if request_mode == 'run' else state['queue_enabled']
+                if not allowed:
+                    raise ValueError(state.get('availability_message',
+                                                self.bot.ui.text('scenarios.launch.already_running')))
             name, data = self.service.save(d['values'], d['filename'], d['current'],
                     submit=False, overwrite=action['overwrite'],
                     expected_revision=d['revision'], request_id=action['request_id'])
             s['draft'] = self.service.open(name)
-            if action['mode'] == 'submit':
-                result = self.runner.request(name, expected_revision=s['draft']['revision'], request_id=action['request_id'])
+            if action['mode'] in ('submit', 'run', 'queue'):
+                request_mode = 'queue' if action['mode'] == 'submit' else action['mode']
+                result = self.runner.request(name, expected_revision=s['draft']['revision'],
+                                             request_id=action['request_id'], mode=request_mode,
+                                             lane=action.get('lane', 1))
                 data = self.service.open(name)['values']['_source']
             s.pop('save_action', None)
-            if action['mode'] == 'submit':
-                notice = self.t('notices.saved_queued' if result['already_queued']
-                                else 'notices.saved_and_queued')
+            if action['mode'] in ('submit', 'run', 'queue'):
+                notice = self.t('notices.saved_queued' if result['already_queued'] else
+                                'notices.saved_and_run' if request_mode == 'run' else
+                                'notices.saved_and_queued')
             else:
                 notice = self.t('notices.saved') + (self.t('notices.awaiting_queue')
                                                      if data.get('queue', {}).get('submit') else '')

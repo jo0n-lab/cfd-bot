@@ -3,11 +3,11 @@ import time
 import uuid
 from pathlib import Path
 
-from .config import cases_for
+from .catalog import ticket_index
 from .jobs import Scheduler, terminal_event
 from .logs import recent_case_log
 from .outcomes import decide, wants_event
-from .processes import snapshot
+from .processes import identity, snapshot
 from .storage import LIVE
 from .tickets import accept_submissions, sync_ticket_states
 from .ui import load_ui
@@ -45,6 +45,23 @@ def observation(record, previous=None, ui=None):
         actual_cpu_list=(cpu_list if cpu_list and cpu_list != ui.text('strings.common.unspecified')
                          else previous.get('actual_cpu_list', ui.text('strings.common.unspecified'))),
     )
+
+
+def observed_identity(record):
+    return {kind: sorted({p.get('identity') or identity(p['pid']) for p in record.get(kind, [])}
+                         - {None}) for kind in ('supervisors', 'processes')}
+
+
+def new_execution(previous, current):
+    if not previous:
+        return False  # Learn identity when upgrading an existing observation.
+    old, new = previous.get('supervisors', []), current.get('supervisors', [])
+    if old and new:
+        return set(old).isdisjoint(new)
+    if old or new:
+        return False  # Wrapper discovery or teardown is not a new calculation.
+    old, new = previous.get('processes', []), current.get('processes', [])
+    return bool(old and new and set(old).isdisjoint(new))
 
 
 def automatic_case(root, previous=None, ui=None):
@@ -100,8 +117,7 @@ class Monitor:
         self.scheduler = Scheduler(config, store)
 
     def tick(self):
-        cases = cases_for(self.config)
-        registered = {case['_root']: case for case in cases}
+        index = ticket_index(self.config)
         # Failed scans must never be interpreted as disappearance of all solvers.
         current = snapshot(self.config['ofps_command'])
         current['at'] = time.time()
@@ -115,25 +131,22 @@ class Monitor:
             record = current['cases'].get(job['case_root'])
             if record:
                 self.store.update_job(job['id'], expected=LIVE, **observation(record, job, self.ui))
-        for case in cases:
-            if case['_root'] in managed:
-                continue
-            self.observe(case, current['cases'].get(case['_root']))
-        # /stat already shows every ofps CASE. Apply the same scope to automatic
-        # start/finish notifications, including paths without a JSON ticket.
-        tracked = set(self.store.get('auto_observed_roots', []))
-        automatic = ((set(current['cases']) - set(registered) - managed) | tracked)
-        keep = set()
-        for root in sorted(automatic):
-            if root in registered or root in managed:
-                continue
-            previous = self.store.get('observed:' + root)
-            case = automatic_case(root, previous.get('case') if previous else None, self.ui)
+        # Tracking is persisted by the same transaction as each observed state.
+        # It survives restart, ticket deletion and a crash before the outbox write.
+        tracked = self.store.tracked_observations()
+        targets = (set(current['cases']) | set(tracked)) - managed
+        automatic = []
+        for root in sorted(targets):
+            case = index.lookup(root)
+            if case is None:
+                previous = tracked.get(root)
+                case = automatic_case(root, previous.get('case') if previous else None, self.ui)
             self.observe(case, current['cases'].get(root))
             state = self.store.get('observed:' + root)
-            if root in current['cases'] or (state and state.get('status') in LIVE):
-                keep.add(root)
-        self.store.put('auto_observed_roots', sorted(keep))
+            if case.get('auto_detected') and (root in current['cases'] or state.get('status') in LIVE):
+                automatic.append(root)
+        # Retain the old public metadata key for older readers.
+        self.store.put('auto_observed_roots', automatic)
         self.scheduler.tick(current['cases'])
         sync_ticket_states(self.config, self.store, current)
 
@@ -143,30 +156,41 @@ class Monitor:
         if previous and previous['status'] == 'succeeded':
             self.store.remember_run(previous)
         now = time.time()
+        if record and previous and previous['status'] not in LIVE:
+            terminal_event(self.store, previous, self.config['telegram']['chat_ids'], self.ui)
         if record:
+            run_identity = observed_identity(record)
+            if previous and previous['status'] in LIVE and new_execution(previous.get('run_identity'), run_identity):
+                # The new log may already have overwritten the previous run's
+                # tail. Do not attribute the new run's success to the old one.
+                previous.update(status='interrupted', finished=now,
+                                reason=self.ui.text('scenarios.notifications.external_restarted'))
+                self.store.put(key, previous)
+                terminal_event(self.store, previous, self.config['telegram']['chat_ids'], self.ui)
             if previous is None or previous['status'] not in LIVE:
                 members = record.get('supervisors', []) + record.get('processes', [])
                 started = min([process_started(p['pid']) for p in members] or [now])
                 previous = dict(id=uuid.uuid4().hex[:12], case=case, case_root=case['_root'], created=now, started=started,
                                 status='running', telemetry={}, missing=0, external=True)
-                if wants_event(case, 'started'):
-                    self.store.event(previous['id'] + ':start', self.config['telegram']['chat_ids'],
-                                     dict(kind='text', text=self.ui.text(
-                                         'scenarios.notifications.external_started', case_name=case['name'],
-                                         owner=record.get('owner', self.ui.text('strings.common.unavailable')),
-                                         observation=observed_text(record, self.ui))))
-            previous.update(missing=0, **observation(record, previous, self.ui))
+            previous.update(missing=0, run_identity=run_identity, **observation(record, previous, self.ui))
             previous['case'] = case
             previous['telemetry'], logfile = recent_case_log(
                 case, previous.get('telemetry') or None)
             previous['log_path'] = str(logfile)
             self.store.put(key, previous)
+            if wants_event(case, 'started'):
+                self.store.event(previous['id'] + ':start', self.config['telegram']['chat_ids'],
+                                 dict(kind='text', text=self.ui.text(
+                                     'scenarios.notifications.external_started', case_name=case['name'],
+                                     owner=record.get('owner', self.ui.text('strings.common.unavailable')),
+                                     observation=observed_text(record, self.ui))))
             return
         if previous is None:
             return
         previous['case'] = case
         if previous['status'] not in LIVE:
             terminal_event(self.store, previous, self.config['telegram']['chat_ids'], self.ui)
+            self.store.finish_observation(case['_root'], previous['id'])
             return
         previous['missing'] = previous.get('missing', 0) + 1
         if previous['missing'] < case['watcher'].get(
@@ -181,6 +205,7 @@ class Monitor:
         previous.update(status=status, reason=reason, telemetry=telemetry, finished=now)
         self.store.put(key, previous)
         terminal_event(self.store, previous, self.config['telegram']['chat_ids'], self.ui)
+        self.store.finish_observation(case['_root'], previous['id'])
 
     def run_once(self):
         try:

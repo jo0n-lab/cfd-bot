@@ -43,11 +43,15 @@ class TicketEditor:
         self.source = {}
         self.queue_window = None
         self.queue_listbox = None
+        self.queue_listboxes = {}
+        self.queue_jobs_by_lane = {1: [], 2: [], 3: []}
         self.queue_jobs = []
         self.queue_store = None
         self.queue_config = None
         self.queue_result_listbox = None
         self.queue_result_jobs = []
+        self.queue_active_listbox = None
+        self.queue_active_jobs = []
         self.queue_registry = {}
         self.pattern_library = PatternLibrary(self.tickets_dir.parent / 'ticket-patterns.json')
         root.title('CFD bot ticket editor')
@@ -165,15 +169,25 @@ class TicketEditor:
         self.monitoring_command = self.field(
             self.monitoring_command_group, 0, 'monitoring_command', '모니터링 스크립트',
             hint='기본값: ./Allmonitor · 계산 CPU와 겹치지 않는 물리 CPU 1개에서 실행합니다.')
+        self.discovery_filters = ttk.LabelFrame(queue_tab, text='매크로 하위 케이스 이름 필터', padding=10)
+        self.discovery_filters.grid(row=8, column=0, columnspan=3, sticky='ew', pady=10)
+        self.discovery_filters.columnconfigure(1, weight=1)
+        self.multiline(
+            self.discovery_filters, 0, 'case_include_patterns', '포함 패턴', height=2,
+            hint='선택 사항 · 폴더 이름이 하나 이상 일치해야 포함합니다. 한 줄에 하나. 예: DS_CART_NQ_*')
+        self.multiline(
+            self.discovery_filters, 1, 'case_exclude_patterns', '제외 패턴', height=2,
+            hint='선택 사항 · 하나라도 일치하면 제외합니다. 한 줄에 하나. 예: DS_ID_LHS_vN-Q_fC*')
         ttk.Label(queue_tab, text='매크로: Case directory의 직계 하위 폴더만 검색합니다.\n'
                   '각 폴더 바로 아래에 Allrun이 있어야 하며, *-template과 실행 중인 케이스는 제외합니다.\n'
+                  '이름 필터는 폴더 이름에 적용하며 제외 패턴이 포함 패턴보다 우선합니다.\n'
                   'postProcessing이 있는 케이스도 포함하며 노란색으로 표시합니다.\n'
                   '행 순서대로 실행합니다. 제외할 행의 삭제 버튼을 누른 뒤 저장하면 큐에 등록됩니다.',
-                  wraplength=650).grid(row=8, column=0, columnspan=3, sticky='w', pady=12)
+                  wraplength=650).grid(row=9, column=0, columnspan=3, sticky='w', pady=12)
         self.scan_button = ttk.Button(queue_tab, text='직계 하위 케이스 검색', command=self.scan_cases)
-        self.scan_button.grid(row=9, column=0, columnspan=3, sticky='w')
+        self.scan_button.grid(row=10, column=0, columnspan=3, sticky='w')
         self.case_rows = ttk.Frame(queue_tab)
-        self.case_rows.grid(row=10, column=0, columnspan=3, sticky='ew', pady=8)
+        self.case_rows.grid(row=11, column=0, columnspan=3, sticky='ew', pady=8)
         self.case_rows.columnconfigure(0, weight=1)
 
         ttk.Label(
@@ -209,9 +223,16 @@ class TicketEditor:
         self.filename = tk.StringVar()
         ttk.Entry(footer, textvariable=self.filename, width=26).pack(side='left', fill='x', expand=True, padx=8)
         ttk.Button(footer, text='검증', command=self.validate).pack(side='right')
-        self.run_button = ttk.Button(footer, text='실행', command=self.submit)
+        self.run_button = ttk.Button(footer, text='즉시 실행', command=lambda: self.submit('run'))
         self.run_button.pack(side='right', padx=6)
         self.run_button.bind('<Destroy>', lambda _event: self.stop_execution_poll())
+        self.queue_button = ttk.Button(footer, text='대기열 등록', command=lambda: self.submit('queue'))
+        self.queue_button.pack(side='right', padx=6)
+        self.queue_lane = tk.StringVar(value='1')
+        self.queue_lane_picker = ttk.Combobox(footer, textvariable=self.queue_lane,
+                                              values=('1', '2', '3'), width=3,
+                                              state='readonly')
+        self.queue_lane_picker.pack(side='right')
         ttk.Button(footer, text='저장', command=self.save).pack(side='right', padx=6)
         self.status = tk.StringVar()
         ttk.Label(right, textvariable=self.status, wraplength=720).pack(fill='x', pady=(6, 0))
@@ -234,23 +255,37 @@ class TicketEditor:
     def update_execution_button(self):
         if self.run_busy:
             self.run_button.configure(text='실행 상태 확인 중…', state='disabled')
+            self.queue_button.configure(state='disabled')
+            self.queue_lane_picker.configure(state='disabled')
             return
         if len(self.listbox.curselection()) > 1:
-            self.run_button.configure(text='실행', state='disabled')
+            self.run_button.configure(text='즉시 실행', state='disabled')
+            self.queue_button.configure(state='disabled')
+            self.queue_lane_picker.configure(state='disabled')
             self.run_status.set('실행할 티켓 한 개를 선택하세요.')
             return
         if not self.current:
-            self.run_button.configure(text='저장 후 실행', state='normal')
-            self.run_status.set('실행하면 입력 내용을 저장하고 큐에 등록합니다.')
+            self.run_button.configure(text='저장 후 즉시 실행', state='normal')
+            self.queue_button.configure(text='저장 후 대기열 등록', state='normal')
+            self.queue_lane_picker.configure(state='readonly')
+            self.run_status.set('티켓을 저장한 뒤 즉시 실행하거나 대기열에 등록할 수 있습니다.')
             return
         try:
             state = self.execution_runner().state(self.current.name)
-            self.run_button.configure(text=state['label'], state='normal' if state['enabled'] else 'disabled')
-            self.run_status.set('계산 중인 티켓은 실행할 수 없습니다.' if not state['enabled'] else
-                                '이미 대기 중인 작업은 중복 등록하지 않습니다.' if state['state'] == 'queued' else
-                                '실행 버튼으로 이 티켓을 큐에 등록할 수 있습니다.')
+            run_enabled = state.get('run_enabled', state.get('enabled', False))
+            queue_enabled = state.get('queue_enabled', run_enabled)
+            self.run_button.configure(text=state['label'], state='normal' if run_enabled else 'disabled')
+            self.queue_button.configure(text=state.get('queue_label', '대기열 등록'),
+                                        state='normal' if queue_enabled else 'disabled')
+            self.queue_lane_picker.configure(state='readonly' if queue_enabled else 'disabled')
+            self.run_status.set(state.get('availability_message') or
+                                ('계산 중이거나 이미 대기 중인 티켓입니다.'
+                                 if not run_enabled and not queue_enabled else
+                                 '즉시 실행 또는 일반 대기열 등록을 선택하세요.'))
         except (OSError, ValueError) as exc:
             self.run_button.configure(text='실행 상태 확인 필요', state='disabled')
+            self.queue_button.configure(state='disabled')
+            self.queue_lane_picker.configure(state='disabled')
             self.run_status.set(str(exc))
 
     def poll_execution(self):
@@ -448,6 +483,10 @@ class TicketEditor:
             self.common_execution.grid()
         else:
             self.common_execution.grid_remove()
+        if macro:
+            self.discovery_filters.grid()
+        else:
+            self.discovery_filters.grid_remove()
         if v['monitoring_cpu']:
             self.monitoring_command_group.grid()
         else:
@@ -499,8 +538,13 @@ class TicketEditor:
         from .processes import snapshot
         try:
             config = load_bot(self.bot_config)
-            end = self.values()['end_time']
+            scan_values = self.values()
+            end = scan_values['end_time']
             end = numeric(end, 'End Time / Iteration') if end.strip() else None
+            include_text = scan_values['case_include_patterns']
+            exclude_text = scan_values['case_exclude_patterns']
+            include_patterns = lines(include_text)
+            exclude_patterns = lines(exclude_text)
         except (OSError, ValueError) as exc:
             self.messagebox.showerror('검색 실패', str(exc), parent=self.root)
             return
@@ -512,7 +556,8 @@ class TicketEditor:
         def work():
             try:
                 observed = snapshot(config['ofps_command'])
-                result.put(discover_cases(root, observed['cases'], end))
+                result.put(discover_cases(root, observed['cases'], end,
+                                          include_patterns, exclude_patterns))
             except Exception as exc:
                 result.put(exc)
         def finish():
@@ -525,10 +570,12 @@ class TicketEditor:
             if isinstance(found, Exception):
                 self.messagebox.showerror('검색 실패', str(found), parent=self.root)
             elif (self.variables['case_dir'][0].get().strip() == directory
-                  and self.values()['task_type'] == 'macro'):
+                  and self.values()['task_type'] == 'macro'
+                  and self.values()['case_include_patterns'] == include_text
+                  and self.values()['case_exclude_patterns'] == exclude_text):
                 self.macro_cases, skipped = found
                 self.render_case_rows()
-                self.status.set(f'선택 대상 {len(self.macro_cases)}개 · 실행 중 제외 {len(skipped)}개. 삭제 버튼으로 선택을 조정하세요.')
+                self.status.set(f'선택 대상 {len(self.macro_cases)}개 · 검색 제외 {len(skipped)}개. 삭제 버튼으로 선택을 조정하세요.')
         Thread(target=work, daemon=True).start()
         self.root.after(100, finish)
 
@@ -833,7 +880,7 @@ class TicketEditor:
             self.messagebox.showerror('저장 실패', str(exc), parent=self.root)
             return False
 
-    def submit(self):
+    def submit(self, mode='run'):
         if self.run_busy:
             return
         if len(self.listbox.curselection()) > 1:
@@ -850,12 +897,14 @@ class TicketEditor:
             self.messagebox.showerror('실행 실패', str(exc), parent=self.root)
             return
         name, revision = self.current.name, self.file_revision
+        lane = int(self.queue_lane.get())
         self.run_busy = True
         self.update_execution_button()
         result = Queue()
         def work():
             try:
-                result.put(runner.request(name, expected_revision=revision))
+                result.put(runner.request(name, expected_revision=revision, mode=mode,
+                                          lane=lane))
             except Exception as exc:
                 result.put(exc)
         def finish():
@@ -867,7 +916,9 @@ class TicketEditor:
             if isinstance(outcome, Exception):
                 self.messagebox.showerror('실행 실패', str(outcome), parent=self.root)
             else:
-                self.status.set(f'{name}: ' + ('이미 큐에 등록되어 있습니다.' if outcome['already_queued'] else '실행 큐 등록 완료'))
+                message = ('이미 큐에 등록되어 있습니다.' if outcome['already_queued'] else
+                           '즉시 실행 요청 완료' if mode == 'run' else '대기열 등록 완료')
+                self.status.set(f'{name}: {message}')
             self.update_execution_button()
         Thread(target=work, daemon=True).start()
         self.root.after(100, finish)
@@ -895,8 +946,8 @@ class TicketEditor:
         window = self.tk.Toplevel(self.root)
         self.queue_window = window
         window.title('CFD bot 작업 큐')
-        window.geometry('840x720')
-        window.minsize(660, 540)
+        window.geometry('840x820')
+        window.minsize(660, 640)
         window.transient(self.root)
         frame = self.ttk.Frame(window, padding=12)
         frame.pack(fill='both', expand=True)
@@ -904,25 +955,34 @@ class TicketEditor:
         self.queue_macro_status = self.tk.StringVar(value='실행 중인 매크로 없음')
         self.ttk.Label(frame, textvariable=self.queue_macro_status, wraplength=790).pack(
             anchor='w', pady=(5, 10))
-        self.ttk.Label(frame, text='대기 작업 선택', font=('TkDefaultFont', 11, 'bold')).pack(anchor='w')
+        self.ttk.Label(frame, text='1. 대기 작업 선택', font=('TkDefaultFont', 11, 'bold')).pack(anchor='w')
         self.ttk.Label(frame, text='Ctrl / Shift 또는 아래 전체 선택 버튼으로 여러 작업을 선택하세요.').pack(
             anchor='w', pady=(4, 10))
-        listing = self.ttk.Frame(frame)
-        listing.pack(fill='x')
-        self.queue_listbox = self.tk.Listbox(listing, exportselection=False, selectmode='extended', height=7)
-        self.queue_listbox.pack(side='left', fill='both', expand=True)
-        scroll = self.ttk.Scrollbar(listing, command=self.queue_listbox.yview)
-        scroll.pack(side='right', fill='y')
-        self.queue_listbox.configure(yscrollcommand=scroll.set)
+        queue_tabs = self.ttk.Notebook(frame)
+        queue_tabs.pack(fill='x')
+        for lane in range(1, 4):
+            listing = self.ttk.Frame(queue_tabs)
+            queue_tabs.add(listing, text=f'작업큐 {lane}')
+            box = self.tk.Listbox(listing, exportselection=False, selectmode='extended', height=7)
+            box.pack(side='left', fill='both', expand=True)
+            scroll = self.ttk.Scrollbar(listing, command=box.yview)
+            scroll.pack(side='right', fill='y')
+            box.configure(yscrollcommand=scroll.set)
+            self.queue_listboxes[lane] = box
+        self.queue_listbox = self.queue_listboxes[1]
         controls = self.ttk.Frame(frame)
         controls.pack(fill='x', pady=(10, 0))
         self.ttk.Button(controls, text='전체 선택', command=self.select_all_queue).pack(side='left')
         self.ttk.Button(controls, text='전체 해제', command=self.clear_queue_selection).pack(side='left', padx=6)
         self.ttk.Button(controls, text='선택 취소', command=self.cancel_queue_selection).pack(side='left')
         self.ttk.Button(controls, text='새로고침', command=self.refresh_queue_manager).pack(side='right')
-        self.ttk.Label(frame, text='계산 중 · 실행 이력', font=('TkDefaultFont', 11, 'bold')).pack(
+        self.ttk.Label(frame, text='2. 실행 중', font=('TkDefaultFont', 11, 'bold')).pack(
             anchor='w', pady=(14, 4))
-        self.ttk.Label(frame, text='[추적 가능]으로 표시된 계산 중 작업과 실행 이력만 결과 데이터를 열 수 있습니다.').pack(
+        self.queue_active_listbox = self.tk.Listbox(frame, exportselection=False, height=5)
+        self.queue_active_listbox.pack(fill='x')
+        self.ttk.Label(frame, text='3. 실행 이력', font=('TkDefaultFont', 11, 'bold')).pack(
+            anchor='w', pady=(14, 4))
+        self.ttk.Label(frame, text='[추적 가능]으로 표시된 실행 이력에서 결과 데이터를 열 수 있습니다.').pack(
             anchor='w', pady=(0, 6))
         results = self.ttk.Frame(frame)
         results.pack(fill='both', expand=True)
@@ -939,29 +999,41 @@ class TicketEditor:
         self.refresh_queue_manager()
 
     def refresh_queue_manager(self):
-        if self.queue_listbox is None or not self.queue_listbox.winfo_exists():
+        if not self.queue_listboxes or not self.queue_listbox.winfo_exists():
             return
-        selected = {self.queue_jobs[index]['id'] for index in self.queue_listbox.curselection()
-                    if index < len(self.queue_jobs)}
+        selected = {self.queue_jobs_by_lane[lane][index]['id']
+                    for lane, box in self.queue_listboxes.items()
+                    for index in box.curselection()
+                    if index < len(self.queue_jobs_by_lane[lane])}
         self.queue_jobs = self.queue_store.jobs(('queued',))
-        self.queue_listbox.delete(0, 'end')
-        for index, job in enumerate(self.queue_jobs):
-            self.queue_listbox.insert('end', f"{index + 1}. {job['case']['name']} · {job['id']} · {job['case_root']}")
-            if job['id'] in selected:
-                self.queue_listbox.selection_set(index)
+        for lane, box in self.queue_listboxes.items():
+            self.queue_jobs_by_lane[lane] = [job for job in self.queue_jobs
+                                             if job.get('queue_lane', 1) == lane]
+            box.delete(0, 'end')
+            for index, job in enumerate(self.queue_jobs_by_lane[lane]):
+                box.insert('end', f"{index + 1}. {job['case']['name']} · {job['id']} · {job['case_root']}")
+                if job['id'] in selected:
+                    box.selection_set(index)
         self.queue_status.set(f'대기 작업 {len(self.queue_jobs)}개')
         from .config import cases_for, tickets_for
         cases = cases_for(self.queue_config)
         self.queue_registry = tracking_registry(cases)
         jobs = self.queue_store.jobs()
+        active = [job for job in jobs if job['status'] in ('starting', 'running', 'postprocessing')]
+        self.queue_active_jobs = [job_view(job, self.queue_registry) for job in active]
+        self.queue_active_listbox.delete(0, 'end')
+        for item in self.queue_active_jobs:
+            cpus = item.get('actual_cpu_list') or 'CPU 배정 중'
+            self.queue_active_listbox.insert(
+                'end', f"{item['name']} · {item['status']} · {cpus} · {item['case_dir']}")
         selected_result = None
         if self.queue_result_listbox is not None and self.queue_result_listbox.curselection():
             index = self.queue_result_listbox.curselection()[0]
             if index < len(self.queue_result_jobs):
                 selected_result = self.queue_result_jobs[index]['id']
-        allowed = [job for job in jobs if job['status'] == 'running' or job['status'] not in
+        history = [job for job in jobs if job['status'] not in
                    ('queued', 'starting', 'running', 'postprocessing')]
-        self.queue_result_jobs = [job_view(job, self.queue_registry) for job in reversed(allowed)][:100]
+        self.queue_result_jobs = [job_view(job, self.queue_registry) for job in reversed(history)][:100]
         self.queue_result_listbox.delete(0, 'end')
         for index, item in enumerate(self.queue_result_jobs):
             tracking = '추적 가능' if item['trackable'] else '티켓 없음'
@@ -1035,16 +1107,18 @@ class TicketEditor:
             listing.insert('end', line)
 
     def select_all_queue(self):
-        if self.queue_listbox is not None and self.queue_listbox.size():
-            self.queue_listbox.selection_set(0, 'end')
+        for box in self.queue_listboxes.values():
+            if box.size():
+                box.selection_set(0, 'end')
 
     def clear_queue_selection(self):
-        if self.queue_listbox is not None:
-            self.queue_listbox.selection_clear(0, 'end')
+        for box in self.queue_listboxes.values():
+            box.selection_clear(0, 'end')
 
     def cancel_queue_selection(self):
-        indexes = list(self.queue_listbox.curselection()) if self.queue_listbox is not None else []
-        ids = [self.queue_jobs[index]['id'] for index in indexes]
+        ids = [self.queue_jobs_by_lane[lane][index]['id']
+               for lane, box in self.queue_listboxes.items()
+               for index in box.curselection()]
         if not ids:
             self.queue_status.set('취소할 대기 작업을 하나 이상 선택하세요.')
             return

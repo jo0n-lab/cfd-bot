@@ -463,7 +463,7 @@ class TicketChatTests(Environment):
                                macro_cores='1', macro_cpu_set=self.cpu, macro_command='./Allrun',
                                exports=[dict(name='live-naoh', pattern='validation/live/steady_naoh_coupled.png',
                                              kind='photo', max_files=1)])
-        macro_name, macro = self.service.save(draft['values'], 'macro-batch.json')
+        macro_name, macro = self.service.save(draft['values'], 'macro-batch.json', submit=True)
         accept_submissions(self.config, self.store)
         job = self.store.jobs()[0]
         self.store.update_job(job['id'], status='running')
@@ -532,7 +532,10 @@ class TicketChatTests(Environment):
         self.source()
         self.message('/tickets')
         self.click('open', 0)
-        self.click('review', 'submit')
+        self.click('basic')
+        self.field('name', 'queued once')
+        self.click('queuelanes')
+        self.click('runreview', 'queue:2')
         self.assertEqual(self.store.jobs(), [])
         confirm = self.button('save')
         self.click('save')
@@ -560,6 +563,11 @@ class TicketChatTests(Environment):
             self.click('queue')
             self.field(key, value)
         self.click('queue')
+        self.field('case_include_patterns', 'a\nb')
+        self.click('queue')
+        self.field('case_exclude_patterns', 'skip*')
+        self.click('queue')
+        self.assertIn('포함 패턴: a\nb', self.panel()['text'])
         with patch('cfd_bot.ticket_chat.snapshot', return_value={'cases': {}}):
             self.click('scan')
             for thread in self.bot.ticket_ui.workers:
@@ -582,14 +590,23 @@ class TicketChatTests(Environment):
         draft = self.session()['draft']
         macro = read_json(self.service.path(draft['current']))
         self.assertEqual(len(macro['cases']), 1)
+        self.assertEqual(macro['discovery'], {
+            'include_patterns': ['a', 'b'], 'exclude_patterns': ['skip*']})
         child = load_case(self.service.path(macro['cases'][0]['ticket']))
+        self.assertNotIn('discovery', child)
         self.assertEqual(child['cpu_policy'], 'auto')
         self.assertNotIn('cpu_set', child)
         self.assertEqual(child['resource_source'], 'macro')
         self.assertEqual(child['macro_ticket'], draft['current'])
         accept_submissions(self.config, self.store)
+        self.assertEqual(self.store.jobs(), [])
+        self.click('queuelanes')
+        self.click('runreview', 'queue:3')
+        self.click('runyes')
+        accept_submissions(self.config, self.store)
         self.assertEqual(len(self.store.jobs()), 1)
         self.assertEqual(self.store.jobs()[0]['case_root'], str(roots[0]))
+        self.assertEqual(self.store.jobs()[0]['queue_lane'], 3)
 
     def test_child_execution_panel_displays_inherited_values_without_edit_buttons(self):
         name = self.source()

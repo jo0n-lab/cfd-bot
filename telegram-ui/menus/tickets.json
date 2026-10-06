@@ -48,6 +48,14 @@
       "title": "실행 명령",
       "hint": "예: ./Allrun --foreground"
     },
+    "case_include_patterns": {
+      "title": "하위 케이스 포함 패턴",
+      "hint": "직계 하위 폴더 이름에 적용할 glob을 한 줄에 하나씩 입력하세요. 비우면 모두 포함합니다. 예: DS_CART_NQ_*"
+    },
+    "case_exclude_patterns": {
+      "title": "하위 케이스 제외 패턴",
+      "hint": "직계 하위 폴더 이름에 적용할 glob을 한 줄에 하나씩 입력하세요. 일치하면 제외합니다. 예: DS_ID_LHS_vN-Q_fC*"
+    },
     "monitoring_command": {
       "title": "모니터링 스크립트",
       "hint": "모니터링 전용 CPU에서 실행할 명령을 입력하세요. 기본값: ./Allmonitor"
@@ -140,9 +148,11 @@
     "validated": "검증 정상",
     "already_running": "이미 계산 중입니다. 실행할 수 없습니다.",
     "already_queued": "이미 큐에 등록되어 있습니다.",
+    "run_requested": "즉시 실행 요청 완료",
     "queued": "실행 큐 등록 완료",
     "saved_queued": "저장 완료 · 이미 큐에 등록되어 있습니다.",
     "saved_and_queued": "저장 및 실행 큐 등록 완료",
+    "saved_and_run": "저장 및 즉시 실행 요청 완료",
     "saved": "저장 완료",
     "awaiting_queue": " · 봇의 큐 접수 대기",
     "field_applied": "{field} 반영 · 저장 전 초안입니다.",
@@ -160,6 +170,8 @@
     "validate": "검증",
     "save": "저장",
     "save_run": "저장 및 큐 등록",
+    "save_execute": "저장 후 즉시 실행",
+    "save_queue": "저장 후 대기열 등록",
     "refresh_run": "실행 상태 새로고침",
     "duplicate": "선택 복제",
     "delete": "티켓 삭제",
@@ -211,9 +223,11 @@
     "cross_socket": "{mark} 여러 소켓/NUMA 허용",
     "scan": "직계 하위 케이스 검색",
     "members": "선택 케이스 목록",
+    "include_patterns": "포함 패턴",
+    "exclude_patterns": "제외 패턴",
     "auto_label": "자동 배정 (소켓 간 허용 · 코어 중복 금지)",
     "manual_label": "{cpu_set} · 수동",
-    "macro_body": "매크로 공통 실행 설정\nNP: {cores}\nCPU: {cpu}\n명령: {command}\n자동 배정은 실행 직전에 ofps 점유와 CPU 예약을 확인합니다. 빈 코어가 부족하면 대기합니다.\n검색 범위: Case directory의 직계 하위 폴더 중 바로 아래에 Allrun이 있는 폴더\n선택 케이스: {count}개\n검색한 케이스에서 제외할 행을 삭제한 뒤 저장하세요.",
+    "macro_body": "매크로 공통 실행 설정\nNP: {cores}\nCPU: {cpu}\n명령: {command}\n자동 배정은 실행 직전에 ofps 점유와 CPU 예약을 확인합니다. 빈 코어가 부족하면 대기합니다.\n검색 범위: Case directory의 직계 하위 폴더 중 바로 아래에 Allrun이 있는 폴더\n포함 패턴: {include}\n제외 패턴: {exclude}\n제외 패턴이 포함 패턴보다 우선합니다.\n선택 케이스: {count}개\n검색한 케이스에서 제외할 행을 삭제한 뒤 저장하세요.",
     "single_body": "개별 작업 소속: {role}\n매크로: {macro}",
     "alone": "alone · 독립 작업",
     "child": "child · 매크로 소속",
@@ -301,10 +315,15 @@
     "back": "수정으로 돌아가기"
   },
   "run": {
-    "confirm": "{filename}을 실행 큐에 등록할까요?\n{detail}",
+    "confirm": "{filename}: {action} 요청을 보낼까요?\n{detail}",
     "macro": "매크로의 모든 child를 저장된 순서대로 실행합니다.",
     "single": "저장된 티켓 설정으로 실행합니다.",
-    "button": "실행 확정",
+    "action_run": "즉시 실행",
+    "action_queue": "대기열 등록",
+    "lane_title": "등록할 작업큐를 선택하세요. 각 작업큐는 내부 순서대로 실행되며, 서로 다른 작업큐는 가용 코어가 있으면 병렬 실행됩니다.",
+    "lane": "작업큐 {lane}",
+    "button_run": "즉시 실행 확정",
+    "button_queue": "대기열 등록 확정",
     "mode_title": "작업 종류 선택",
     "single_button": "개별 작업",
     "macro_button": "매크로 작업"
