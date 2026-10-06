@@ -120,6 +120,8 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 
 세부 함수·반환 계약은 [LLD](LLD.md)에 있다. 큐 등록 응답은 solver 시작/완료가 아니다. `TicketRunner.request`의 성공은 JSON 제출의 기록 완료이며 DB 큐 접수도 아직 아닐 수 있다.
 
+매크로의 로그·Residual·요청 데이터 pattern은 각 child case root에 적용되는 공통 상대경로다. Web 파일 선택기는 하위 케이스 검색이 끝난 뒤 첫 child를 기준으로 경로를 만들며, child가 없는 새 매크로에서는 부모 디렉터리를 대신 사용하지 않고 선택을 막는다.
+
 대기열 수에는 고정 상한이 없다. 각 최상위 티켓의 `execution_queue.id`가 FIFO 단위를 정하고 `execution_queue.cpu_set`이 예약 quota를 정한다. 서로 다른 ID의 quota는 겹칠 수 없으며 매크로는 자기 전용 대기열을 사용한다. 고정 대기열 작업은 자기 quota 안에서만 실행된다. `dynamic_cores=true`인 매크로 자식이 quota보다 크면 미예약 CPU를 먼저 사용하고, 그래도 부족할 때 작은 quota 대기열부터 필요한 만큼 donor로 선택한다. donor의 실행 중 작업은 강제 종료하지 않고 자연 종료시키며 새 head admission만 잠근다. 동적 작업 종료 뒤 사용한 donor 대기열의 head를 각각 한 번 admission한 후 다음 oversized 동적 작업이 drain claim을 얻는다.
 
 #20 구현은 공용 TicketIndex의 이벤트 기반 변경 감지와 전체 경로 색인을 사용한다. Monitor는 현재 실행과 이전 실행·종료 확인 중 대상만 감시하고, jobs/observed 상태 변화는 SQLite journal로 해당 티켓과 부모에 반영한다. `/stat`의 fresh ofps 경로는 유지한다. 전체 검증은 cold rebuild, 명시적 check, 변경 추적 손실 때 수행한다. [함수·자료구조·복구 LLD](LLD.md#catalog)를 참조한다.

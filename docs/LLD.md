@@ -120,7 +120,7 @@ GUI new는 `TicketService.new` 대신 공용 `TEMPLATE → set_form → form_val
 
 `PatternLibrary.load()`는 기본 템플릿과 저장된 템플릿 dict를 반환한다. `save(name,rules)`는 validate_rules → 폴더 flock → atomic_json 순서로 저장하고 None을 반환한다. 기본 이름 덮어쓰기는 거절한다. 적용은 폼만 변경하며 티켓 저장을 별도로 해야 한다.
 
-파일 선택은 UI adapter 동작이다. Telegram browser는 session에 path/options/selected를 저장하고, GUI는 Tk filedialog, web은 `/api/browse`를 쓴다. 선택 취소는 기존 값 유지다. 최종 경로 검증은 form/load_case/inside 또는 validate_export에서 수행한다. Web browse는 파일 내용을 제공하지 않으며 artifact 전송의 권한 근거가 되지 않는다.
+파일 선택은 UI adapter 동작이다. Telegram browser는 session에 path/options/selected를 저장하고, GUI는 Tk filedialog, web은 `/api/browse`를 쓴다. 선택 취소는 기존 값 유지다. 매크로의 pattern은 모든 child에 복제되는 child 기준 상대경로다. Telegram과 Web은 검색된 첫 child를 파일 선택 root로 사용한다. Web은 child가 없는 매크로에서 파일 선택을 막아 매크로 부모 기준 경로가 초안에 들어가지 않게 한다. 최종 경로 검증은 form/load_case/inside 또는 validate_export에서 수행한다. Web browse는 파일 내용을 제공하지 않으며 artifact 전송의 권한 근거가 되지 않는다.
 
 <a id="validate"></a>
 ## 5. UC-11 — 검증

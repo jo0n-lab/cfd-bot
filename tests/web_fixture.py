@@ -45,6 +45,10 @@ def main():
             (case / 'Allrun').write_text('#!/bin/sh\nexit 0\n')
             (case / 'log.solver').write_text('Time = 80\nExecutionTime = 16 s  ClockTime = 17 s\nTime = 100\nExecutionTime = 20 s  ClockTime = 21 s\n')
         (root / 'batch/beta/postProcessing').mkdir()
+        for name in ('alpha', 'beta'):
+            target = root / 'batch' / name / 'monitoring/shape.png'
+            target.parent.mkdir()
+            target.write_bytes(name.encode())
         (root / 'demo/residual.png').write_bytes(base64.b64decode(
             'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='))
         config_file = root / 'bot.json'

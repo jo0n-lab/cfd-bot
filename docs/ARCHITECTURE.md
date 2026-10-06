@@ -49,7 +49,7 @@
 | UC-20 자동 시작 pause/resume | pause/resume | **N/A: 버튼 없음** | pause-queue/resume-queue | pause/resume | [큐](LLD.md#queue) |
 | UC-21 대기 작업 선택·취소 | cancel, qselect/qall/qnone/qcancel | 전체 선택/해제·선택 취소 | 개별·선택 취소 | cancel JOB… | [큐](LLD.md#queue) |
 | UC-22 실패 패턴 템플릿 적용·저장 | templates/template/savetemplate | apply_pattern/save_pattern | apply-preset/save-preset | N/A | [필드](LLD.md#fields) |
-| UC-23 폴더·로그·Residual·export 경로 입력 | browser(폴더/로그/Residual); export는 텍스트 | filedialog 및 export 편집 dialog | browse modal(각 필드) | N/A | [필드](LLD.md#fields) |
+| UC-23 폴더·로그·Residual·export 경로 입력 | browser(폴더/로그/Residual); export는 텍스트 | filedialog 및 export 편집 dialog | browse modal; 매크로는 child 검색 후 첫 child 기준 | N/A | [필드](LLD.md#fields) |
 | UC-24 입력 취소·초안 폐기·뒤로가기 | `/cancel`, backinput, discard, bcancel, stopscan | dialog 취소·confirm_switch·close | modal 취소·confirmDiscard·beforeunload | Ctrl-C는 프로세스 종료 | [취소](LLD.md#cancel) |
 | UC-25 대화 메시지 정리 | `/clean` | N/A: Telegram 전용 | N/A: Telegram 전용 | N/A | [T](lld/telegram.md#uc-25) |
 | UC-26 외부 PC 접속·배포 파일 받기 | N/A | SSH X11은 배포 환경 기능 | client-downloads ZIP·SSH 전달 후 웹 | Windows CMD/PS, macOS app, cfd-web-tunnel | [R](lld/runtime.md#launcher) |

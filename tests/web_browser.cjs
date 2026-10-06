@@ -147,6 +147,11 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     await page.locator('[data-action="new-macro"]').click();
     await page.locator('#f-case_dir').fill(fixture.root+'/batch');
     await page.locator('#f-name').fill('Browser batch');
+    await page.locator('[data-tab="exports"]').click();
+    await page.locator('[data-action="add-export"]').click();
+    await page.locator('[data-action="browse"][data-field-target="export:0"]').click();
+    await page.locator('#toast').getByText('하위 케이스를 먼저 검색하세요.').waitFor();
+    assert.equal(await page.locator('#modal[open]').count(),0);
     await page.locator('[data-tab="resources"]').click();
     await page.locator('#f-macro_cores').fill('2');
     await page.locator('[data-tab="macro"]').click();
@@ -157,6 +162,12 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     assert.equal(await page.locator('.has-post').count(),1);
     await page.locator('[data-action="case-up"]').nth(1).click();
     assert.match(await page.locator('.macro-row').first().textContent(),/beta/);
+    await page.locator('[data-tab="exports"]').click();
+    await page.locator('#ex-name-0').fill('shape');
+    await page.locator('[data-action="browse"][data-field-target="export:0"]').click();
+    await page.locator('[data-action="browse-folder"]').filter({hasText:'monitoring'}).click();
+    await page.locator('[data-action="pick-file"]').filter({hasText:'shape.png'}).click();
+    assert.equal(await page.locator('#ex-path-0').inputValue(),'monitoring/shape.png');
     await page.locator('[data-action="save"]').click();
     await page.locator('[data-action="confirm-modal"]').click();
     await page.waitForFunction(()=>document.querySelector('#draft-state').textContent.includes('저장된'));
@@ -200,6 +211,6 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     await page.screenshot({path:'/tmp/cfd-web-mobile.png',fullPage:true});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
     assert.deepEqual(errors,[]);
-    console.log('Browser checks passed: ticket and queue select all/clear, bulk queue cancel, single execution settings, edit, file picker, exports, clone/delete, macro discovery/order/queue, data preview, queue pause/resume, mobile.');
+    console.log('Browser checks passed: ticket and queue select all/clear, bulk queue cancel, single execution settings, edit, file picker, child-relative macro exports, clone/delete, macro discovery/order/queue, data preview, queue pause/resume, mobile.');
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});
