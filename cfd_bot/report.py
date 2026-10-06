@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 from .logs import estimate
 from .texts import load_text
 from .ui import load_ui
+from .queueing import job_queue_id
 
 
 def _catalog(run=None, ui=None):
@@ -155,15 +156,13 @@ def queue_text(store, enabled=True, ui=None):
     if active:
         lines += ['', ui.text('menus.queue.active_title')]
         lines.extend(detail(job) for job in active)
-    for lane in range(1, 4):
+    queue_ids = sorted({job_queue_id(job) for job in jobs if job['status'] == 'queued'})
+    for queue_id in queue_ids:
         lane_jobs = [job for job in jobs if job['status'] == 'queued'
-                     and job.get('queue_lane', 1) == lane]
-        lines += ['', ui.text('menus.queue.lane_title', lane=lane, count=len(lane_jobs))]
-        if not lane_jobs:
-            lines.append(ui.text('menus.queue.lane_empty'))
-            continue
+                     and job_queue_id(job) == queue_id]
+        lines += ['', ui.text('menus.queue.lane_title', queue=queue_id, count=len(lane_jobs))]
         running = next((job for job in active if job.get('priority') != 'run'
-                        and job.get('queue_lane', 1) == lane), None)
+                        and job_queue_id(job) == queue_id), None)
         wait = 0
         if running:
             eta = estimate(running['case'], running.get('telemetry', {}),

@@ -5,7 +5,7 @@ import time
 import uuid
 
 from .config import load_case, read_json
-from .cpu_allocation import capacity_status
+from .cpu_allocation import capacity_status, managed_cpus
 from .execution import execution_case
 from .processes import snapshot
 from .storage import LIVE
@@ -60,6 +60,33 @@ class TicketRunner:
             status['availability_message'] = self.ui.text(
                 key, free=status['free_cores'], used=status['used_cores'],
                 capacity=status['capacity'], required=status['required_cores'])
+        queue = members[0].get('execution_queue') if members else None
+        if queue:
+            from .config import cpu_set
+            quota = len(cpu_set(queue['cpu_set']))
+            largest = max(member['cores'] + int(bool(member.get('monitoring', {}).get('allocate_cpu')))
+                          for member in resources)
+            status.update(queue_id=queue['id'], queue_cpu_set=queue['cpu_set'],
+                          queue_quota=quota, queue_required=largest, queue_possible=True)
+            outside = cpu_set(queue['cpu_set']) - managed_cpus(self.config)
+            if outside:
+                status['queue_possible'] = False
+                status['availability_message'] += '\n' + self.ui.text(
+                    'scenarios.runtime.ticket.queue_outside_pool', queue=queue['id'],
+                    cpus=','.join(map(str, sorted(outside))))
+            if largest > quota:
+                dynamic = any(member.get('dynamic_cores') for member in members)
+                if not dynamic:
+                    status['queue_possible'] = False
+                    key = 'scenarios.runtime.ticket.dynamic_suggest'
+                elif largest > status['capacity']:
+                    status['queue_possible'] = False
+                    key = 'scenarios.runtime.ticket.dynamic_impossible'
+                else:
+                    key = 'scenarios.runtime.ticket.dynamic_ready'
+                status['availability_message'] += '\n' + self.ui.text(
+                    key, required=largest, quota=quota, queue=queue['id'],
+                    capacity=status['capacity'])
         return status
 
     def _state(self, ticket, members, observed, *, jobs_by_root=None, external=None, active=None):
@@ -88,7 +115,8 @@ class TicketRunner:
                         queue_label=self.ui.text('scenarios.runtime.ticket_state.queue_action'))
         capacity = self._capacity(members, observed, active)
         enabled = capacity['can_run']
-        return dict(state='idle', enabled=enabled, run_enabled=enabled, queue_enabled=True,
+        queue_enabled = capacity.get('queue_possible', True)
+        return dict(state='idle', enabled=enabled, run_enabled=enabled, queue_enabled=queue_enabled,
                     label=self.ui.text('scenarios.runtime.ticket_state.idle' if enabled
                                        else 'scenarios.runtime.ticket_state.insufficient'),
                     queue_label=self.ui.text('scenarios.runtime.ticket_state.queue_action'), **capacity)
@@ -135,8 +163,6 @@ class TicketRunner:
     def request(self, name, *, expected_revision=None, request_id=None, mode='run', lane=1):
         if mode not in ('run', 'queue'):
             raise ValueError(self.ui.text('scenarios.runtime.ticket.request_mode'))
-        if type(lane) is not int or not 1 <= lane <= 3:
-            raise ValueError(self.ui.text('scenarios.runtime.ticket.queue_lane'))
         # Never trust a previously displayed button or just the ticket's state.
         observed = self._snapshot()
         with ticket_lock(self.service.folder):
@@ -150,6 +176,9 @@ class TicketRunner:
                 return dict(already_queued=True, request_id=ticket.get('queue', {}).get('request_id'))
             if mode == 'run' and not status['run_enabled']:
                 raise ValueError(status['availability_message'])
+            if mode == 'queue' and not status['queue_enabled']:
+                raise ValueError(status['availability_message'])
+            profile = ticket.get('execution_queue')
             if request_id and ticket.get('queue', {}).get('request_id') == request_id:
                 return dict(already_queued=True, request_id=request_id)
             for member in members:
@@ -169,8 +198,13 @@ class TicketRunner:
                     for key in ('result', 'reason', 'job_id'):
                         row.pop(key, None)
                     row['state'] = 'waiting'
-            data['queue'] = dict(state='waiting', submit=True, request_id=request_id,
-                                 mode=mode, lane=lane, updated_at=time.time())
+            queue_data = dict(state='waiting', submit=True, request_id=request_id,
+                              mode=mode, updated_at=time.time())
+            if profile:
+                queue_data.update(id=profile['id'], cpu_set=profile['cpu_set'])
+            else:
+                queue_data['lane'] = lane
+            data['queue'] = queue_data
             staged[path] = data
             backups = {target: target.read_bytes() for target in staged}
             try:
@@ -181,4 +215,4 @@ class TicketRunner:
                     target.write_bytes(before)
                 raise
             return dict(already_queued=False, request_id=request_id, count=len(members),
-                        mode=mode, lane=lane)
+                        mode=mode, queue_id=profile['id'] if profile else f'legacy-{lane}')

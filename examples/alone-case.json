@@ -9,6 +9,7 @@
   "cpu_policy": "auto",
   "allow_cross_socket": true,
   "command": ["./Allrun"],
+  "execution_queue": {"id": "shared", "cpu_set": "21-28"},
   "preprocess": [{"command": ["./Allclean"]}],
   "postprocess": [{"command": ["./Allpost"]}],
   "watcher": {"logs": ["log.solver"]},

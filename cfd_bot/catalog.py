@@ -230,6 +230,12 @@ class TicketIndex:
             return deepcopy([c for _, c in sorted(self.documents.items())
                              if not submit_only or c.get('queue', {}).get('submit')])
 
+    def queue_profiles(self):
+        """Return only queue profile fields without copying large macro rows."""
+        with self.mutex:
+            return [dict(execution_queue=deepcopy(case['execution_queue']))
+                    for case in self.documents.values() if case.get('execution_queue')]
+
     def cases(self, roots=None):
         with self.mutex:
             return deepcopy(list(self.roots.values()) if roots is None else

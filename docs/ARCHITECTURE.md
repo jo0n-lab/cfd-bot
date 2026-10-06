@@ -1,8 +1,6 @@
 # CFD bot 아키텍처 — 유즈케이스와 플랫폼 지도
 
-> #20 운영 반영: 공용 티켓 색인·증분 감시·영속 변경 기록을 포함한다. 실행 worker와 대기 큐를 보존하고 봇·웹 서비스를 재시작했다. SQLite에는 호환되는 변경 기록 스키마를 추가했다. [설계·검증 범위](history/2026-10-04-ticket-index-incremental-monitor.md).
-
-> #20 운영 반영, 2026-10-04. 운영 기준 HEAD `4b3b798bedec113d5d53d21f741d6c6e6238df63`에 기존 작업 트리 변경을 포함한다. 이 문서는 기준 코드와 #20 구현의 제공 기능을 기록한다. 미구현 기능을 지원한다고 가정하지 않는다. 변경 요청: [#19](https://github.com/jo0n-lab/cfd-bot/issues/19).
+> #20 공용 티켓 색인·증분 감시와 #21 이름 있는 대기열·CPU quota·동적 매크로를 반영한다. [#21 설계·검증 범위](history/2026-10-06-capacity-aware-parallel-execution.md) · [GitHub #21](https://github.com/jo0n-lab/cfd-bot/issues/21).
 
 ## 1. 문서 탐색
 
@@ -45,8 +43,8 @@
 | UC-14 개별/다중 삭제 | delete/breview → 확인 | delete → 확인 | delete-selected → preview → 확인 | N/A | [삭제](LLD.md#delete) |
 | UC-15 매크로 하위 검색·포함/제외 필터 | scan worker·stopscan | scan_cases worker | discover HTTP | N/A | [검색](LLD.md#discover) |
 | UC-16 매크로 구성원 선택·순서 | 검색 후 행 제거; 순서 이동 UI 없음 | 행 제거; 순서 이동 UI 없음 | 행 제거·위/아래 이동 | N/A | [구성원](LLD.md#members) |
-| UC-17 실행 출처·NP·CPU·모니터 설정 | queue 편집 화면 | 실행 설정 폼 | resources 폼 | 파일 설정 읽기만 | [실행 설정](LLD.md#execution) |
-| UC-18 즉시 실행·3개 작업큐 등록 | runstate/runreview/runyes/queuelanes | 즉시 실행·큐 등록·lane picker | requestRun(mode,lane) → /api/run | enqueue: 직접 DB 등록 | [실행](LLD.md#run) |
+| UC-17 실행 출처·NP·CPU·모니터·queue quota 설정 | queue 편집 화면·동적 macro 자식별 NP | 실행 설정 폼·동적 macro 자식별 NP | resources 폼·동적 macro 자식별 NP | 파일 설정 읽기만 | [실행 설정](LLD.md#execution) |
+| UC-18 즉시 실행·이름 있는 대기열 등록 | runstate/runreview/runyes | 즉시 실행·저장된 queue profile 등록 | requestRun(mode) → /api/run | enqueue: 직접 DB 등록 | [실행](LLD.md#run) |
 | UC-19 큐·이력·매크로 진행 조회 | `/queue`, queue; 결과 버튼 | 큐 창·새로고침·결과 목록 | queue/history·live_macros | queue, status --json | [큐](LLD.md#queue) |
 | UC-20 자동 시작 pause/resume | pause/resume | **N/A: 버튼 없음** | pause-queue/resume-queue | pause/resume | [큐](LLD.md#queue) |
 | UC-21 대기 작업 선택·취소 | cancel, qselect/qall/qnone/qcancel | 전체 선택/해제·선택 취소 | 개별·선택 취소 | cancel JOB… | [큐](LLD.md#queue) |
@@ -57,7 +55,7 @@
 | UC-26 외부 PC 접속·배포 파일 받기 | N/A | SSH X11은 배포 환경 기능 | client-downloads ZIP·SSH 전달 후 웹 | Windows CMD/PS, macOS app, cfd-web-tunnel | [R](lld/runtime.md#launcher) |
 | UC-27 운영·검증·감시/서비스 기동 | 사용자 명령 N/A | CLI gui로 기동 | health endpoint·CLI web 기동 | check/identify/monitor/serve/_worker | [R](lld/runtime.md#cli) |
 
-세 UI의 공용 티켓 필드에는 이름, case_dir, task_type/role, end_time, watcher 로그·실패 정규식·오류 파일, 알림 events, Residual, exports, 전/후처리, 실행 출처·CPU·monitoring, 매크로 필터·cases가 포함된다. 각 필드의 코드 변환은 [LLD 필드 계약](LLD.md#fields)에 정리했다.
+세 UI의 공용 티켓 필드에는 이름, case_dir, task_type/role, end_time, watcher 로그·실패 정규식·오류 파일, 알림 events, Residual, exports, 전/후처리, 실행 출처·CPU·monitoring, `execution_queue` 이름·CPU quota, `dynamic_cores`, 매크로 필터·자식별 cores가 포함된다. 각 필드의 코드 변환은 [LLD 필드 계약](LLD.md#fields)에 정리했다.
 
 ## 3. 백그라운드 유즈케이스
 
@@ -66,7 +64,7 @@
 | BG-01 프로세스 snapshot | `/stat`, Monitor, web fresh, 실행 전 검사, ofps | `processes.snapshot → bin/ofps → parse_snapshot` | 현재 CASE·소유자·CPU | [scan](lld/runtime.md#bg-01) |
 | BG-02 외부 계산 감시 | Monitor 주기 | `Monitor.run_once → tick → observe → decide → terminal_event` | 시작/종료 알림·저장된 상태 | [monitor](lld/runtime.md#bg-02) |
 | BG-03 JSON 제출 접수·동기화 | Monitor tick | `accept_submissions → Store.enqueue_batch`; `sync_ticket_states` | 기다리는 티켓이 DB 큐에 반영 | [접수](lld/runtime.md#bg-03) |
-| BG-04 CPU 검사·병렬 시작 | Monitor 안의 Scheduler | `Scheduler.tick → 51-core capacity → immediate/3 lane → allocate_cpus/check_cpus → Popen` | queued 이유 또는 복수 starting | [scheduler](lld/runtime.md#bg-04) |
+| BG-04 CPU 검사·병렬 시작 | Monitor 안의 Scheduler | `Scheduler.tick → queue_heads → borrowing_plan/drain/fair turn → allocate_cpus/check_cpus → Popen` | queued 이유 또는 서로 다른 queue의 복수 starting | [scheduler](lld/runtime.md#bg-04) |
 | BG-05 계산·후처리·판정 | detached worker | `worker → .process-core → Allrun(cpu-list:ordered, ODLS spawn 1) → hooks → decide → freeze_exports` | 진행·최종 상태 | [worker](lld/runtime.md#bg-05) |
 | BG-06 알림 전달·재시도 | delivery loop | `deliver → Store.pending → Telegram.send/file → save_delivery` | 요약·첨부 | [delivery](lld/runtime.md#bg-06) |
 | BG-07 복구 | Monitor/Scheduler tick·서비스 재시작 | `Scheduler.recover`, 저장된 session/offset/outbox 복원 | 중복 제출 억제·작업 추적 지속 | [recovery](lld/runtime.md#bg-07) |
@@ -93,7 +91,7 @@
 | 인증·stat·outbox·외부 감시·CPU·clean | [test_core.py](../tests/test_core.py) |
 | 티켓 공유 규칙·session·충돌·저장·삭제 | [test_ticket_chat.py](../tests/test_ticket_chat.py), [test_gui.py](../tests/test_gui.py) |
 | HTTP·revision·artifact·현황 | [test_web.py](../tests/test_web.py), [web_browser.cjs](../tests/web_browser.cjs) |
-| 실행·매크로·필터·원자성 | [test_ticket_run.py](../tests/test_ticket_run.py), [test_queue_tickets.py](../tests/test_queue_tickets.py) |
+| 실행·매크로·이름 있는 queue·동적 quota·원자성 | [test_ticket_run.py](../tests/test_ticket_run.py), [test_queue_tickets.py](../tests/test_queue_tickets.py), [test_named_queues.py](../tests/test_named_queues.py) |
 | 실행환경·CPU·hooks | [test_execution_environment.py](../tests/test_execution_environment.py), [test_cpu_allocation.py](../tests/test_cpu_allocation.py), [test_scripts.py](../tests/test_scripts.py) |
 | 로그·ETA·Residual·추적 이력 | [test_eta.py](../tests/test_eta.py), [test_history.py](../tests/test_history.py), [test_residual.py](../tests/test_residual.py), [test_run_views.py](../tests/test_run_views.py) |
 | UI 문구·접속 launcher | [test_ui_resources.py](../tests/test_ui_resources.py), [test_clients.py](../tests/test_clients.py), [test_web_tunnel.py](../tests/test_web_tunnel.py) |

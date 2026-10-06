@@ -12,6 +12,8 @@
   "macro_missing": "매크로 티켓이 없어 실행 대기 중입니다.",
   "cpu_unavailable": "이 서비스에서 사용할 수 없는 CPU: {cpus}",
   "cpu_reserved": "앞선 계산이 지정 CPU를 사용 중입니다.",
+  "queue_quota_insufficient": "대기열 quota보다 큰 작업입니다. 동적 코어 매크로를 사용하거나 quota를 늘리세요.",
+  "queue_draining": "동적 작업을 위해 대기열 종료 대기 중: {queues}",
   "worker_start_failed": "실행기 시작 실패: {error}",
   "hook_failed": "{label} 실행 실패: {error}",
   "hook_timeout": "{label} 시간 제한 초과 ({timeout}초)",

@@ -1,148 +1,188 @@
-# CPU 용량 기반 병렬 실행과 다중 실행 상태
+# 이름 있는 독립 대기열과 동적 코어 매크로
 
 ## 배경
 
-현재 티켓 실행 요청은 모두 FIFO 대기열에 기록되고, scheduler의 `max_parallel: 1` 설정이 CPU 여유와 무관하게 한 번에 한 계산만 허용한다. 따라서 자동 CPU 배정을 선택해도 기존 계산이 하나 있으면 새 계산은 남는 코어가 충분한 경우에도 시작하지 않는다. GUI와 web의 실행 버튼도 실제 즉시 실행 가능 여부를 표시하지 않으며, 실행과 대기열 등록을 구분하지 않는다.
+#21의 첫 구현은 즉시 실행과 1·2·3번 FIFO lane을 분리하고, 서버의 51개 관리 CPU 안에서 여러 계산을 병렬 실행할 수 있게 했다. 그러나 lane 수가 세 개로 고정되어 있고 lane에 소유 CPU가 없어서 매크로별 예약 quota, 독립 실행, 큰 동적 계산을 위한 선택적 양보와 공정한 재개를 표현하지 못한다.
 
-이 변경은 서버의 논리 CPU 52개 중 51개만 계산용 관리 풀로 사용한다. 실행 중인 외부 계산과 bot 작업이 점유한 코어를 같은 `ofps` snapshot에서 합산하고, 티켓이 요구하는 solver 및 선택적 monitor 코어가 남아 있을 때 여러 계산을 병렬로 시작한다.
+새 구조에서는 대기열을 숫자 lane이 아닌 이름 있는 queue profile로 관리한다. 각 profile은 서로 겹치지 않는 고정 CPU quota를 소유하고, 같은 대기열 안에서는 FIFO 순서를 지킨다. 서로 다른 대기열은 CPU가 겹치지 않으므로 병렬 실행한다. 동적 코어 매크로의 하위 계산은 각자 다른 코어 수를 요구할 수 있으며, 자신의 quota와 미예약 CPU만으로 부족하면 작은 quota의 대기열부터 필요한 만큼 drain한 뒤 일시적으로 CPU를 빌린다.
 
 ## As-Is HLD
 
 ```mermaid
 flowchart LR
-    UI[Telegram / GUI / web\n실행 버튼 하나] --> R[TicketRunner.request]
-    R --> Q[tickets/*.json\nqueue.submit=true]
-    Q --> DB[(SQLite FIFO)]
-    DB --> S[Scheduler\nmax_parallel=1]
-    S --> A[CPU 자동 배정]
-    A --> W[계산 1개 실행]
+    U[Telegram / GUI / web] --> R[TicketRunner]
+    R --> L[(고정 lane 1 / 2 / 3)]
+    L --> S[Scheduler]
+    S --> G[전역 51 CPU에서 빈 CPU 선택]
+    G --> W[worker]
 ```
 
-- 실행 요청과 대기열 등록이 같은 동작이다.
-- CPU가 남아 있어도 활성 job이 하나면 scheduler가 다음 job을 시작하지 않는다.
-- 자동 배정기는 시스템 affinity의 52개 CPU를 모두 후보로 사용하여 서비스용 예비 코어가 없다.
-- UI는 잔여 코어와 요청 코어를 알지 못해 실행 가능 여부와 대기 이유를 설명할 수 없다.
-- worker의 바깥 `taskset` 뒤에서 case 스크립트가 `mpirun --bind-to core --map-by core`를 실행하면 OpenMPI가 topology 순서로 rank를 다시 배치한다. `.process-core`의 비연속 CPU 집합이 실제 affinity에 반영되지 않고 PID별 CPU 번호도 뒤섞인다.
-- OpenMPI 4.1.1은 local process가 32개 이상이면 기본 4개 ODLS spawn thread를 사용한다. `cpu-list:ordered`로 rank/CPU 순서를 고쳐도 OS PID 발급 순서는 병렬 spawn 때문에 일부 뒤집힌다.
-- `ofps`의 case 내부 행은 PID순으로만 정렬되어 실제 CPU 배치 확인이 어렵다.
+- lane 개수는 3으로 고정된다.
+- lane은 FIFO 구분자일 뿐 CPU quota와 위치를 소유하지 않는다.
+- 매크로의 모든 자식은 같은 `cores`를 사용한다.
+- 큰 작업을 위해 어떤 대기열을 비워야 하는지, 비운 대기열에 언제 실행권을 돌려줄지 표현할 수 없다.
 
 ## To-Be HLD
 
 ```mermaid
 flowchart LR
-    O[ofps snapshot\n외부 + bot 계산] --> C[공통 CapacityService\n관리 풀 51 cores]
-    T[TicketService\n실행 설정] --> C
-    C --> U[Telegram / GUI / web\n즉시 실행 + 대기열 등록]
-    U -->|즉시 실행 가능| P[(우선 실행 요청)]
-    U -->|대기열 등록| F[(FIFO 1 / 2 / 3\n사용자 선택)]
-    P --> S[병렬 Scheduler]
-    F --> S
-    S --> C
-    C -->|충분| W[복수 worker 병렬 실행]
-    C -->|부족| F
-    W --> V[web 다중 상태/진행률]
+    U[Telegram / GUI / web] --> T[공통 TicketService]
+    T --> P[티켓 execution_queue<br/>id + cpu_set]
+    T --> M[매크로 dynamic_cores<br/>자식별 cores]
+    P --> D[(SQLite FIFO<br/>임의 개수 queue_id)]
+    M --> D
+    D --> S[Quota Scheduler]
+    S --> Q1[queue macro1<br/>reserved 0-15]
+    S --> Q2[queue macro2<br/>reserved 16-20]
+    S --> Q3[queue shared<br/>reserved 21-28]
+    Q1 --> W[독립 worker]
+    Q2 --> W
+    Q3 --> W
+    S --> B[Dynamic Borrow Planner<br/>미예약 CPU + 작은 quota 우선]
+    B --> W
 ```
 
-- 세 UI는 동일한 공통 용량 판정 결과를 사용한다.
-- 즉시 실행은 남는 코어가 충분한 경우에만 허용하고, 일반 대기열 등록은 별도 동작으로 제공한다.
-- 일반 대기열은 최대 3개의 독립 FIFO lane으로 나누고 사용자가 등록할 lane을 선택한다.
-- scheduler는 실행 직전에 용량을 다시 확인하므로 표시 이후 상태가 바뀌어도 CPU가 겹치지 않는다.
-- web은 활성 계산 각각에 독립된 상태와 진행률을 표시한다.
-- cfd-bot worker는 승인된 `NP`와 `CPU_SET`을 기존 `apply_execution_settings()` 경로로 case의 `.process-core`에 기록한다. OpenFOAM `Allrun`과 MPI 실행 스크립트는 이 파일을 source하고 `--cpu-list "$CPU_SET" --bind-to cpu-list:ordered --mca odls_base_max_threads 1`로 실행하여 local rank, 생성 PID, 실제 CPU가 같은 오름차순을 따르게 한다.
-- `ofps`는 같은 case의 프로세스 행을 CPU_LIST의 첫 CPU와 PID 순으로 표시한다.
-- CPU 중복 여부는 기존 `check_cpus()` → `ofps --check` 실행 직전 검증을 그대로 사용한다. 별도 watcher 검증 계층은 추가하지 않는다.
+- `execution_queue.id`가 대기열을 식별하고 `execution_queue.cpu_set`이 예약 quota와 CPU 위치를 정의한다. 대기열 개수에는 제한을 두지 않는다.
+- 서로 다른 queue profile의 CPU 집합은 겹칠 수 없다. 같은 `id`를 공유하는 일반 티켓은 같은 `cpu_set`을 사용한다.
+- 매크로는 전용 queue profile을 사용한다. 고정 매크로는 부모 `cores`를 모든 자식에 적용한다.
+- `dynamic_cores: true`인 매크로는 `cases[*].cores`를 허용한다. 자식마다 필요한 코어 수가 달라질 수 있다.
+- 일반 작업은 자기 queue quota 안에서만 CPU를 배정받는다. 같은 queue의 작업은 FIFO 직렬, 서로 다른 queue의 작업은 독립 병렬로 실행한다.
+- 동적 자식의 요구량이 자기 quota보다 크면 미예약 관리 CPU를 먼저 포함하고, 부족분은 현재 등록된 다른 queue를 quota 크기 오름차순으로 선택해 drain한다. 선택되지 않은 큰 quota는 계속 실행한다.
 
 ## As-Is LLD
 
 ```mermaid
 sequenceDiagram
     participant UI
-    participant Runner as TicketRunner
-    participant Queue as ticket queue flag
+    participant Runner
+    participant DB as SQLite
     participant Scheduler
-    UI->>Runner: request(ticket)
-    Runner->>Queue: waiting + submit
-    Scheduler->>Scheduler: active jobs >= 1 ? stop
-    Scheduler-->>Queue: CPU 여유가 있어도 대기
+    UI->>Runner: request(mode=queue, lane=1..3)
+    Runner->>DB: queue_lane 저장
+    Scheduler->>DB: lane별 첫 job 조회
+    Scheduler->>Scheduler: 전역 빈 CPU 자동 선택
 ```
 
 ## To-Be LLD
 
 ```mermaid
 sequenceDiagram
-    participant UI
-    participant Runner as TicketRunner
-    participant Capacity as ExecutionCapacity
-    participant Queue as SQLite queue
+    participant UI as Telegram / GUI / web
+    participant Ticket as TicketService
+    participant DB as SQLite jobs
     participant Scheduler
+    participant Planner as BorrowPlanner
     participant Worker
-    UI->>Runner: state(ticket)
-    Runner->>Capacity: ofps snapshot + LIVE jobs + ticket resources
-    Capacity-->>UI: capacity/used/free/required/can_run
-    alt 즉시 실행
-        UI->>Runner: request(ticket, mode=run)
-        Runner->>Capacity: fresh 재검증
-        Capacity-->>Runner: 충분
-        Runner->>Queue: priority=immediate
-    else 대기열 등록
-        UI->>Runner: request(ticket, mode=queue, lane=1..3)
-        Runner->>Queue: 선택 lane의 FIFO 끝에 등록
+
+    UI->>Ticket: queue id·cpu_set, dynamic_cores, 자식별 cores 저장
+    Ticket->>Ticket: profile 중복·CPU 겹침·macro 전용 조건 검증
+    UI->>DB: request(mode=queue)
+    DB->>DB: queue_id·queue_cpu_set·dynamic snapshot 저장
+    Scheduler->>DB: 각 queue_id의 FIFO head 조회
+    Scheduler->>Scheduler: queue quota가 관리 CPU pool 안인지 검증
+    alt 요구 cores <= own quota
+        Scheduler->>Worker: own quota 안 CPU로 시작
+    else 동적 자식이 own quota 초과
+        Scheduler->>Planner: own quota + 미예약 CPU + 다른 quota
+        Planner->>Planner: 작은 quota부터 donor 선택
+        Planner-->>Scheduler: donor queue 집합 + 허용 CPU 집합
+        Scheduler->>DB: donor queue drain claim 저장
+        Scheduler->>Scheduler: donor의 현재 job 종료 대기
+        Scheduler->>Worker: 동적 자식 시작
+        Worker-->>Scheduler: 종료
+        Scheduler->>DB: donor별 일반 FIFO head 1회 우선권 저장
+        Scheduler->>Worker: donor queue 작업 재개
     end
-    Scheduler->>Capacity: 각 queued job 실행 직전 재검증
-    Capacity-->>Scheduler: 겹치지 않는 관리 풀 CPU
-    Scheduler->>Worker: 가능한 job들을 병렬 시작
 ```
 
-### 공통 상태 계약
+### Queue profile 계약
 
-티켓 실행 상태는 최소한 다음 값을 세 UI에 동일하게 제공한다.
+티켓은 다음 실행 설정을 공통 domain model로 사용한다.
 
-- `state`: `idle`, `queued`, `running`, `invalid`
-- `run_enabled`, `queue_enabled`
-- `capacity`, `used_cores`, `free_cores`, `required_cores`
-- `queue_lane`: 대기열 등록 시 선택하는 1, 2, 3 중 하나
-- `availability_message`: 예) `현재 잔여 코어 7개 (44/51 사용 중)입니다. 코어 수를 낮추거나 대기열에 등록하세요.`
-
-자동 배정은 관리 풀 안에서만 solver/monitor CPU를 고른다. 수동 배정도 관리 풀을 벗어나거나 기존 계산과 겹치면 즉시 실행할 수 없다. 매크로 티켓은 하위 계산을 순차 실행하므로 한 하위 계산의 최대 동시 요구량으로 판정한다.
-
-### MPI 실행 계약
-
-```mermaid
-sequenceDiagram
-    participant Worker
-    participant ProcessCore as case/.process-core
-    participant Allrun
-    participant OpenMPI
-    participant Ofps
-    Worker->>ProcessCore: NP=40, CPU_SET=0-19,26-45
-    Allrun->>ProcessCore: source .process-core
-    Allrun->>OpenMPI: --cpu-list 0-19,26-45 --bind-to cpu-list:ordered
-    Allrun->>OpenMPI: --mca odls_base_max_threads 1
-    OpenMPI-->>Ofps: rank/PID별 CPU 0,1,...,19,26,...,45
-    Ofps-->>Ofps: CASE 내부 CPU_LIST → PID 정렬
+```json
+{
+  "execution_queue": {
+    "id": "macro1",
+    "cpu_set": "0-15"
+  }
+}
 ```
+
+- `id`는 영문, 숫자, 점, 밑줄, 하이픈으로 구성하며 길이는 1~48자다.
+- `cpu_set`은 기존 `.process-core`와 같은 CPU set 형식을 사용한다.
+- 같은 `id`는 같은 CPU set을 뜻한다. 다른 `id`끼리는 CPU가 겹치면 저장하지 않는다.
+- 매크로 queue id는 다른 매크로나 일반 티켓이 공유할 수 없는 전용 id다.
+- queue 설정이 없는 기존 티켓과 이미 등록된 `queue_lane` job은 `legacy-<lane>`으로 읽어 호환한다. 새 편집 화면에서 저장하면 이름 있는 profile로 전환한다.
+
+### 동적 코어 매크로 계약
+
+```json
+{
+  "task_type": "macro",
+  "cores": 3,
+  "dynamic_cores": true,
+  "execution_queue": {"id": "shared", "cpu_set": "21-28"},
+  "cases": [
+    {"case_dir": "case1", "ticket": "child-case1.json", "cores": 3},
+    {"case_dir": "case2", "ticket": "child-case2.json", "cores": 3},
+    {"case_dir": "case3", "ticket": "child-case3.json", "cores": 40}
+  ]
+}
+```
+
+- `dynamic_cores`가 꺼져 있으면 기존처럼 부모 `cores`가 모든 자식에 적용된다.
+- 켜져 있으면 각 row의 `cores`가 필수이며 1~관리 CPU 수 범위다.
+- quota 이하의 자식은 자기 queue 안에서만 실행한다.
+- quota를 초과하는 자식은 동적 borrow 대상이다. 고정 매크로나 일반 티켓은 자기 quota를 초과할 수 없다.
+
+### Drain과 공정성
+
+1. 동적 head는 자기 quota와 어떤 queue에도 예약되지 않은 CPU를 기본 집합으로 사용한다.
+2. 부족하면 다른 queue profile을 quota 크기 오름차순으로 추가한다. 필요한 순간까지만 추가하므로 작은 quota 하나로 충분하면 큰 quota는 drain하지 않는다.
+3. donor queue의 이미 실행 중인 작업은 중단하지 않는다. drain claim 이후 새 작업만 막고 현재 작업의 자연 종료를 기다린다.
+4. 가장 오래 대기한 oversized dynamic head 하나만 drain claim을 가진다.
+5. 동적 작업이 끝나면 실제 donor queue 중 대기 작업이 있는 queue 각각에 일반 head 한 번의 우선권을 준다. 그 우선권을 소진하기 전에는 같은 donor를 요구하는 다음 동적 작업이 claim을 얻지 못한다.
+6. donor queue가 비어 있으면 해당 우선권은 즉시 소멸한다. 불필요한 idle을 만들지 않는다.
+
+예를 들어 `macro1=0-15`, `macro2=16-20`, `shared=21-28`이고 40-core 동적 head가 있으면 `shared + 미예약 CPU` 뒤 부족분에 대해 5-core `macro2`, 16-core `macro1` 순서로 drain한다. 모든 donor의 현재 작업이 끝난 뒤 40-core 작업이 실행된다. 종료 후 macro1과 macro2의 FIFO head가 한 번씩 실행권을 되찾은 다음 다음 oversized 동적 head가 다시 donor를 요청할 수 있다.
+
+### 생성 시 안내
+
+세 UI는 같은 shared capacity 결과를 표시한다.
+
+- queue quota 안에 요청 cores가 들어오면 고정 queue로 실행 가능하다고 표시한다.
+- 일반 티켓이나 고정 매크로가 quota를 초과하면 저장/실행을 막고 quota를 늘리거나 cores를 낮추라고 안내한다.
+- 매크로 자식이 quota를 초과하고 전체 51-core 관리 pool 안에는 들어오면 `동적 코어 매크로` 옵션을 사용하라고 안내한다.
+- 전체 관리 pool보다 큰 요청은 동적 옵션으로도 실행할 수 없다고 표시한다.
 
 ## 호환성
 
-- 기존 `max_parallel`은 상한으로 유지하되 실제 서버 설정은 CPU 용량을 방해하지 않도록 51로 올린다.
-- `cpu_capacity`가 없는 기존 설정은 현재 process affinity 전체를 관리 풀로 사용한다. 운영 설정에는 `cpu_capacity: 51`을 명시한다.
-- 기존 API의 실행 요청은 즉시 실행 의도로 해석하되, 명시적인 `queue` mode를 새로 제공한다.
-- 이미 등록된 FIFO job과 티켓 JSON은 그대로 읽는다. lane이 없으면 1번 큐로 처리한다.
-- scheduler는 각 lane 내부 순서를 보존하면서 각 lane의 선두를 번갈아 검토한다. 한 lane의 큰 작업이 코어 부족으로 대기해도 다른 lane의 실행 가능한 작업은 시작할 수 있다.
-- cfd-bot은 case별 `.process-core`만 생성·동기화한다. MPI 옵션의 적용 책임은 case의 `Allrun`/공용 실행 스크립트에 두며 bot 내부 launcher wrapper는 만들지 않는다.
-- local MPI process 생성만 직렬화하므로 solver 계산 자체의 MPI 병렬성은 그대로다. 프로세스 시작 시간이 소폭 늘 수 있다.
+- 기존 `max_parallel`과 51-core 관리 pool은 안전 상한으로 유지한다.
+- 기존 1·2·3 lane job은 DB migration 없이 `legacy-1`·`legacy-2`·`legacy-3`으로 읽는다.
+- 기존 티켓은 읽을 수 있다. queue profile이 없는 티켓은 즉시 실행과 기존 1·2·3 lane 등록을 계속 지원하며, 세 편집 UI에서 profile을 저장하면 이름 있는 queue로 전환한다.
+- `queue_lane` 필드는 읽기·기존 callback 호환용으로 유지하고 이름 있는 queue의 스케줄링과 표시는 `queue_id`·`queue_cpu_set`을 우선한다.
+- `.process-core`, worker 환경 변수 `NP`·`CPU_SET`, OpenMPI ordered binding 계약은 그대로 유지한다.
 
 ## 검증 계획
 
-1. 52 CPU 환경에서 관리 풀이 0~50의 51개로 제한되는지 단위 테스트한다.
-2. 기존 worker 설정 검증에서 비연속 CPU 집합이 `.process-core`에 기록되고 Akita/TCB 실행 스크립트가 같은 값을 `--cpu-list`, `cpu-list:ordered`, `odls_base_max_threads=1`에 전달하는지 확인한다.
-3. 44개 코어가 사용 중이고 8개를 요청하면 즉시 실행이 비활성화되고, 7개를 요청하면 활성화되는지 확인한다.
-4. 즉시 실행과 대기열 등록이 Telegram, GUI, web에서 같은 shared runner 상태와 요청 mode를 사용하는지 확인한다.
-5. Telegram, GUI, web에서 대기열 등록 시 1·2·3번 큐를 선택하고 같은 `queue_lane` 값이 저장되는지 확인한다.
-6. 각 lane의 FIFO 순서가 유지되고, 한 lane이 막혀도 다른 lane의 실행 가능한 작업이 병렬 시작되는 scheduler 테스트를 추가한다.
-7. web overview가 복수 활성 계산의 진행률을 각각 반환하고, 작업 큐 화면이 1·2·3번 대기열을 구분해 렌더링하는지 확인한다.
-8. 전체 compile, unit test, config check와 실제 user service 재시작/상태 확인을 수행한다.
-9. 설치된 OpenMPI probe에서 `odls_base_cutoff=1`로 thread pool을 강제한 뒤 `odls_base_max_threads=1`일 때 rank·PID·CPU가 모두 오름차순이고, `ofps`도 CPU_LIST 순서로 행을 출력하는지 확인한다.
+1. 임의 개수 queue profile의 저장, 동일 id/동일 CPU 허용, 서로 다른 id의 CPU 겹침 거부를 검증한다.
+2. 각 queue의 FIFO와 queue 간 병렬 시작을 scheduler 테스트로 검증한다.
+3. 일반 job이 자기 quota 밖 CPU를 사용하지 않는지 확인한다.
+4. 동적 매크로 row의 서로 다른 cores가 child ticket과 SQLite job snapshot, `.process-core`까지 전달되는지 확인한다.
+5. 작은 quota 우선 donor 선택, 현재 donor 작업의 자연 종료, 선택하지 않은 queue의 계속 실행을 검증한다.
+6. 동적 작업 종료 뒤 donor별 일반 head 1회 우선권과 queue가 비었을 때 즉시 해제를 검증한다.
+7. 동적 옵션 안내와 queue fields를 Telegram, GUI, web에서 같은 TicketService 값으로 편집·표시·저장하는지 검증한다.
+8. legacy lane job 호환과 기존 티켓 load를 검증한다.
+9. 전체 compile, unit test, config check, 문서 링크, SVG XML parse/render를 수행한다.
+10. 실제 user service를 재시작하고 bot/web 상태를 확인한다.
+
+## 검증 결과
+
+- 이름 있는 queue와 동적 borrow 전용 테스트 13개를 포함한 전체 unittest 305개가 통과했다. Tk display 의존 테스트 1개는 기존과 같이 skip됐다.
+- 운영 `bot.json check`에서 982개 CASE 설정이 정상으로 확인됐다.
+- compileall, UI JSON parse, JavaScript syntax, `git diff --check`가 통과했다.
+- 문서 Markdown 13개와 로컬 링크 1,991개, SVG 104개의 XML parse·PNG 렌더링·텍스트 경계를 검사했고 오류가 없었다.
+- bot·web user service 재시작 뒤 둘 다 active였고 web health가 정상이었다. 기존 detached worker와 40-rank OpenFOAM 계산은 종료되지 않고 같은 PID로 유지됐다. monitor 오류와 남은 drain/fairness 상태도 없었다.
 
 ## 추적
 

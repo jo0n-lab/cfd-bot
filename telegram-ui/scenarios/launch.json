@@ -4,7 +4,7 @@
   "confirm": "{case_name}\n{cores}코어 · CPU {cpu_set}\n명령: {command}\n{availability}",
   "automatic_cpu": "실행 직전 자동 배정 (소켓 간 허용 · 코어 중복 금지)",
   "run": "▶ 즉시 실행",
-  "register": "작업큐 {lane}",
+  "register": "대기열 {queue} 등록",
   "run_requested": "즉시 실행 요청: {case_name} ({job_id})",
-  "queued": "작업큐 {lane} 등록: {case_name} ({job_id})"
+  "queued": "대기열 {queue} 등록: {case_name} ({job_id})"
 }

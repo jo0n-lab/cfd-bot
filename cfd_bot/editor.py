@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .config import load_case, read_json
 from .tickets import atomic_json, clone_document, publish_macro, ticket_lock, ticket_name
+from .queueing import queue_profile_conflict
 from .ui import load_ui
 
 EVENTS = {event: load_ui().text('menus.tickets.basic.event_' + event)
@@ -67,6 +68,9 @@ def form_values(data, tickets_dir):
         'macro_cpu_set': data.get('cpu_set', ''),
         'macro_command': shlex.join(data.get('command', ['./Allrun'])),
         'macro_cross_socket': data.get('allow_cross_socket', False),
+        'queue_id': data.get('execution_queue', {}).get('id', ''),
+        'queue_cpu_set': data.get('execution_queue', {}).get('cpu_set', ''),
+        'dynamic_cores': data.get('dynamic_cores', False),
         'monitoring_cpu': data.get('monitoring', {}).get('allocate_cpu', False),
         'monitoring_command': shlex.join(data.get('monitoring', {}).get(
             'command', [DEFAULT_MONITOR_SCRIPT])),
@@ -134,6 +138,15 @@ def form_document(values):
     else:
         data.pop('cases', None)
         data.pop('discovery', None)
+    queue_id = values.get('queue_id', '').strip()
+    queue_cpu_set = values.get('queue_cpu_set', '').strip()
+    if bool(queue_id) != bool(queue_cpu_set):
+        raise ValueError(load_ui().text('scenarios.diagnostics.editor.queue_pair'))
+    if queue_id:
+        data['execution_queue'] = {'id': queue_id, 'cpu_set': queue_cpu_set}
+    else:
+        data.pop('execution_queue', None)
+    data['dynamic_cores'] = bool(values.get('dynamic_cores', False)) if data['task_type'] == 'macro' else False
     execution_source = values.get('execution_source',
                                   'ticket' if data.get('resource_source') in ('ticket', 'macro') else 'case')
     if execution_source not in ('case', 'ticket'):
@@ -158,6 +171,17 @@ def form_document(values):
         for key in ('cores', 'command', 'cpu_set'):
             data.pop(key, None)
         data.update(cpu_policy='auto', allow_cross_socket=True)
+    if data.get('dynamic_cores'):
+        default_cores = numeric(values.get('macro_cores', ''),
+                                load_ui().text('scenarios.diagnostics.editor.macro_cores'),
+                                integer=True, minimum=1)
+        for row in data['cases']:
+            row['cores'] = numeric(row.get('cores', default_cores),
+                                   load_ui().text('scenarios.diagnostics.editor.member_cores'),
+                                   integer=True, minimum=1)
+    elif data['task_type'] == 'macro':
+        for row in data['cases']:
+            row.pop('cores', None)
     if values.get('monitoring_cpu', False):
         command = shlex.split(values.get('monitoring_command', DEFAULT_MONITOR_SCRIPT))
         if not command:
@@ -317,6 +341,13 @@ class TicketService:
             if other['task_type'] == data['task_type'] and Path(other['_root']) == root:
                 raise ValueError(load_ui().text('scenarios.diagnostics.editor.duplicate_case',
                                                 ticket=path.name))
+        others = [other for other in folder_index(self.folder).tickets()
+                  if Path(other['_config']) not in (original, destination)]
+        conflict = queue_profile_conflict(data, others)
+        if conflict:
+            kind, queue_id, detail = conflict
+            raise ValueError(load_ui().text('scenarios.diagnostics.editor.queue_' + kind,
+                                            queue=queue_id, detail=detail))
         return data
 
     def save(self, values, name='', current=None, *, submit=False, overwrite=False,

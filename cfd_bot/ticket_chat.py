@@ -24,6 +24,7 @@ FIELD_KEYS = {
     'macro_cpu_set', 'macro_command', 'preprocess', 'postprocess', 'x.name',
     'monitoring_command', 'x.pattern', 'x.max_files', 'template_name', 'browse_path',
     'case_include_patterns', 'case_exclude_patterns',
+    'queue_id', 'queue_cpu_set',
 }
 CLEARABLE = {'name', 'residual_pattern', 'end_time', 'failure_patterns', 'updated_files', 'macro_ticket',
              'preprocess', 'postprocess', 'case_include_patterns', 'case_exclude_patterns'}
@@ -264,14 +265,16 @@ class TicketChat:
             actions = [(self.t('notices.save_then_run') if d['dirty'] and state['run_enabled']
                         else state['label'], 'runreview' if state['run_enabled'] else 'runstate', 'run')]
             if state['queue_enabled']:
-                actions.append((state['queue_label'], 'queuelanes', None))
+                actions.append((state['queue_label'], 'runreview' if v.get('queue_id') else 'queuelanes',
+                                'queue' if v.get('queue_id') else None))
             rows.insert(0, actions)
             rows.insert(1, [(self.t('card.refresh_run'), 'runstate', None)])
             rows += [[(self.t('card.duplicate'), 'duplicate', None),
                       (self.t('card.delete'), 'delete', None)]]
         else:
             rows += [[(self.t('card.save_execute'), 'review', 'run'),
-                      (self.t('card.save_queue'), 'queuelanes', None)]]
+                      (self.t('card.save_queue'), 'review' if v.get('queue_id') else 'queuelanes',
+                       'queue' if v.get('queue_id') else None)]]
         rows.append([(self.t('card.list'), 'list', 0)])
         kind = (self.t('card.macro') if v['task_type'] == 'macro'
                 else self.t('card.single', role=v['role']))
@@ -370,7 +373,13 @@ class TicketChat:
                              'strings.common.checked' if v['macro_cross_socket']
                              else 'strings.common.unchecked').strip()),
                            'toggle', 'macro_cross_socket')]]
+        if not child:
+            rows += [[(self.t('queue.queue_id'), 'field', 'queue_id'),
+                      (self.t('queue.queue_cpu_set'), 'field', 'queue_cpu_set')]]
         if macro:
+            rows.append([(self.t('queue.dynamic', mark=self.ui.text(
+                'strings.common.checked' if v.get('dynamic_cores')
+                else 'strings.common.unchecked').strip()), 'toggle', 'dynamic_cores')])
             rows += [[(self.t('queue.include_patterns'), 'field', 'case_include_patterns'),
                       (self.t('queue.exclude_patterns'), 'field', 'case_exclude_patterns')],
                      [(self.t('queue.scan'), 'scan', None),
@@ -387,6 +396,10 @@ class TicketChat:
             'queue.monitor_status', state=self.t('queue.monitor_enabled'),
             command=short(v.get('monitoring_command', './Allmonitor')))
             if monitoring else self.t('queue.monitor_status_disabled'))
+        if not child:
+            text += '\n\n' + self.t('queue.profile',
+                queue=short(v.get('queue_id') or unspecified),
+                cpu_set=short(v.get('queue_cpu_set') or unspecified))
         if not child:
             rows.append([(self.t('queue.monitor_cpu', mark=self.ui.text(
                 'strings.common.checked' if monitoring else 'strings.common.unchecked').strip()),
@@ -459,6 +472,12 @@ class TicketChat:
                 if v['macro_cpu_policy'] != 'manual':
                     raise ValueError(self.t('errors.automatic_cpu'))
                 cpu_set(value)
+            elif key == 'queue_cpu_set' and value:
+                cpu_set(value)
+            elif key == 'queue_id' and value:
+                import re
+                if not re.fullmatch(r'[A-Za-z0-9._-]{1,48}', value):
+                    raise ValueError(self.t('errors.queue_id'))
             elif key == 'macro_command':
                 if not shlex.split(value):
                     raise ValueError(self.t('errors.command_required'))
@@ -493,6 +512,15 @@ class TicketChat:
 
     def input(self, chat, user, s, text):
         key = s['pending']
+        if key.startswith('case_core:'):
+            index = int(key.split(':', 1)[1])
+            value = numeric(text.strip(), self.t('fields.member_cores.title'),
+                            integer=True, minimum=1)
+            self.draft(s)['values']['cases'][index]['cores'] = value
+            self.draft(s)['dirty'] = True
+            s.pop('pending', None)
+            self.members(chat, user, s, index // PAGE)
+            return
         if key == 'template_name':
             name = text.strip()
             if name == DEFAULT_NAME or not name or len(name) > 80:
@@ -639,9 +667,14 @@ class TicketChat:
             text.append(self.t('members.line', marker=marker, index=i + 1,
                                path=short(row['case_dir'], 260),
                                reason=short(row.get('reason') or STATES.get(row['state'], row['state']), 110)))
-            rows.append([(self.t('members.button', marker=marker, index=i + 1,
-                                 name=Path(row['case_dir']).name), 'members', page),
-                         (self.t('members.remove'), 'remove', i)])
+            buttons = [(self.t('members.button', marker=marker, index=i + 1,
+                               name=Path(row['case_dir']).name), 'members', page)]
+            if self.draft(s)['values'].get('dynamic_cores'):
+                buttons.append((self.t('members.cores', cores=row.get('cores') or
+                                       self.draft(s)['values'].get('macro_cores') or 1),
+                                'membercore', i))
+            buttons.append((self.t('members.remove'), 'remove', i))
+            rows.append(buttons)
         rows += self.pages('members', page, len(cases))
         rows += [[(self.t('members.rescan'), 'scan', None)],
                  [(self.ui.text('strings.common.back'), 'queue', None)]]
@@ -692,6 +725,10 @@ class TicketChat:
                         self.card(chat, user, current, self.t('notices.search_failed', error=result))
                     else:
                         values['cases'], skipped = result
+                        if values.get('dynamic_cores'):
+                            default = int(values.get('macro_cores') or 1)
+                            for row in values['cases']:
+                                row['cores'] = default
                         current['draft']['dirty'] = True
                         if current.get('view') == 'scanning':
                             self.members(chat, user, current)
@@ -903,7 +940,7 @@ class TicketChat:
             d['dirty'] = True
             self.queue(chat, user, s)
         elif op == 'toggle':
-            if arg not in ('openfoam_defaults', 'macro_cross_socket', 'monitoring_cpu'): raise ValueError(self.t('errors.setting'))
+            if arg not in ('openfoam_defaults', 'macro_cross_socket', 'monitoring_cpu', 'dynamic_cores'): raise ValueError(self.t('errors.setting'))
             d = self.draft(s)
             if arg == 'macro_cross_socket' and d['values']['macro_cpu_policy'] == 'auto':
                 raise ValueError(self.t('errors.auto_cross_socket'))
@@ -976,6 +1013,14 @@ class TicketChat:
             s.pop('scan_id', None)
             self.queue(chat, user, s)
         elif op == 'members': self.members(chat, user, s, arg or 0)
+        elif op == 'membercore':
+            index = int(arg)
+            s['pending'] = f'case_core:{index}'
+            row = self.draft(s)['values']['cases'][index]
+            self.render(chat, user, s, self.t('members.core_prompt',
+                        name=Path(row['case_dir']).name,
+                        cores=row.get('cores') or self.draft(s)['values'].get('macro_cores') or 1),
+                        [[(self.t('input.cancel'), 'members', index // PAGE)]], 'member_core')
         elif op == 'remove':
             d = self.draft(s)
             d['values']['cases'].pop(int(arg))

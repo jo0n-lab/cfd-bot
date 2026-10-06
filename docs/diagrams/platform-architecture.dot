@@ -1,5 +1,5 @@
 digraph platform {
- graph [rankdir=LR,bgcolor=white,pad=.3,nodesep=.5,ranksep=.8,fontname="Noto Sans CJK KR",fontsize=24,label="플랫폼별 함수 경계와 데이터 소유권 · As-Is",labelloc=t];
+ graph [rankdir=LR,bgcolor=white,pad=.3,nodesep=.5,ranksep=.8,fontname="Noto Sans CJK KR",fontsize=24,label="플랫폼별 함수 경계와 queue quota 데이터 소유권 · #21",labelloc=t];
  node [shape=box,style="rounded,filled",fillcolor="#f0fdf4",color="#86efac",fontname="Noto Sans CJK KR",fontsize=17,margin=".18,.12"];
  edge [fontname="Noto Sans CJK KR",fontsize=13,color="#16a34a"];
  tg [label="Telegram\nBot / TicketChat",URL="lld/telegram.md"];
@@ -7,11 +7,11 @@ digraph platform {
  web [label="Web\napp.js → Handler → WebApp",URL="lld/web.md"];
  cli [label="CLI / launcher",URL="lld/runtime.md"];
  service [label="TicketService\n폼·검증·저장·복제·삭제",URL="diagrams/D-02.svg"];
- run [label="TicketRunner\ncached state / fresh request",URL="diagrams/D-03.svg"];
+ run [label="TicketRunner\ncached state / fresh request\nqueue quota 안내",URL="diagrams/D-03.svg"];
  store [shape=cylinder,label="Store / SQLite\njob CAS / outbox / session"];
- json [shape=folder,label="tickets/*.json\n설정 + submission / 표시 상태"];
+ json [shape=folder,label="tickets/*.json\nqueue id / cpu_set / dynamic cores\nsubmission / 표시 상태"];
  snapshot [label="processes.snapshot\nlock → subprocess → ofps → parse",URL="diagrams/D-04.svg"];
- monitor [label="Monitor / Scheduler\n접수·관측·admission",URL="diagrams/BG-02.svg"];
+ monitor [label="Monitor / Scheduler\nqueue id별 FIFO / quota admission\ndrain claim / fair turn",URL="diagrams/BG-04.svg"];
  worker [label="worker\nhooks / solver / 판정",URL="diagrams/BG-05.svg"];
  tg -> service;gui -> service;web -> service;
  tg -> run;gui -> run;web -> run;
@@ -21,7 +21,7 @@ digraph platform {
  run -> store [label="state 읽기"];
  json -> monitor [label="accept_submissions"];
  monitor -> store [label="enqueue_batch / observe"];
- monitor -> worker [label="승인 뒤 실행"];
+ monitor -> worker [label="quota 또는 borrow CPU 승인 뒤 실행"];
  worker -> store [label="진행 / terminal"];
  tg -> store [label="legacy enqueue 직접 경로",color="#dc2626",style=dashed];
  cli -> store [label="CLI enqueue 직접 경로",color="#dc2626",style=dashed];

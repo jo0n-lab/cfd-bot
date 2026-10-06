@@ -22,8 +22,8 @@
 | UC-14 | 개별·다중 티켓 삭제 | [UC-14-tg](../diagrams/UC-14-tg.svg) | [UC-14-gui](../diagrams/UC-14-gui.svg) | [UC-14-web](../diagrams/UC-14-web.svg) | N/A¹ |
 | UC-15 | 매크로 검색·필터·취소 | [UC-15-tg](../diagrams/UC-15-tg.svg) | [UC-15-gui](../diagrams/UC-15-gui.svg) | [UC-15-web](../diagrams/UC-15-web.svg) | N/A¹ |
 | UC-16 | 매크로 구성원 선택 | [UC-16-tg](../diagrams/UC-16-tg.svg) | [UC-16-gui](../diagrams/UC-16-gui.svg) | [UC-16-web](../diagrams/UC-16-web.svg) | N/A¹ |
-| UC-17 | 실행 설정·상속·monitor opt-in | [UC-17-tg](../diagrams/UC-17-tg.svg) | [UC-17-gui](../diagrams/UC-17-gui.svg) | [UC-17-web](../diagrams/UC-17-web.svg) | N/A¹ |
-| UC-18 | 즉시 실행·3개 작업큐 등록 | [UC-18-tg](../diagrams/UC-18-tg.svg) / [UC-18-legacy-tg](../diagrams/UC-18-legacy-tg.svg) | [UC-18-gui](../diagrams/UC-18-gui.svg) | [UC-18-web](../diagrams/UC-18-web.svg) | N/A¹ |
+| UC-17 | 실행·queue quota·동적 macro 설정 | [UC-17-tg](../diagrams/UC-17-tg.svg) | [UC-17-gui](../diagrams/UC-17-gui.svg) | [UC-17-web](../diagrams/UC-17-web.svg) | N/A¹ |
+| UC-18 | 즉시 실행·이름 있는 대기열 등록 | [UC-18-tg](../diagrams/UC-18-tg.svg) / [UC-18-legacy-tg](../diagrams/UC-18-legacy-tg.svg) | [UC-18-gui](../diagrams/UC-18-gui.svg) | [UC-18-web](../diagrams/UC-18-web.svg) | N/A¹ |
 | UC-19 | 큐·이력·매크로 진행 | [UC-19-tg](../diagrams/UC-19-tg.svg) | [UC-19-gui](../diagrams/UC-19-gui.svg) | [UC-19-web](../diagrams/UC-19-web.svg) | N/A¹ |
 | UC-20 | 자동 시작 pause/resume | [UC-20-tg](../diagrams/UC-20-tg.svg) | N/A¹ | [UC-20-web](../diagrams/UC-20-web.svg) | N/A¹ |
 | UC-21 | 대기 작업 선택·취소 | [UC-21-tg](../diagrams/UC-21-tg.svg) | [UC-21-gui](../diagrams/UC-21-gui.svg) | [UC-21-web](../diagrams/UC-21-web.svg) | N/A¹ |
@@ -58,7 +58,7 @@
 | BG-02 | [현재 CASE · 이전 실행/종료 확인 중 CASE 감시](../diagrams/BG-02.svg) |
 | BG-03 | [변경된 제출 티켓 접수](../diagrams/BG-03.svg) |
 | D-15 | [증분 상태 반영 · 종료 child와 부모 macro 재시도](../diagrams/D-15.svg) |
-| BG-04 | [용량 기반 병렬 admission·worker 시작](../diagrams/BG-04.svg) |
+| BG-04 | [queue quota·동적 borrow admission](../diagrams/BG-04.svg) |
 | BG-05 | [worker·solver·hooks·판정](../diagrams/BG-05.svg) |
 | BG-06 | [outbox 알림 전달·checkpoint](../diagrams/BG-06.svg) |
 | BG-07 | [worker 소실·재시작 복구](../diagrams/BG-07.svg) |

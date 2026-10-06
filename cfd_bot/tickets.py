@@ -239,6 +239,8 @@ def publish_macro(path, data, previous=None, *, request_id=None, submit=True, lo
                 detached = read_json(original)
                 detached['role'] = 'alone'
                 detached.pop('macro_ticket', None)
+                detached.pop('execution_queue', None)
+                detached['dynamic_cores'] = False
                 target = path.parent / ticket_name(original.name, 'alone')
                 if target != original and target.exists():
                     raise ValueError(ui.text('scenarios.diagnostics.tickets.standalone_exists', name=target.name))
@@ -271,6 +273,10 @@ def publish_macro(path, data, previous=None, *, request_id=None, submit=True, lo
                     ticket_name(Path(root).name + '-' + suffix, 'child'))
             child = clone_document(data, root)
             child.pop('discovery', None)
+            if data.get('dynamic_cores'):
+                child['cores'] = row['cores']
+                child['cpu_policy'] = 'auto'
+                child.pop('cpu_set', None)
             if data.get('resource_source') != 'macro':
                 for key in ('command', 'cores', 'cpu_set', 'cpu_policy'):
                     child.pop(key, None)
@@ -294,6 +300,8 @@ def publish_macro(path, data, previous=None, *, request_id=None, submit=True, lo
                     'preprocess': (ui.text('scenarios.diagnostics.tickets.protected_pre'), []),
                     'postprocess': (ui.text('scenarios.diagnostics.tickets.protected_post'), []),
                     'monitoring': (ui.text('scenarios.diagnostics.tickets.protected_monitoring'), None),
+                    'execution_queue': (ui.text('scenarios.diagnostics.tickets.protected_queue'), None),
+                    'dynamic_cores': (ui.text('scenarios.diagnostics.tickets.protected_dynamic'), False),
                 }
                 changed = [label for key, (label, default) in protected.items()
                            if child.get(key, default) != old_data.get(key, default)]
@@ -307,6 +315,10 @@ def publish_macro(path, data, previous=None, *, request_id=None, submit=True, lo
             staged[path.parent / name] = child
             saved_row = deepcopy(saved_rows.get(root, {})) if not reconfigured else {}
             saved_row.update(case_dir=root, ticket=name, state=child['queue']['state'])
+            if data.get('dynamic_cores'):
+                saved_row['cores'] = row['cores']
+            else:
+                saved_row.pop('cores', None)
             macro['cases'].append(saved_row)
             if old and Path(old['_config']) != path.parent / name:
                 removed.append(Path(old['_config']))

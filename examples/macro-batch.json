@@ -9,6 +9,8 @@
   "cpu_policy": "auto",
   "allow_cross_socket": true,
   "command": ["./Allrun"],
+  "execution_queue": {"id": "macro-example", "cpu_set": "0-15"},
+  "dynamic_cores": true,
   "preprocess": [{"command": ["./Allclean"]}],
   "postprocess": [{"command": ["./Allpost"]}],
   "end_time": null,
@@ -20,7 +22,7 @@
   "residual_pattern": "plots/residual*.png",
   "exports": [],
   "cases": [
-    {"case_dir": "/home/user/OpenFOAM/run/batch/case-a", "ticket": "child-case-a.json", "state": "waiting"}
+    {"case_dir": "/home/user/OpenFOAM/run/batch/case-a", "ticket": "child-case-a.json", "cores": 4, "state": "waiting"}
   ],
   "queue": {"state": "waiting", "request_id": "example-batch-1", "submit": true}
 }

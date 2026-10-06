@@ -1,15 +1,15 @@
 # 문서·그림·기능 검증 결과
 
-기준: 2026-10-04, [소스 기준](source-manifest.json), [변경 이력 #19](../history/2026-10-04-architecture-function-flows.md).
+기준: 2026-10-06, [소스 기준](source-manifest.json), [#21 변경 이력](../history/2026-10-06-capacity-aware-parallel-execution.md).
 
 | 확인 | 결과 |
 |---|---|
 | `python3 -m compileall -q cfd_bot tests` | 통과 |
-| `python3 -m unittest discover -s tests -q` | 272개 실행, OK, skipped=1 |
+| `python3 -m unittest discover -s tests -q` | 305개 실행, OK, skipped=1 |
 | `python3 -m cfd_bot --config bot.json check` | 통과, 982개 케이스 설정 정상 |
 | `python3 docs/analysis/benchmark_architecture.py` | 완료, 합성 snapshot·임시 DB/파일; 원시 결과 저장 |
 | `python3 docs/diagrams/build_flows.py` | 함수 요청·응답 시퀀스 SVG 생성 |
-| `python3 docs/analysis/build_reference.py` | 342개 Python 함수 소스 색인·그림 갤러리 생성 |
+| `python3 docs/analysis/build_reference.py` | 388개 Python 함수 소스 색인·그림 갤러리 생성 |
 | `python3 docs/diagrams/build_overviews.py` | 기존 5개 SVG 경로 갱신 |
 | `python3 docs/analysis/validate_docs.py` | 결과는 아래 최종 검사 기록 참조 |
 
@@ -49,3 +49,11 @@ D-01과 Telegram stat에 child×macro row 중첩 loop·Path.resolve의 파일 �
 호스트에서 실제 `bin/ofps`를 실행하여 `DS_CART_NQ_0133`의 40개 `foamRun` affinity가 `.process-core`와 동일한 `0-19,26-45`임을 확인했다. 이 실행은 OpenMPI의 기본 ODLS spawn thread 4개 때문에 PID가 일부 CPU 순서와 다르게 생성됐다. 수정된 Akita `run_parallel.sh`에 `odls_base_max_threads=1`을 적용하고 thread-pool 조건을 강제한 12-rank probe에서 rank 0..11, PID 오름차순, CPU `20-25,46-51`이 일치했다. Akita 1,006개 스크립트와 TCB `of-main/Allrun.solve`는 같은 옵션 적용 후 모두 `bash -n`을 통과했다.
 
 `KillMode=process`를 확인한 뒤 bot·web user service를 재시작했다. 기존 worker `4016488`, Allrun `4016500`, mpirun `4055530`과 40개 solver PID가 그대로 유지됐고 두 service는 active 상태다. web `/api/health`는 `cfd-control-room` version 1을 반환했다.
+
+## #21 이름 있는 대기열·동적 매크로 추가 검증
+
+2026-10-06 재설계는 고정 3개 lane을 임의 개수 `queue_id`와 겹치지 않는 CPU quota로 바꿨다. 전용 macro queue, 같은 queue의 FIFO 직렬 실행, queue 간 독립 병렬 실행, 자식별 cores, 미예약 CPU 우선, 작은 donor quota 우선 선택, donor 자연 종료, 동적 작업 뒤 donor별 1회 우선권을 `test_named_queues.py`에 추가했다. 기존 profile 없는 티켓과 `queue_lane` job 호환도 유지했다.
+
+전체 unittest 305개가 통과했고 Tk display 1개만 skip됐다. `bot.json check`는 운영 티켓 982개를 통과했다. UI JSON parse, JavaScript syntax, compileall, `git diff --check`가 통과했다. 문서 검사는 Markdown 13개, 로컬 링크 1,991개, 소스 fingerprint 36개, SVG 104개의 XML parse와 PNG 실제 렌더링을 확인했으며 오류와 텍스트 경계 초과가 없었다.
+
+bot·web user service를 2026-10-06 23:38:05 KST에 재시작했고 둘 다 active 상태다. 기존 detached worker와 40-rank OpenFOAM 계산은 같은 PID로 유지됐다. web health는 `cfd-control-room` version 1을 반환했고, 재시작 뒤 `monitor_error`, `queue_drain_claim`, `queue_fair_turns`는 각각 `None`, `None`, 빈 map으로 확인됐다.

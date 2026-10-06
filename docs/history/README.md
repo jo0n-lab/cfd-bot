@@ -4,7 +4,7 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
-| 2026-10-06 | [CPU 용량 기반 병렬 실행과 다중 실행 상태](2026-10-06-capacity-aware-parallel-execution.md) | [#21](https://github.com/jo0n-lab/cfd-bot/issues/21), [#22](https://github.com/jo0n-lab/cfd-bot/issues/22) |
+| 2026-10-06 | [이름 있는 독립 대기열과 동적 코어 매크로](2026-10-06-capacity-aware-parallel-execution.md) | [#21](https://github.com/jo0n-lab/cfd-bot/issues/21), [#22](https://github.com/jo0n-lab/cfd-bot/issues/22) |
 | 2026-10-04 | [티켓 색인·증분 감시로 전역 재검증 제거](2026-10-04-ticket-index-incremental-monitor.md) | [#20](https://github.com/jo0n-lab/cfd-bot/issues/20) |
 | 2026-10-04 | [함수 요청·응답과 유즈케이스·플랫폼별 아키텍처 전면 재작성](2026-10-04-architecture-function-flows.md) | [#19](https://github.com/jo0n-lab/cfd-bot/issues/19) |
 | 2026-10-04 | [매크로 하위 케이스 이름 포함·제외 필터](2026-10-04-macro-case-name-filters.md) | [#17](https://github.com/jo0n-lab/cfd-bot/issues/17) |

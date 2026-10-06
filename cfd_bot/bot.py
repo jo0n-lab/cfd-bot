@@ -11,6 +11,7 @@ from .catalog import ticket_index
 from .monitor import Monitor
 from .processes import DaemonLock, snapshot as process_snapshot
 from .queue_control import cancel_queued_jobs
+from .queueing import job_queue_id
 from .run_views import case_id_for_root, running_macro_views, tracking_registry
 from .report import compact_status, macro_queue_text, queue_text, render_run
 from .telegram import Telegram, TelegramError, chunks
@@ -134,7 +135,7 @@ class Bot:
         rows = [[button(self.ui.text('strings.common.checked' if job['id'] in selected
                                      else 'strings.common.unchecked') +
                                self.ui.text('menus.queue.selection_item',
-                                            lane=job.get('queue_lane', 1),
+                                            queue=job_queue_id(job),
                                             case_name=job['case']['name']),
                         'qtoggle:' + job['id'])] for job in visible]
         navigation = []
@@ -313,7 +314,7 @@ class Bot:
             if self.store.jobs(('queued',)):
                 rows.append([button(self.ui.text('menus.queue.multi_select'), 'qselect')])
             rows += [[button(self.ui.text('menus.queue.cancel_case', case_name=j['case']['name'],
-                                          lane=j.get('queue_lane', 1)),
+                                          queue=job_queue_id(j)),
                              'cancel:' + j['id'])]
                      for j in self.store.jobs(('queued',))[:20]]
             rows += [[button(self.ui.text('menus.queue.result_data', case_name=j['case']['name']),
@@ -410,8 +411,18 @@ class Bot:
             if state['run_enabled']:
                 actions.append([button(self.ui.text('scenarios.launch.run'), 'enqueue:' + cid + ':run')])
             if state['queue_enabled']:
-                actions.append([button(self.ui.text('scenarios.launch.register', lane=lane),
-                                       f'enqueue:{cid}:queue:{lane}') for lane in range(1, 4)])
+                profile = case.get('execution_queue')
+                if profile:
+                    actions.append([button(self.ui.text('scenarios.launch.register',
+                                                        queue=profile['id']),
+                                           f'enqueue:{cid}:queue')])
+                else:
+                    # Existing pre-#21 tickets retain their persisted lane
+                    # semantics until they are edited into a named profile.
+                    actions.extend([
+                        button(self.ui.text('scenarios.launch.register', queue=str(lane)),
+                               f'enqueue:{cid}:queue:{lane}')
+                    ] for lane in range(1, 4))
             self.send(chat, self.ui.text(
                 'scenarios.launch.confirm', case_name=case['name'], cores=execution['cores'],
                 cpu_set=execution.get('cpu_set', self.ui.text('scenarios.launch.automatic_cpu')),
@@ -428,10 +439,14 @@ class Bot:
                 return
             if mode == 'run' and not state['run_enabled']:
                 raise ValueError(state['availability_message'])
-            job = self.store.enqueue(case, request_key=request_key, priority=mode, queue_lane=lane)
+            if mode == 'queue' and not state['queue_enabled']:
+                raise ValueError(state['availability_message'])
+            job = self.store.enqueue(case, request_key=request_key, priority=mode,
+                                     queue_lane=lane)
             self.send(chat, self.ui.text('scenarios.launch.run_requested' if mode == 'run'
                                          else 'scenarios.launch.queued',
-                                         case_name=case['name'], job_id=job['id'], lane=lane))
+                                         case_name=case['name'], job_id=job['id'],
+                                         queue=job_queue_id(job)))
         elif parts[0] == 'residual':
             if not case.get('residual_pattern'):
                 self.send(chat, self.ui.text('scenarios.data.residual_path_required'))

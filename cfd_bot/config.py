@@ -114,7 +114,7 @@ def cpu_set(value):
 def load_case(path):
     path = Path(path).resolve()
     c = read_json(path)
-    keys(c, "version case_dir name log residual_pattern cores cpu_set cpu_policy allow_cross_socket command expected_seconds simulation exports preprocess postprocess monitoring require_end watcher notifications task_type role macro_ticket end_time queue cases resource_source discovery", "case")
+    keys(c, "version case_dir name log residual_pattern cores cpu_set cpu_policy allow_cross_socket command expected_seconds simulation exports preprocess postprocess monitoring require_end watcher notifications task_type role macro_ticket end_time queue cases resource_source discovery execution_queue dynamic_cores", "case")
     if type(c.get("version")) is not int or c['version'] != 1:
         raise ConfigError(_message('case_version'))
     case_dir = c.get('case_dir')
@@ -146,7 +146,7 @@ def load_case(path):
     if c.get('end_time') is not None:
         number(c['end_time'], 'end_time')
     queue = c.setdefault('queue', {})
-    keys(queue, 'state result reason job_id request_id submit mode lane updated_at', 'queue')
+    keys(queue, 'state result reason job_id request_id submit mode lane id cpu_set updated_at', 'queue')
     if queue.get('state', 'waiting') not in ('waiting', 'running', 'finished'):
         raise ConfigError(_message('queue_state'))
     boolean(queue.get('submit', False), 'queue.submit')
@@ -156,12 +156,27 @@ def load_case(path):
         raise ConfigError(_message('queue_mode'))
     if type(queue.get('lane', 1)) is not int or not 1 <= queue.get('lane', 1) <= 3:
         raise ConfigError(_message('queue_lane'))
+    execution_queue = c.get('execution_queue')
+    if execution_queue is not None:
+        keys(execution_queue, 'id cpu_set', 'execution_queue')
+        if (not isinstance(execution_queue.get('id'), str)
+                or not re.fullmatch(r'[A-Za-z0-9._-]{1,48}', execution_queue['id'])):
+            raise ConfigError(_message('execution_queue_id'))
+        queue_cpus = cpu_set(execution_queue.get('cpu_set'))
+        execution_queue['cpu_set'] = execution_queue['cpu_set']
+    else:
+        queue_cpus = set()
+    boolean(c.setdefault('dynamic_cores', False), 'dynamic_cores')
+    if c['dynamic_cores'] and c['task_type'] != 'macro' and c['role'] != 'child':
+        raise ConfigError(_message('dynamic_macro_only'))
+    if c['dynamic_cores'] and execution_queue is None:
+        raise ConfigError(_message('dynamic_queue_required'))
     if c['task_type'] == 'macro':
         if c['role'] == 'child' or not isinstance(c.setdefault('cases', []), list):
             raise ConfigError(_message('macro_shape'))
         roots = set()
         for item in c['cases']:
-            keys(item, 'case_dir ticket state result reason job_id', 'macro.cases')
+            keys(item, 'case_dir ticket cores state result reason job_id', 'macro.cases')
             directory = item.get('case_dir')
             if not isinstance(directory, str) or not Path(directory).is_absolute():
                 raise ConfigError(_message('macro_absolute'))
@@ -171,6 +186,10 @@ def load_case(path):
             roots.add(resolved)
             if item.get('state', 'waiting') not in ('waiting', 'running', 'finished'):
                 raise ConfigError(_message('macro_state'))
+            if c['dynamic_cores']:
+                number(item.get('cores'), 'macro.cases.cores', 1, True)
+            elif 'cores' in item:
+                number(item['cores'], 'macro.cases.cores', 1, True)
             if 'ticket' in item:
                 inside(path.parent, item['ticket'])
         if 'discovery' in c:
@@ -197,6 +216,8 @@ def load_case(path):
         if not residual.lower().endswith('.png'):
             raise ConfigError(_message('residual_png'))
     number(c.setdefault('cores', 1), 'cores', 1, True)
+    if execution_queue is not None and not c['dynamic_cores'] and c['cores'] > len(queue_cpus):
+        raise ConfigError(_message('queue_quota', cores=c['cores'], quota=len(queue_cpus)))
     if 'cpu_set' in c:
         cpus = cpu_set(c['cpu_set'])
         if not automatic and c['cores'] > len(cpus):
@@ -401,7 +422,25 @@ def cases_for(bot, tickets=None, *, force=False):
     from .catalog import active_cases, ticket_index
     if tickets is not None:
         return active_cases(tickets, bot.get('_ui_dir'))
-    return ticket_index(bot, force=force).cases()
+    index = ticket_index(bot, force=force)
+    if force:
+        from .cpu_allocation import managed_cpus
+        from .queueing import queue_profile_conflict
+        top = [ticket for ticket in index.tickets() if ticket.get('role', 'alone') != 'child']
+        pool = managed_cpus(bot)
+        for ticket in top:
+            profile = ticket.get('execution_queue')
+            if profile and (outside := cpu_set(profile['cpu_set']) - pool):
+                raise ConfigError(_message(
+                    'execution_queue_outside_pool', queue=profile['id'],
+                    cpus=','.join(map(str, sorted(outside)))))
+        for position, ticket in enumerate(top):
+            conflict = queue_profile_conflict(ticket, top[:position])
+            if conflict:
+                kind, queue_id, detail = conflict
+                raise ConfigError(_message('execution_queue_' + kind,
+                                           queue=queue_id, detail=detail))
+    return index.cases()
 
 
 def tickets_for(bot, *, force=False):

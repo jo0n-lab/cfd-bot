@@ -19,7 +19,7 @@
     "key": "D-03",
     "title": "공용 실행 요청",
     "platform": "공용",
-    "trigger": "TicketRunner.request(name, revision, request_id, mode, lane)",
+    "trigger": "TicketRunner.request(name, revision, request_id, mode)",
     "outcome": "JSON 제출 기록 완료; Monitor.accept_submissions가 나중에 DB 큐 접수",
     "error": "scan/revision/running/command/member 오류 → ValueError; 쓰기 실패 → rollback"
   },
@@ -473,15 +473,15 @@
   },
   {
     "key": "UC-17-tg",
-    "title": "실행 설정·상속·monitor opt-in",
+    "title": "실행·queue quota·동적 macro 설정",
     "platform": "Telegram",
-    "trigger": "execsource / cpupolicy / toggle / field",
+    "trigger": "execsource / cpupolicy / toggle / field / macrocores",
     "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
     "key": "UC-17-gui",
-    "title": "실행 설정·상속·monitor opt-in",
+    "title": "실행·queue quota·동적 macro 설정",
     "platform": "cfd-ticket-gui",
     "trigger": "Tk event → update_execution_visibility",
     "outcome": "Tk status / widget / dialog 반영",
@@ -489,23 +489,23 @@
   },
   {
     "key": "UC-17-web",
-    "title": "실행 설정·상속·monitor opt-in",
+    "title": "실행·queue quota·동적 macro 설정",
     "platform": "web",
     "trigger": "input/change → resources 탭",
-    "outcome": "draft 변경 후 저장 D-11; child는 부모에서 수정",
-    "error": "NP/CPU/명령/monitor 검증은 서버에서 수행"
+    "outcome": "queue profile·dynamic·행별 cores를 draft에 반영 후 저장 D-11; child는 부모에서 수정",
+    "error": "공용 TicketService가 queue 중복·quota·macro 전용 조건 검증"
   },
   {
     "key": "UC-18-tg",
-    "title": "즉시 실행·3개 작업큐 등록",
+    "title": "즉시 실행·이름 있는 대기열 등록",
     "platform": "Telegram",
-    "trigger": "runstate / runreview / queuelanes / runyes",
+    "trigger": "runstate / runreview / runyes",
     "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
     "key": "UC-18-gui",
-    "title": "즉시 실행·3개 작업큐 등록",
+    "title": "즉시 실행·이름 있는 대기열 등록",
     "platform": "cfd-ticket-gui",
     "trigger": "Tk event → submit / enqueue",
     "outcome": "Tk status / widget / dialog 반영",
@@ -513,7 +513,7 @@
   },
   {
     "key": "UC-18-web",
-    "title": "즉시 실행·3개 작업큐 등록",
+    "title": "즉시 실행·이름 있는 대기열 등록",
     "platform": "web",
     "trigger": "requestRun(mode) → /api/run",
     "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
@@ -721,11 +721,11 @@
   },
   {
     "key": "BG-04",
-    "title": "용량 기반 병렬 admission·worker 시작",
+    "title": "queue quota·동적 borrow admission",
     "platform": "Monitor thread",
     "trigger": "Scheduler.tick(observed)",
-    "outcome": "승인된 작업을 병렬 worker로 시작; 막힌 lane은 이유 저장 후 다른 lane 계속 검토",
-    "error": "환경/CPU 실패 queued 유지; worker spawn OSError → failed + terminal_event"
+    "outcome": "서로 다른 queue는 독립 병렬; oversized 동적 head는 donor 자연 종료 뒤 시작하고 종료 후 donor head에 1회 우선권",
+    "error": "환경/CPU 실패 queued 유지; fixed quota 초과는 안내; worker spawn OSError → failed + terminal_event"
   },
   {
     "key": "BG-05",

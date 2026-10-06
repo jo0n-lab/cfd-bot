@@ -10,6 +10,8 @@
   "cpu_policy": "auto",
   "allow_cross_socket": true,
   "command": ["./Allrun"],
+  "execution_queue": {"id": "macro-example", "cpu_set": "0-15"},
+  "dynamic_cores": true,
   "preprocess": [{"command": ["./Allclean"]}],
   "postprocess": [{"command": ["./Allpost"]}],
   "end_time": null,

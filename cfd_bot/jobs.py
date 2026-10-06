@@ -16,7 +16,9 @@ from .logs import (case_logs, finish_log, read_log, recent_case_log,
                    select_case_log, start_cursor)
 from .outcomes import decide, wants_event
 from .processes import check_cpus, identity, snapshot
-from .storage import LIVE, Store
+from .storage import LIVE, TERMINAL, Store
+from .queueing import (borrowing_plan, job_queue_id, queue_heads,
+                       registered_profiles)
 from .ui import load_ui
 
 
@@ -38,15 +40,11 @@ def terminal_event(store, job, chats, ui=None):
 
 
 def scheduling_candidates(jobs):
-    """Immediate requests first, then only the FIFO head of each of three lanes."""
+    """Immediate requests first, then one FIFO head per unbounded named queue."""
     immediate = sorted((job for job in jobs if job.get('priority') == 'run'),
                        key=lambda item: item['created'])
-    heads = {}
-    for job in sorted((job for job in jobs if job.get('priority') != 'run'),
-                      key=lambda item: item['created']):
-        lane = job.get('queue_lane', 1)
-        heads.setdefault(lane, job)
-    return immediate + sorted(heads.values(), key=lambda item: item['created'])
+    queued = [job for job in jobs if job.get('priority') != 'run']
+    return immediate + sorted(queue_heads(queued), key=lambda item: item['created'])
 
 
 class Scheduler:
@@ -54,6 +52,45 @@ class Scheduler:
         self.config, self.store = config, store
         self.ui = load_ui(config.get('_ui_dir'))
         self.children = []
+
+    def _borrow_state(self, queued, active):
+        """Maintain the single drain claim and post-borrow donor turns."""
+        fairness = self.store.get('queue_fair_turns', {})
+        queued_ids = {job_queue_id(job) for job in queued}
+        fairness = {qid: jid for qid, jid in fairness.items() if qid in queued_ids}
+        for job in self.store.jobs(TERMINAL):
+            donors = job.get('borrowed_queues', [])
+            if not donors or job.get('borrow_released'):
+                continue
+            for qid in donors:
+                if qid in queued_ids:
+                    fairness[qid] = job['id']
+            self.store.update_job(job['id'], expected=TERMINAL, borrow_released=True)
+        self.store.put('queue_fair_turns', fairness)
+
+        claim = self.store.get('queue_drain_claim')
+        all_by_id = {job['id']: job for job in (*queued, *active)}
+        if claim and claim.get('job_id') not in all_by_id:
+            claim = None
+            self.store.put('queue_drain_claim', None)
+        return claim, fairness
+
+    def _claim_dynamic(self, candidates, profiles, pool, claim, fairness):
+        if claim:
+            return claim
+        for job in sorted(candidates, key=lambda item: item['created']):
+            if job.get('priority') == 'run' or not job.get('queue_cpu_set'):
+                continue
+            plan = borrowing_plan(job, profiles, pool)
+            if not plan or not plan['oversized']:
+                continue
+            if any(qid in fairness for qid in plan['donors']):
+                continue
+            claim = {'job_id': job['id'], 'queue_id': job_queue_id(job),
+                     'donors': plan['donors'], 'allowed': format_cpus(plan['allowed'])}
+            self.store.put('queue_drain_claim', claim)
+            return claim
+        return None
 
     def recover(self):
         self.children = [p for p in self.children if p.poll() is None]
@@ -113,15 +150,26 @@ class Scheduler:
         active = self.store.jobs(LIVE)
         if not self.config['scheduler']['enabled'] or self.store.get('queue_paused', False):
             return
-        queued = scheduling_candidates(self.store.jobs(('queued',)))
+        all_queued = self.store.jobs(('queued',))
+        queued = scheduling_candidates(all_queued)
+        pool = managed_cpus(self.config)
+        # Ticket profiles remain reserved even while their queue is empty.
+        # Job snapshots cover accepted work if the source ticket was renamed.
+        profiles = registered_profiles((*all_queued, *active),
+                                       ticket_index(self.config).queue_profiles())
+        claim, fairness = self._borrow_state(all_queued, active)
+        claim = self._claim_dynamic(queued, profiles, pool, claim, fairness)
         for job in queued:
             if len(active) >= self.config['scheduler']['max_parallel']:
                 return
             case = job['case']
+            qid = job_queue_id(job)
             if (job.get('priority') != 'run'
                     and any(active_job.get('priority') != 'run'
-                            and active_job.get('queue_lane', 1) == job.get('queue_lane', 1)
-                            for active_job in active)):
+                            and job_queue_id(active_job) == qid for active_job in active)):
+                continue
+            if (job.get('priority') != 'run' and claim
+                    and qid in claim.get('donors', []) and job['id'] != claim.get('job_id')):
                 continue
             if job.get('batch') and any(j.get('batch') == job['batch'] for j in active):
                 continue
@@ -174,7 +222,29 @@ class Scheduler:
                 continue
             automatic = case.get('cpu_policy') == 'auto'
             monitor_requested = bool(case.get('monitoring', {}).get('allocate_cpu'))
-            pool = managed_cpus(self.config)
+            allowed = pool
+            borrowed = []
+            if job.get('priority') != 'run' and job.get('queue_cpu_set'):
+                # The ticket may derive NP from the live case at dispatch
+                # time, so plan with the resolved execution contract.
+                plan = borrowing_plan(dict(job, case=case), profiles, pool)
+                if plan is None:
+                    self.store.update_job(job['id'], expected=('queued',),
+                                          reason=self.ui.text('scenarios.jobs.queue_quota_insufficient'))
+                    continue
+                if plan['oversized']:
+                    if not claim or claim.get('job_id') != job['id']:
+                        continue
+                    borrowed = list(claim.get('donors', plan['donors']))
+                    if any(job_queue_id(active_job) in borrowed for active_job in active):
+                        self.store.update_job(job['id'], expected=('queued',),
+                                              reason=self.ui.text('scenarios.jobs.queue_draining',
+                                                                  queues=', '.join(borrowed)))
+                        continue
+                allowed = (cpu_set(claim['allowed']) if plan['oversized'] and claim
+                           and claim.get('job_id') == job['id'] else plan['allowed'])
+                automatic = True
+                case['cpu_policy'] = 'auto'
             if not automatic:
                 requested = cpu_set(case['cpu_set'])
                 unavailable = requested - pool
@@ -209,7 +279,7 @@ class Scheduler:
                         raise ValueError(self.ui.text('scenarios.jobs.external_running'))
                 if automatic:
                     allocation = allocate_cpus(case['cores'] + int(monitor_requested), live, active,
-                                               allowed=pool)
+                                               allowed=allowed)
                     selected = sorted(cpu_set(allocation['cpu_set']))
                     case['cpu_set'] = format_cpus(selected[:case['cores']])
                     if monitor_requested:
@@ -233,10 +303,14 @@ class Scheduler:
                 continue
             claimed = self.store.update_job(job['id'], expected=('queued',), status='starting',
                                             claimed=time.time(), reason='', case=case,
+                                            borrowed_queues=borrowed,
                                             openfoam_bashrc=self.config['scheduler'].get('openfoam_bashrc'),
                                             notification_chats=self.config['telegram']['chat_ids'])
             if claimed is None:
                 continue
+            if qid in fairness and not borrowed:
+                fairness.pop(qid, None)
+                self.store.put('queue_fair_turns', fairness)
             folder = self.store.root / 'jobs' / job['id']
             folder.mkdir(parents=True, exist_ok=True, mode=0o700)
             package_root = str(Path(__file__).resolve().parent.parent)
