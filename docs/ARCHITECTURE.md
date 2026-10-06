@@ -1,6 +1,6 @@
 # CFD bot 아키텍처 — 유즈케이스와 플랫폼 지도
 
-> #20 공용 티켓 색인·증분 감시, #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota를 반영한다. [#24 설계·검증 범위](history/2026-10-07-derived-queue-quota.md) · [GitHub #24](https://github.com/jo0n-lab/cfd-bot/issues/24).
+> #20 공용 티켓 색인·증분 감시, #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota와 현재 head admission을 반영한다. [#24 quota 설계](history/2026-10-07-derived-queue-quota.md) · [#24 head admission 보완](history/2026-10-07-dynamic-macro-head-admission.md) · [GitHub #24](https://github.com/jo0n-lab/cfd-bot/issues/24).
 
 ## 1. 문서 탐색
 
@@ -44,7 +44,7 @@
 | UC-15 매크로 하위 검색·포함/제외 필터 | scan worker·stopscan | scan_cases worker | discover HTTP | N/A | [검색](LLD.md#discover) |
 | UC-16 매크로 구성원 선택·순서 | 검색 후 행 제거; 순서 이동 UI 없음 | 행 제거; 순서 이동 UI 없음 | 행 제거·위/아래 이동 | N/A | [구성원](LLD.md#members) |
 | UC-17 실행 출처·NP·CPU·모니터·queue 이름 설정 | queue 편집 화면·동적 macro 자식별 NP | 실행 설정 폼·동적 macro 자식별 NP | resources 폼·동적 macro 자식별 NP | 파일 설정 읽기만 | [실행 설정](LLD.md#execution) |
-| UC-18 즉시 실행·이름 있는 대기열 등록 | runstate/runreview/runyes | 즉시 실행·저장된 queue profile 등록 | requestRun(mode) → /api/run | enqueue: 직접 DB 등록 | [실행](LLD.md#run) |
+| UC-18 즉시 실행·이름 있는 대기열 등록 | runstate/runreview/runyes | 즉시 실행·queue 등록 | requestRun(mode) → /api/run | enqueue: 직접 DB 등록 | 동적 macro는 첫 child로 즉시 실행 판정, 최대 child는 전체 한도만 검사 · [실행](LLD.md#run) |
 | UC-19 큐·이력·매크로 진행 조회 | `/queue`, queue; 결과 버튼 | 큐 창·새로고침·결과 목록 | queue/history·live_macros | queue, status --json | [큐](LLD.md#queue) |
 | UC-20 자동 시작 pause/resume | pause/resume | **N/A: 버튼 없음** | pause-queue/resume-queue | pause/resume | [큐](LLD.md#queue) |
 | UC-21 대기 작업 선택·취소 | cancel, qselect/qall/qnone/qcancel | 전체 선택/해제·선택 취소 | 개별·선택 취소 | cancel JOB… | [큐](LLD.md#queue) |
@@ -64,7 +64,7 @@
 | BG-01 프로세스 snapshot | `/stat`, Monitor, web fresh, 실행 전 검사, ofps | `processes.snapshot → bin/ofps → parse_snapshot` | 현재 CASE·소유자·CPU | [scan](lld/runtime.md#bg-01) |
 | BG-02 외부 계산 감시 | Monitor 주기 | `Monitor.run_once → tick → observe → decide → terminal_event` | 시작/종료 알림·저장된 상태 | [monitor](lld/runtime.md#bg-02) |
 | BG-03 JSON 제출 접수·동기화 | Monitor tick | `accept_submissions → Store.enqueue_batch`; `sync_ticket_states` | 기다리는 티켓이 DB 큐에 반영 | [접수](lld/runtime.md#bg-03) |
-| BG-04 CPU 검사·병렬 시작 | Monitor 안의 Scheduler | `Scheduler.tick → queue_heads → borrowing_plan/drain/fair turn → allocate_cpus/check_cpus → Popen` | queued 이유 또는 서로 다른 queue의 복수 starting | [scheduler](lld/runtime.md#bg-04) |
+| BG-04 CPU 검사·병렬 시작 | Monitor 안의 Scheduler | `Scheduler.tick → scheduling_candidates(batch별 현재 head) → queue_heads → borrowing_plan/drain/fair turn → allocate_cpus/check_cpus → Popen` | queued 이유 또는 서로 다른 queue의 복수 starting | [scheduler](lld/runtime.md#bg-04) |
 | BG-05 계산·후처리·판정 | detached worker | `worker → .process-core → Allrun(cpu-list:ordered, ODLS spawn 1) → hooks → decide → freeze_exports` | 진행·최종 상태 | [worker](lld/runtime.md#bg-05) |
 | BG-06 알림 전달·재시도 | delivery loop | `deliver → Store.pending → Telegram.send/file → save_delivery` | 요약·첨부 | [delivery](lld/runtime.md#bg-06) |
 | BG-07 복구 | Monitor/Scheduler tick·서비스 재시작 | `Scheduler.recover`, 저장된 session/offset/outbox 복원 | 중복 제출 억제·작업 추적 지속 | [recovery](lld/runtime.md#bg-07) |

@@ -114,7 +114,7 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 | UC-02 Telegram stat | polling → handle → snapshot 대기/실행/parse → catalog → compact text → sendMessage | 별도 Monitor가 상태 동기화 |
 | UC-09 편집 열기 | open/load/검증 → cached state DB 읽기 → 화면 | Monitor가 다음 snapshot 갱신 |
 | UC-12 저장 | 폼 변환·색인 중복 검사 → revision/guard → atomic JSON → 화면 | 저장만 수행; 실행·큐 등록은 UC-18 |
-| UC-18 공용 실행 | fresh scan → 51-core 용량·멤버·revision·요구 코어 검사 → mode 제출 → 응답 | Monitor 접수 → queue별 head NP에서 quota/CPU 자동 배정 → 독립 병렬 worker |
+| UC-18 공용 실행 | fresh scan → 51-core 용량·멤버·revision 검사 → 동적 macro는 첫 child NP로 즉시 실행 판정·전체 최대 NP로 실행 가능성 검사 → mode 제출 → 응답 | Monitor 접수 → 현재 batch head NP에서 quota/CPU 자동 배정 → 독립 병렬 worker |
 | UC-02 web refresh | fresh scan+sync → live logs/ETA → 티켓별 state → jobs/macros → JSON → DOM | 다음 visible/idle 10초 polling |
 | BG-02 종료 | 연속 missing → 최신 로그·control 판정 → frozen payload → outbox | Delivery retry와 메시지/첨부 전송 |
 
@@ -122,7 +122,7 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 
 매크로의 로그·Residual·요청 데이터 pattern은 각 child case root에 적용되는 공통 상대경로다. Web 파일 선택기는 하위 케이스 검색이 끝난 뒤 첫 child를 기준으로 경로를 만들며, child가 없는 새 매크로에서는 부모 디렉터리를 대신 사용하지 않고 선택을 막는다.
 
-대기열 수에는 고정 상한이 없다. 최상위 티켓에는 `execution_queue.id`만 저장하며 이 값이 FIFO 단위를 정한다. 일반 티켓과 고정 매크로는 FIFO head의 실제 NP와 선택적 monitor 1코어가 quota 크기이고, Scheduler가 admission 때 겹치지 않는 CPU 위치를 자동 배정한다. 케이스 설정을 쓰는 티켓은 `.process-core`/`Allrun`의 NP를 읽는다. `dynamic_cores=true`인 매크로는 고정 quota를 소유하지 않고 현재 child의 NP만큼 미예약 CPU를 먼저 확보한다. 부족하면 작은 고정 대기열부터 필요한 만큼 donor로 선택한다. donor의 실행 중 작업은 강제 종료하지 않고 자연 종료시키며 새 head admission만 잠근다. 동적 작업 종료 뒤 사용한 donor 대기열의 head를 각각 한 번 admission한 후 다음 동적 작업이 drain claim을 얻는다. 기존 `{id,cpu_set}` 티켓과 저장된 `queue_cpu_set` job은 호환 입력으로만 읽는다.
+대기열 수에는 고정 상한이 없다. 최상위 티켓에는 `execution_queue.id`만 저장하며 이 값이 FIFO 단위를 정한다. 일반 티켓과 고정 매크로는 FIFO head의 실제 NP와 선택적 monitor 1코어가 quota 크기이고, Scheduler가 admission 때 겹치지 않는 CPU 위치를 자동 배정한다. 케이스 설정을 쓰는 티켓은 `.process-core`/`Allrun`의 NP를 읽는다. `dynamic_cores=true`인 매크로는 고정 quota를 소유하지 않는다. 실행 버튼은 첫 child가 지금 들어갈 수 있는지만 판단하고, 전체 child 최대 NP는 51-core 관리 한도를 넘는 잘못된 매크로를 거절하는 데만 쓴다. 즉시 실행 batch도 queued 상태인 현재 child 하나만 Scheduler candidate가 되며, 다음 child는 앞 child가 끝난 뒤 자기 NP로 다시 admission된다. 부족하면 작은 고정 대기열부터 필요한 만큼 donor로 선택한다. `mode=run`으로 제출된 동적 macro에도 같은 drain·fair-turn 정책을 적용한다. donor의 실행 중 작업은 강제 종료하지 않고 자연 종료시키며 새 head admission만 잠근다. 동적 작업 종료 뒤 사용한 donor 대기열의 head를 각각 한 번 admission한 후 다음 동적 작업이 drain claim을 얻는다. 기존 `{id,cpu_set}` 티켓과 저장된 `queue_cpu_set` job은 호환 입력으로만 읽는다.
 
 #20 구현은 공용 TicketIndex의 이벤트 기반 변경 감지와 전체 경로 색인을 사용한다. Monitor는 현재 실행과 이전 실행·종료 확인 중 대상만 감시하고, jobs/observed 상태 변화는 SQLite journal로 해당 티켓과 부모에 반영한다. `/stat`의 fresh ofps 경로는 유지한다. 전체 검증은 cold rebuild, 명시적 check, 변경 추적 손실 때 수행한다. [함수·자료구조·복구 LLD](LLD.md#catalog)를 참조한다.
 

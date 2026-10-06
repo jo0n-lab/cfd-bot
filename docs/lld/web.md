@@ -96,7 +96,7 @@ stableOverview는 동일 실행의 일시적으로 사라진 ETA/progress를 유
 **정상 결과:** JSON → api Promise → 해당 DOM / toast / modal 반영.
 **실패/취소:** 403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면.
 
-**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L364), [web.WebApp.get](../../cfd_bot/web.py#L211), [web.WebApp.overview](../../cfd_bot/web.py#L67), [web.WebApp.fresh](../../cfd_bot/web.py#L45), [ticket_run.TicketRunner._snapshot](../../cfd_bot/ticket_run.py#L21), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [storage.Store.put](../../cfd_bot/storage.py#L127), [tickets.sync_ticket_states](../../cfd_bot/tickets.py#L345), [bot.Bot.cases](../../cfd_bot/bot.py#L56), [config.cases_for](../../cfd_bot/config.py#L420), [bot.Bot.active_runs](../../cfd_bot/bot.py#L80), [logs.recent_case_log](../../cfd_bot/logs.py#L216), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [web.WebApp.ticket_rows](../../cfd_bot/web.py#L50), [catalog.folder_index](../../cfd_bot/catalog.py#L285), [ticket_run.TicketRunner.states](../../cfd_bot/ticket_run.py#L115), [run_views.running_macro_views](../../cfd_bot/run_views.py#L62).
+**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L364), [web.WebApp.get](../../cfd_bot/web.py#L211), [web.WebApp.overview](../../cfd_bot/web.py#L67), [web.WebApp.fresh](../../cfd_bot/web.py#L45), [ticket_run.TicketRunner._snapshot](../../cfd_bot/ticket_run.py#L21), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [storage.Store.put](../../cfd_bot/storage.py#L127), [tickets.sync_ticket_states](../../cfd_bot/tickets.py#L345), [bot.Bot.cases](../../cfd_bot/bot.py#L56), [config.cases_for](../../cfd_bot/config.py#L420), [bot.Bot.active_runs](../../cfd_bot/bot.py#L80), [logs.recent_case_log](../../cfd_bot/logs.py#L216), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [web.WebApp.ticket_rows](../../cfd_bot/web.py#L50), [catalog.folder_index](../../cfd_bot/catalog.py#L285), [ticket_run.TicketRunner.states](../../cfd_bot/ticket_run.py#L129), [run_views.running_macro_views](../../cfd_bot/run_views.py#L62).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_web.py](../../tests/test_web.py).
 
@@ -181,7 +181,7 @@ stableOverview는 동일 실행의 일시적으로 사라진 ETA/progress를 유
 **정상 결과:** JSON → api Promise → 해당 DOM / toast / modal 반영.
 **실패/취소:** 403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면.
 
-**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L364), [web.WebApp.get](../../cfd_bot/web.py#L211), [web.WebApp.overview](../../cfd_bot/web.py#L67), [web.WebApp.ticket_rows](../../cfd_bot/web.py#L50), [editor.TicketService.listing](../../cfd_bot/editor.py#L271), [ticket_run.TicketRunner.state](../../cfd_bot/ticket_run.py#L109).
+**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L364), [web.WebApp.get](../../cfd_bot/web.py#L211), [web.WebApp.overview](../../cfd_bot/web.py#L67), [web.WebApp.ticket_rows](../../cfd_bot/web.py#L50), [editor.TicketService.listing](../../cfd_bot/editor.py#L271), [ticket_run.TicketRunner.state](../../cfd_bot/ticket_run.py#L123).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py), [test_web.py](../../tests/test_web.py).
 
@@ -215,7 +215,7 @@ stableOverview는 동일 실행의 일시적으로 사라진 ETA/progress를 유
 **정상 결과:** JSON → api Promise → 해당 DOM / toast / modal 반영.
 **실패/취소:** 403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면.
 
-**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L364), [web.WebApp.get](../../cfd_bot/web.py#L211), [editor.TicketService.open](../../cfd_bot/editor.py#L283), [ticket_run.TicketRunner.state](../../cfd_bot/ticket_run.py#L109).
+**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L364), [web.WebApp.get](../../cfd_bot/web.py#L211), [editor.TicketService.open](../../cfd_bot/editor.py#L283), [ticket_run.TicketRunner.state](../../cfd_bot/ticket_run.py#L123).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py), [test_web.py](../../tests/test_web.py).
 
@@ -368,7 +368,7 @@ stableOverview는 동일 실행의 일시적으로 사라진 ETA/progress를 유
 **정상 결과:** JSON → api Promise → 해당 DOM / toast / modal 반영.
 **실패/취소:** 403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면.
 
-**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L364), [web.WebApp.post](../../cfd_bot/web.py#L247), [ticket_run.TicketRunner.request](../../cfd_bot/ticket_run.py#L148), [ticket_run.TicketRunner._snapshot](../../cfd_bot/ticket_run.py#L21), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [storage.Store.put](../../cfd_bot/storage.py#L127), [tickets.ticket_lock](../../cfd_bot/tickets.py#L29), [ticket_run.TicketRunner._members](../../cfd_bot/ticket_run.py#L29), [config.load_case](../../cfd_bot/config.py#L114), [editor.TicketService.revision](../../cfd_bot/editor.py#L275), [ticket_run.TicketRunner._state](../../cfd_bot/ticket_run.py#L77), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [storage.Store.get](../../cfd_bot/storage.py#L106), [tickets.atomic_json](../../cfd_bot/tickets.py#L47).
+**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L364), [web.WebApp.post](../../cfd_bot/web.py#L247), [ticket_run.TicketRunner.request](../../cfd_bot/ticket_run.py#L162), [ticket_run.TicketRunner._snapshot](../../cfd_bot/ticket_run.py#L21), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [storage.Store.put](../../cfd_bot/storage.py#L127), [tickets.ticket_lock](../../cfd_bot/tickets.py#L29), [ticket_run.TicketRunner._members](../../cfd_bot/ticket_run.py#L29), [config.load_case](../../cfd_bot/config.py#L114), [editor.TicketService.revision](../../cfd_bot/editor.py#L275), [ticket_run.TicketRunner._state](../../cfd_bot/ticket_run.py#L91), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [storage.Store.get](../../cfd_bot/storage.py#L106), [ticket_run.TicketRunner._capacity](../../cfd_bot/ticket_run.py#L48), [tickets.atomic_json](../../cfd_bot/tickets.py#L47).
 
 **관련 검증:** [test_ticket_run.py](../../tests/test_ticket_run.py), [test_named_queues.py](../../tests/test_named_queues.py).
 

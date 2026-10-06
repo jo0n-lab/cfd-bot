@@ -20,8 +20,8 @@
     "title": "공용 실행 요청",
     "platform": "공용",
     "trigger": "TicketRunner.request(name, revision, request_id, mode)",
-    "outcome": "JSON 제출 기록 완료; Monitor.accept_submissions가 나중에 DB 큐 접수",
-    "error": "scan/revision/running/command/member 오류 → ValueError; 쓰기 실패 → rollback"
+    "outcome": "동적 macro는 첫 child가 가용하면 즉시 제출; Monitor.accept_submissions가 나중에 DB 큐 접수",
+    "error": "scan/revision/running/command/member 오류 또는 child 최대 NP가 관리 한도 초과 → ValueError; 쓰기 실패 → rollback"
   },
   {
     "key": "D-04",
@@ -721,10 +721,10 @@
   },
   {
     "key": "BG-04",
-    "title": "NP 기반 quota·동적 borrow admission",
+    "title": "현재 head 기반 quota·동적 borrow admission",
     "platform": "Monitor thread",
     "trigger": "Scheduler.tick(observed)",
-    "outcome": "일반 head NP가 quota; 동적 head는 child NP만큼 확보; 서로 다른 queue는 겹치지 않는 CPU에서 병렬 실행",
+    "outcome": "즉시 실행 macro도 active child가 없을 때 현재 child 하나만 admission; child NP만큼 확보; 서로 다른 queue는 겹치지 않는 CPU에서 병렬 실행",
     "error": "환경/CPU 실패 queued 유지; 전체 관리 용량 초과는 대기; worker spawn OSError → failed + terminal_event"
   },
   {

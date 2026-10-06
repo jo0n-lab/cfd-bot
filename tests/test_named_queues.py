@@ -27,6 +27,38 @@ class QueuePlanningTests(TestCase):
         self.assertEqual([job['id'] for job in scheduling_candidates(jobs)],
                          ['a1', 'b1', 'z1'])
 
+    def test_immediate_macro_exposes_only_its_current_batch_head(self):
+        jobs = [
+            {'id': 'm1', 'created': 1, 'priority': 'run', 'batch': 'macro'},
+            {'id': 'm2', 'created': 2, 'priority': 'run', 'batch': 'macro'},
+            {'id': 'm3', 'created': 3, 'priority': 'run', 'batch': 'macro'},
+            {'id': 'single', 'created': 4, 'priority': 'run'},
+        ]
+
+        self.assertEqual([job['id'] for job in scheduling_candidates(jobs)],
+                         ['m1', 'single'])
+
+    def test_active_macro_blocks_its_next_child_before_dynamic_claim_planning(self):
+        queued = [
+            {'id': 'm2', 'created': 2, 'priority': 'run', 'batch': 'macro'},
+            {'id': 'm3', 'created': 3, 'priority': 'run', 'batch': 'macro'},
+            {'id': 'other', 'created': 4, 'priority': 'run'},
+        ]
+        active = [{'id': 'm1', 'priority': 'run', 'batch': 'macro'}]
+
+        self.assertEqual([job['id'] for job in scheduling_candidates(queued, active)],
+                         ['other'])
+
+    def test_active_named_queue_blocks_its_next_fifo_head(self):
+        queued = [
+            {'id': 'q1-next', 'created': 1, 'priority': 'queue', 'queue_id': 'q1'},
+            {'id': 'q2-head', 'created': 2, 'priority': 'queue', 'queue_id': 'q2'},
+        ]
+        active = [{'id': 'q1-live', 'priority': 'queue', 'queue_id': 'q1'}]
+
+        self.assertEqual([job['id'] for job in scheduling_candidates(queued, active)],
+                         ['q2-head'])
+
     def test_dynamic_plan_uses_unreserved_cpus_then_small_quotas_first(self):
         profiles = {'macro1': set(range(16)), 'macro2': set(range(16, 21))}
         job = {'queue_id': 'shared', 'dynamic_cores': True, 'case': {'cores': 40}}
@@ -280,6 +312,35 @@ class DynamicFairnessTests(Environment):
         self.assertEqual(self.store.job(next_dynamic['id'])['status'], 'queued')
         self.assertEqual(job_queue_id(self.store.job(next_dynamic['id'])), 'dynamic')
 
+    def test_immediate_dynamic_job_uses_the_same_donor_drain_policy(self):
+        donor = self.store.enqueue(self.case_for('run-donor', 3, 'fixed', '0-2'),
+                                   queue_id='fixed', queue_cpu_set='0-2')
+        donor_case = deepcopy(donor['case'])
+        donor_case['cpu_set'] = '0-2'
+        self.store.update_job(donor['id'], status='starting', claimed=time.time(), case=donor_case)
+        dynamic = self.store.enqueue(
+            self.case_for('run-dynamic', 7, 'dynamic-run', dynamic=True),
+            priority='run', queue_id='dynamic-run', dynamic_cores=True)
+
+        with patch('cfd_bot.jobs.topology', self.layout, create=True), \
+                patch('cfd_bot.cpu_allocation.topology', return_value=self.layout), \
+                patch('cfd_bot.cpu_allocation.os.sched_getaffinity', return_value=set(range(8))), \
+                patch('cfd_bot.jobs.terminal_event'), \
+                patch('cfd_bot.jobs.snapshot', return_value={'cases': {}}), \
+                patch('cfd_bot.jobs.check_cpus', return_value=(True, 'SAFE')), \
+                patch('cfd_bot.jobs.subprocess.Popen'):
+            scheduler = Scheduler(self.config, self.store)
+            scheduler.tick({})
+            self.assertEqual(self.store.job(dynamic['id'])['status'], 'queued')
+            self.assertEqual(self.store.get('queue_drain_claim')['donors'], ['fixed'])
+
+            self.store.update_job(donor['id'], status='succeeded', finished=time.time())
+            scheduler.tick({})
+
+        started = self.store.job(dynamic['id'])
+        self.assertEqual(started['status'], 'starting')
+        self.assertEqual(started['borrowed_queues'], ['fixed'])
+
 
 class DynamicGuidanceTests(Environment):
     def setUp(self):
@@ -301,6 +362,53 @@ class DynamicGuidanceTests(Environment):
         status = self.runner._capacity([self.resource(9, True)], {}, [])
         self.assertFalse(status['queue_possible'])
         self.assertIn('동적 매크로로도 실행할 수 없', status['availability_message'])
+
+    def capacity(self, required, can_run, *, free=11):
+        return dict(capacity=51, used_cores=51 - free, free_cores=free,
+                    required_cores=required, can_run=can_run,
+                    capacity_reason='' if can_run else 'insufficient')
+
+    def test_dynamic_macro_admits_the_first_child_instead_of_the_largest_child(self):
+        members = [self.resource(cores, True) for cores in (4, 4, 24)]
+        statuses = [self.capacity(4, True), self.capacity(4, True),
+                    self.capacity(24, False)]
+
+        with patch('cfd_bot.ticket_run.capacity_status', side_effect=statuses):
+            status = self.runner._capacity(members, {}, [])
+
+        self.assertTrue(status['can_run'])
+        self.assertTrue(status['queue_possible'])
+        self.assertEqual(status['required_cores'], 4)
+        self.assertEqual(status['queue_required'], 4)
+        self.assertEqual(status['queue_max_required'], 24)
+        self.assertIsNone(status['queue_quota'])
+        self.assertIn('첫 하위 케이스를 지금 시작', status['availability_message'])
+        self.assertIn('최대 24코어', status['availability_message'])
+
+    def test_dynamic_macro_queues_when_only_the_first_child_cannot_start(self):
+        members = [self.resource(cores, True) for cores in (12, 4, 24)]
+        statuses = [self.capacity(12, False), self.capacity(4, True),
+                    self.capacity(24, False)]
+
+        with patch('cfd_bot.ticket_run.capacity_status', side_effect=statuses):
+            status = self.runner._capacity(members, {}, [])
+
+        self.assertFalse(status['can_run'])
+        self.assertTrue(status['queue_possible'])
+        self.assertEqual(status['queue_required'], 12)
+        self.assertIn('대기열에 등록', status['availability_message'])
+
+    def test_dynamic_macro_rejects_a_later_child_above_total_capacity(self):
+        members = [self.resource(cores, True) for cores in (4, 52)]
+        statuses = [self.capacity(4, True), self.capacity(52, False)]
+
+        with patch('cfd_bot.ticket_run.capacity_status', side_effect=statuses):
+            status = self.runner._capacity(members, {}, [])
+
+        self.assertFalse(status['can_run'])
+        self.assertFalse(status['queue_possible'])
+        self.assertEqual(status['queue_max_required'], 52)
+        self.assertIn('전체 관리 한도 51코어보다 큽니다', status['availability_message'])
 
     def test_legacy_lane_choice_is_not_overridden_by_old_ticket_state(self):
         case = dict(deepcopy(self.case), queue={'lane': 1, 'state': 'finished'})

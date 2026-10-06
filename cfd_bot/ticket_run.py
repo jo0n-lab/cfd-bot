@@ -50,28 +50,42 @@ class TicketRunner:
                       else execution_case(member)) for member in members]
         statuses = [capacity_status(member, observed.get('cases', {}), active, self.config)
                     for member in resources]
-        status = max(statuses, key=lambda item: item['required_cores'])
-        status = dict(status, can_run=all(item['can_run'] for item in statuses))
-        if status['free_cores'] is None:
+        queue = members[0].get('execution_queue') if members else None
+        dynamic = bool(queue and any(member.get('dynamic_cores') for member in members))
+        largest = max(item['required_cores'] for item in statuses)
+        if dynamic:
+            # A dynamic macro admits one ordered child at a time.  The first
+            # child is the only immediate capacity decision; later children
+            # are admitted again when they become the batch head.
+            status = dict(statuses[0])
+            status['can_run'] = status['can_run'] and largest <= status['capacity']
+        else:
+            status = max(statuses, key=lambda item: item['required_cores'])
+            status = dict(status, can_run=all(item['can_run'] for item in statuses))
+        if dynamic and largest > status['capacity']:
+            status['availability_message'] = self.ui.text(
+                'scenarios.runtime.ticket.dynamic_impossible', required=largest,
+                capacity=status['capacity'])
+        elif status['free_cores'] is None:
             status['availability_message'] = status['capacity_reason']
+        elif dynamic:
+            key = ('scenarios.runtime.ticket.dynamic_head_available' if status['can_run']
+                   else 'scenarios.runtime.ticket.dynamic_head_insufficient')
+            status['availability_message'] = self.ui.text(
+                key, free=status['free_cores'], used=status['used_cores'],
+                capacity=status['capacity'], required=status['required_cores'],
+                largest=largest)
         else:
             key = ('scenarios.runtime.ticket.capacity_available' if status['can_run']
                    else 'scenarios.runtime.ticket.capacity_insufficient')
             status['availability_message'] = self.ui.text(
                 key, free=status['free_cores'], used=status['used_cores'],
                 capacity=status['capacity'], required=status['required_cores'])
-        queue = members[0].get('execution_queue') if members else None
         if queue:
-            largest = max(member['cores'] + int(bool(member.get('monitoring', {}).get('allocate_cpu')))
-                          for member in resources)
-            dynamic = any(member.get('dynamic_cores') for member in members)
-            status.update(queue_id=queue['id'], queue_quota=largest,
-                          queue_required=largest, queue_dynamic=dynamic,
+            status.update(queue_id=queue['id'], queue_quota=None if dynamic else largest,
+                          queue_required=status['required_cores'], queue_dynamic=dynamic,
+                          queue_max_required=largest,
                           queue_possible=largest <= status['capacity'])
-            if largest > status['capacity']:
-                status['availability_message'] += '\n' + self.ui.text(
-                    'scenarios.runtime.ticket.dynamic_impossible', required=largest,
-                    capacity=status['capacity'])
         return status
 
     def _state(self, ticket, members, observed, *, jobs_by_root=None, external=None, active=None):

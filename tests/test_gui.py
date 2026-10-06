@@ -438,6 +438,14 @@ class WidgetTests(unittest.TestCase):
         editor.update_execution_button()
         self.assertFalse(editor.run_button.instate(['disabled']))
         self.assertEqual(editor.run_button.cget('text'), '실행')
+        editor.runner.state.return_value = dict(
+            state='idle', enabled=True, run_enabled=True, queue_enabled=True,
+            label='▶ 즉시 실행', queue_label='대기열 등록',
+            availability_message='첫 하위 케이스를 지금 시작할 수 있습니다')
+        editor.update_execution_button()
+        self.assertFalse(editor.run_button.instate(['disabled']))
+        self.assertFalse(editor.queue_button.instate(['disabled']))
+        self.assertIn('첫 하위 케이스', editor.run_status.get())
 
     def test_case_scan_accepts_openfoam_bootstrap_setting(self):
         editor = self.editor

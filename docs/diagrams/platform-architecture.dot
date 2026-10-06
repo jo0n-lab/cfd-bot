@@ -7,11 +7,11 @@ digraph platform {
  web [label="Web\napp.js → Handler → WebApp",URL="lld/web.md"];
  cli [label="CLI / launcher",URL="lld/runtime.md"];
  service [label="TicketService\n폼·검증·저장·복제·삭제",URL="diagrams/D-02.svg"];
- run [label="TicketRunner\ncached state / fresh request\n요구 NP·용량 안내",URL="diagrams/D-03.svg"];
+ run [label="TicketRunner\ncached state / fresh request\n동적 macro: 첫 child 즉시 판정",URL="diagrams/D-03.svg"];
  store [shape=cylinder,label="Store / SQLite\njob CAS / outbox / session"];
  json [shape=folder,label="tickets/*.json\nqueue id / cores / dynamic cores\nsubmission / 표시 상태"];
  snapshot [label="processes.snapshot\nlock → subprocess → ofps → parse",URL="diagrams/D-04.svg"];
- monitor [label="Monitor / Scheduler\nhead NP에서 quota·CPU 자동 배정\ndrain claim / fair turn",URL="diagrams/BG-04.svg"];
+ monitor [label="Monitor / Scheduler\nbatch별 현재 head NP admission\ndrain claim / fair turn",URL="diagrams/BG-04.svg"];
  worker [label="worker\nhooks / solver / 판정",URL="diagrams/BG-05.svg"];
  tg -> service;gui -> service;web -> service;
  tg -> run;gui -> run;web -> run;

@@ -32,7 +32,7 @@
 | Draft | `values, filename, current: str|None, revision: str|None, dirty: bool` | TicketService.new/open/duplicate → adapter |
 | Snapshot | `raw: str`, `cases: dict[root, ProcessRecord]`; caller가 `at: float` 부여 | processes.snapshot; 저장 여부는 caller별로 다름 |
 | ProcessRecord | `root, engines[], processes[], supervisors[], owner, actual_cores, actual_cpu_list` | parse_snapshot → UI/Monitor/CPU admission |
-| RunState | `state`, `run_enabled`, `queue_enabled`, `capacity/used/free/required`, `queue_id/queue_quota/queue_required/queue_dynamic`, `availability_message` | TicketRunner.state/_state → 세 UI 실행·큐 버튼 |
+| RunState | `state`, `run_enabled`, `queue_enabled`, `capacity/used/free/required`, `queue_id/queue_quota/queue_required/queue_max_required/queue_dynamic`, `availability_message` | TicketRunner.state/_state → 세 UI 실행·큐 버튼; 동적 macro의 required는 현재 head, max는 전체 설정 검사 |
 | RunResult | `already_queued: bool`, `request_id: str|None`, 신규 수락 시 `count: int`, queue mode이면 저장된 profile 사용 | TicketRunner.request → UI; 아직 DB job이 아닐 수 있음 |
 | Job | `id, case_root, status, created, case, telemetry`, `queue_id, dynamic_cores`, admission 뒤 `queue_cpu_set`, optional `borrowed_queues, batch, started, finished, phase, *_pid, *_identity` | Store ↔ Scheduler/worker |
 | Observed | Job 유사 + `external=True, missing:int, log_path, owner/CPU` | Monitor.observe → kv |
@@ -177,7 +177,7 @@ TG/GUI는 worker thread, web은 HTTP request thread에서 실행한다. TG stops
 
 ![실행 요청·반환](diagrams/D-03.svg)
 
-`snapshot → _members → revision → _state/capacity → command 확인 → JSON 제출` 순서다. scan은 flock 전에 실행한다. `_state`는 snapshot, active/queued jobs, root별 observed와 51-core 관리 풀을 읽고 일반 작업의 최대 NP 또는 동적 child 요구량을 quota로 표시한다. `mode=run`은 충분한 경우에만 제출하며 `mode=queue`는 티켓의 `execution_queue.id`를 사용한다. 전체 관리 용량보다 큰 요구량만 큐 등록을 막는다. running이면 거절, queued 또는 동일 request_id면 already_queued=True다. 요청 수락은 `submit=True` 파일 쓰기이며 solver 시작이나 DB queued 확정이 아니다.
+`snapshot → _members → revision → _state/capacity → command 확인 → JSON 제출` 순서다. scan은 flock 전에 실행한다. `_state`는 snapshot, active/queued jobs, root별 observed와 51-core 관리 풀을 읽는다. 일반 티켓과 고정 macro는 기존 요구량을 사용한다. 동적 macro는 첫 child의 `required_cores`만 현재 `run_enabled` 판정에 쓰고, 전체 child의 `queue_max_required`는 관리 한도 초과 여부만 검사한다. 동적 `queue_quota`는 `None`이다. `mode=run`은 첫 child가 지금 실행 가능하고 모든 child가 관리 한도 이내일 때 제출한다. `mode=queue`는 티켓의 `execution_queue.id`를 사용하며 모든 child가 관리 한도 이내면 현재 가용 코어와 관계없이 등록할 수 있다. running이면 거절, queued 또는 동일 request_id면 already_queued=True다. 요청 수락은 `submit=True` 파일 쓰기이며 solver 시작이나 DB queued 확정이 아니다.
 
 Telegram 케이스 메뉴의 `prepare/enqueue`와 CLI enqueue는 별도 경로다. Telegram은 fresh state를 검사한 뒤 `Store.enqueue(case,update_id)`를 직접 호출하고 CLI는 Store.enqueue를 직접 호출한다. 편집기의 세 UI는 TicketRunner.request를 사용한다. [우회 경로 그림](diagrams/UC-18-legacy-tg.svg)을 공용 실행 그림과 비교해야 한다.
 
@@ -186,9 +186,9 @@ Telegram 케이스 메뉴의 `prepare/enqueue`와 CLI enqueue는 별도 경로�
 
 ![대기 취소 요청·반환](diagrams/D-08.svg)
 
-`Store.jobs(statuses=None)`는 created 순서의 Job list를 반환한다. 새 Job은 `priority=run|queue`, `queue_id`, `dynamic_cores`를 등록 시점 snapshot으로 가진다. `queue_heads`는 대기열 수에 상한을 두지 않고 queue id별 가장 오래된 queued job 하나를 반환한다. Scheduler는 즉시 요청을 먼저 검토하고 각 이름 있는 대기열의 FIFO head만 admission한다. 일반 head는 `execution_case()`로 실제 NP를 해석한 뒤 비예약 CPU에서 그 크기의 profile을 만들고 `queue_cpu_set`을 job에 기록한다. 같은 대기열은 동시에 일반 작업 하나만 실행하며 서로 다른 대기열은 배정 CPU가 겹치지 않아 독립적으로 병렬 실행한다. head 요구량이 이전 작업보다 커지면 같은 queue의 기존 배정이 끝난 뒤 새 크기로 재배정한다. 기존 `queue_lane`만 가진 job은 `legacy-N` id로 해석한다.
+`Store.jobs(statuses=None)`는 created 순서의 Job list를 반환한다. 새 Job은 `priority=run|queue`, `queue_id`, `dynamic_cores`를 등록 시점 snapshot으로 가진다. `scheduling_candidates(jobs,active)`는 실행 중 child가 없는 `priority=run` batch마다 첫 queued child 하나만 고른 뒤, 현재 active job이 없는 queue id별 가장 오래된 일반 queued job을 붙인다. 따라서 앞 child가 실행 중이거나 뒤 child가 head가 되기 전에 CPU나 donor drain claim을 선점하지 않는다. 일반 head는 `execution_case()`로 실제 NP를 해석한 뒤 비예약 CPU에서 그 크기의 profile을 만들고 `queue_cpu_set`을 job에 기록한다. 같은 대기열은 동시에 일반 작업 하나만 실행하며 서로 다른 대기열은 배정 CPU가 겹치지 않아 독립적으로 병렬 실행한다. head 요구량이 이전 작업보다 커지면 같은 queue의 기존 배정이 끝난 뒤 새 크기로 재배정한다. 기존 `queue_lane`만 가진 job은 `legacy-N` id로 해석한다.
 
-`borrowing_plan(job,profiles,pool)`은 동적 head의 현재 child NP와 monitor 요구량을 계산하고 고정 대기열에 배정되지 않은 CPU를 먼저 사용한다. 부족하면 profile 크기·queue id 오름차순으로 donor를 최소 개수만 선택한다. Scheduler는 SQLite `queue_drain_claim` 하나로 해당 head를 고정하고 donor 대기열의 새 admission을 멈춘다. 이미 실행 중인 donor 작업은 자연 종료하며, 모든 donor가 비면 동적 작업을 시작한다. 종료 시 `queue_fair_turns`에 사용한 donor를 기록한다. 각 donor의 다음 FIFO head가 한 번 admission해야 다음 동적 head가 같은 donor를 drain할 수 있다. 전체 허용 CPU가 요구량보다 작으면 queued 상태와 이유를 유지한다. legacy job의 저장 profile은 관리 CPU pool 안에서만 사용한다.
+`borrowing_plan(job,profiles,pool)`은 동적 head의 현재 child NP와 monitor 요구량을 계산하고 고정 대기열에 배정되지 않은 CPU를 먼저 사용한다. 이 정책은 `priority=queue`와 `priority=run` 동적 macro에 동일하다. 부족하면 profile 크기·queue id 오름차순으로 donor를 최소 개수만 선택한다. Scheduler는 SQLite `queue_drain_claim` 하나로 해당 head를 고정하고 donor 대기열의 새 admission을 멈춘다. 이미 실행 중인 donor 작업은 자연 종료하며, 모든 donor가 비면 동적 작업을 시작한다. 종료 시 `queue_fair_turns`에 사용한 donor를 기록한다. 각 donor의 다음 FIFO head가 한 번 admission해야 다음 동적 head가 같은 donor를 drain할 수 있다. 전체 허용 CPU가 요구량보다 작으면 queued 상태와 이유를 유지한다. legacy job의 저장 profile은 관리 CPU pool 안에서만 사용한다.
 
 `tracking_registry(cases)`는 현재 load되고 실제 존재하는 티켓만 root로 색인하며 `job_view`가 trackable/case_id를 만든다.
 

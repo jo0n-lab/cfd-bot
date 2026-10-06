@@ -619,6 +619,8 @@
     "scenarios.runtime.ticket.dynamic_ready",
     "scenarios.runtime.ticket.dynamic_suggest",
     "scenarios.runtime.ticket.dynamic_impossible",
+    "scenarios.runtime.ticket.dynamic_head_available",
+    "scenarios.runtime.ticket.dynamic_head_insufficient",
     "scenarios.runtime.ticket.state_failed",
     "scenarios.runtime.ticket_state.idle",
     "scenarios.runtime.ticket_state.insufficient",

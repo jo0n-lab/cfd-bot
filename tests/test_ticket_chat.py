@@ -244,6 +244,22 @@ class TicketChatTests(Environment):
         self.service.path(name).write_text(json.dumps(dict(self.case_data, case_dir=str(self.case_root))))
         return name
 
+    def test_card_enables_dynamic_head_run_and_queue_actions(self):
+        name = self.source()
+        document = read_json(self.service.path(name))
+        document['execution_queue'] = {'id': 'shared'}
+        self.service.path(name).write_text(json.dumps(document))
+        state = dict(state='idle', enabled=True, run_enabled=True, queue_enabled=True,
+                     label='▶ 즉시 실행', queue_label='대기열 등록',
+                     availability_message='첫 하위 케이스를 지금 시작할 수 있습니다')
+        self.message('/tickets')
+        with patch.object(self.bot.ticket_ui.runner, 'state', return_value=state):
+            self.click('open', self.session()['choices'].index(name))
+
+        self.assertIn('첫 하위 케이스를 지금 시작', self.panel()['text'])
+        self.button('runreview', 'run')
+        self.button('runreview', 'queue')
+
     def test_single_form_file_selection_and_shared_save(self):
         self.new()
         self.click('basic')

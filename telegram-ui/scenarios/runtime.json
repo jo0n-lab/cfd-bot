@@ -29,6 +29,8 @@
     "dynamic_ready": "{queue}의 동적 작업이 {required}코어를 확보한 뒤 실행됩니다.",
     "dynamic_suggest": "{required}코어가 필요합니다. 동적 코어 매크로를 사용하세요.",
     "dynamic_impossible": "요청 {required}코어가 전체 관리 한도 {capacity}코어보다 큽니다. 동적 매크로로도 실행할 수 없으므로 코어 수를 낮추세요.",
+    "dynamic_head_available": "첫 하위 케이스를 지금 시작할 수 있습니다: 잔여 {free}개 ({used}/{capacity} 사용 중) · 현재 요청 {required}개. 이후 최대 {largest}코어 작업은 자기 순서에서 코어를 확보합니다.",
+    "dynamic_head_insufficient": "첫 하위 케이스에 필요한 {required}코어보다 현재 잔여 코어 {free}개 ({used}/{capacity} 사용 중)가 부족합니다. 대기열에 등록하면 자기 순서에서 코어를 확보합니다. 이후 최대 요청은 {largest}코어입니다.",
     "capacity_available": "현재 잔여 코어 {free}개 ({used}/{capacity} 사용 중) · 요청 {required}개",
     "capacity_insufficient": "현재 잔여 코어 {free}개 ({used}/{capacity} 사용 중)가 부족합니다. 코어 수를 낮추거나 대기열에 등록하세요."
   },

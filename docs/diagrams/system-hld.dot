@@ -28,7 +28,7 @@ digraph system {
  web -> scan [label="overview / mutation / run"];
  gui -> scan [label="검색 / 실행 시"];
  cli -> scan;
- planner [label="Queue planner\n일반 head NP → quota/CPU 자동 배정\n동적 child NP → 미예약 CPU + donor",fillcolor="#ede9fe",color="#a78bfa"];
+ planner [label="Queue planner\nbatch별 현재 head 하나만 admission\n동적 child NP → 미예약 CPU + donor",fillcolor="#ede9fe",color="#a78bfa"];
  mon -> planner [label="derive / drain / fairness"];
  planner -> worker [label="승인 CPU → Popen"];
  worker -> calc [label="taskset / wait"];

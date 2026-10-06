@@ -39,11 +39,23 @@ def terminal_event(store, job, chats, ui=None):
     store.event(job['id'] + ':terminal', chats, payload)
 
 
-def scheduling_candidates(jobs):
-    """Immediate requests first, then one FIFO head per unbounded named queue."""
-    immediate = sorted((job for job in jobs if job.get('priority') == 'run'),
-                       key=lambda item: item['created'])
-    queued = [job for job in jobs if job.get('priority') != 'run']
+def scheduling_candidates(jobs, active=()):
+    """Runnable batch heads first, then one head per idle named queue."""
+    active_batches = {job.get('batch') for job in active if job.get('batch')}
+    active_queues = {job_queue_id(job) for job in active if job.get('priority') != 'run'}
+    jobs = [job for job in jobs if not job.get('batch') or job['batch'] not in active_batches]
+    immediate = []
+    batches = set()
+    for job in sorted((job for job in jobs if job.get('priority') == 'run'),
+                      key=lambda item: item['created']):
+        batch = job.get('batch')
+        if batch and batch in batches:
+            continue
+        if batch:
+            batches.add(batch)
+        immediate.append(job)
+    queued = [job for job in jobs if (job.get('priority') != 'run'
+                                      and job_queue_id(job) not in active_queues)]
     return immediate + sorted(queue_heads(queued), key=lambda item: item['created'])
 
 
@@ -79,7 +91,7 @@ class Scheduler:
         if claim:
             return claim
         for job in sorted(candidates, key=lambda item: item['created']):
-            if job.get('priority') == 'run' or not job.get('dynamic_cores'):
+            if not job.get('dynamic_cores'):
                 continue
             plan = borrowing_plan(job, profiles, pool)
             if not plan or not plan['oversized']:
@@ -208,7 +220,7 @@ class Scheduler:
         if not self.config['scheduler']['enabled'] or self.store.get('queue_paused', False):
             return
         all_queued = self.store.jobs(('queued',))
-        queued = scheduling_candidates(all_queued)
+        queued = scheduling_candidates(all_queued, active)
         pool = managed_cpus(self.config)
         # Ticket profiles remain reserved even while their queue is empty.
         # Job snapshots cover accepted work if the source ticket was renamed.
@@ -229,8 +241,8 @@ class Scheduler:
                     and any(active_job.get('priority') != 'run'
                             and job_queue_id(active_job) == qid for active_job in active)):
                 continue
-            if (job.get('priority') != 'run' and claim
-                    and qid in claim.get('donors', []) and job['id'] != claim.get('job_id')):
+            if (claim and qid in claim.get('donors', [])
+                    and job['id'] != claim.get('job_id')):
                 continue
             if job.get('batch') and any(j.get('batch') == job['batch'] for j in active):
                 continue
@@ -285,8 +297,8 @@ class Scheduler:
             monitor_requested = bool(case.get('monitoring', {}).get('allocate_cpu'))
             allowed = pool
             borrowed = []
-            if (job.get('priority') != 'run'
-                    and (job.get('queue_cpu_set') or job.get('dynamic_cores'))):
+            if (job.get('dynamic_cores')
+                    or (job.get('priority') != 'run' and job.get('queue_cpu_set'))):
                 # The ticket may derive NP from the live case at dispatch
                 # time, so plan with the resolved execution contract.
                 plan = borrowing_plan(dict(job, case=case), profiles, pool)

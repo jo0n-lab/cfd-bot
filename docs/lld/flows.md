@@ -58,7 +58,7 @@
 | BG-02 | [현재 CASE · 이전 실행/종료 확인 중 CASE 감시](../diagrams/BG-02.svg) |
 | BG-03 | [변경된 제출 티켓 접수](../diagrams/BG-03.svg) |
 | D-15 | [증분 상태 반영 · 종료 child와 부모 macro 재시도](../diagrams/D-15.svg) |
-| BG-04 | [NP 기반 quota·동적 borrow admission](../diagrams/BG-04.svg) |
+| BG-04 | [현재 head 기반 quota·동적 borrow admission](../diagrams/BG-04.svg) |
 | BG-05 | [worker·solver·hooks·판정](../diagrams/BG-05.svg) |
 | BG-06 | [outbox 알림 전달·checkpoint](../diagrams/BG-06.svg) |
 | BG-07 | [worker 소실·재시작 복구](../diagrams/BG-07.svg) |

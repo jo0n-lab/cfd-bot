@@ -232,6 +232,18 @@ class WebTests(Environment):
         self.assertIsNone(history[untracked_history['id']]['case_id'])
         self.assertTrue(active[running['id']]['trackable'])
 
+    def test_overview_exposes_dynamic_head_run_and_queue_actions(self):
+        state = dict(state='idle', enabled=True, run_enabled=True, queue_enabled=True,
+                     label='▶ 즉시 실행', queue_label='대기열 등록',
+                     availability_message='첫 하위 케이스를 지금 시작할 수 있습니다')
+        with patch.object(self.app.runner, 'states', return_value={self.name: state}):
+            ticket = next(row for row in self.get('/api/overview')['tickets']
+                          if row['filename'] == self.name)
+
+        self.assertTrue(ticket['run_enabled'])
+        self.assertTrue(ticket['queue_enabled'])
+        self.assertIn('첫 하위 케이스', ticket['availability_message'])
+
     def test_macro_discovery_publish_children_and_shared_settings(self):
         for name in ('one', 'two', 'skip-template', 'running', 'group/deep'):
             root = self.root / 'batch' / name
