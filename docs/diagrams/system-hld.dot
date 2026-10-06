@@ -1,5 +1,5 @@
 digraph system {
- graph [rankdir=LR,bgcolor="white",pad=0.3,nodesep=0.45,ranksep=0.8,fontname="Noto Sans CJK KR",fontsize=24,label="CFD bot HLD · 이름 있는 queue quota와 동적 macro (#21)",labelloc=t];
+ graph [rankdir=LR,bgcolor="white",pad=0.3,nodesep=0.45,ranksep=0.8,fontname="Noto Sans CJK KR",fontsize=24,label="CFD bot HLD · NP 기반 queue quota와 동적 macro (#24)",labelloc=t];
  node [shape=box,style="rounded,filled",fillcolor="#eff6ff",color="#93c5fd",fontname="Noto Sans CJK KR",fontsize=16,margin="0.18,0.12"];
  edge [fontname="Noto Sans CJK KR",fontsize=13,color="#475569"];
  tg [label="Telegram 사용자 / Bot API",fillcolor="#dcfce7"];
@@ -19,7 +19,7 @@ digraph system {
  worker [label="Detached worker process\n설정 → hooks → solver → verdict"];
  calc [label="계산 프로세스\nsolver + opt-in monitor\n외부에서 시작한 계산도 존재",fillcolor="#fef3c7"];
  db [shape=cylinder,label="SQLite (WAL)\njobs / drain claim / fair turns\noutbox / history / observed",fillcolor="#f1f5f9"];
- tickets [shape=folder,label="tickets/*.json\nqueue id / CPU quota / dynamic cores\n폴더 flock / revision / replace",fillcolor="#f1f5f9"];
+ tickets [shape=folder,label="tickets/*.json\nqueue id / cores / dynamic cores\n폴더 flock / revision / replace",fillcolor="#f1f5f9"];
  files [shape=folder,label="case settings / logs / artifacts\nstate/events frozen attachments",fillcolor="#f1f5f9"];
  tg -> main [label="updates / 응답",dir=both];main -> ack [label="async"];
  browser -> ssh -> web;
@@ -28,8 +28,8 @@ digraph system {
  web -> scan [label="overview / mutation / run"];
  gui -> scan [label="검색 / 실행 시"];
  cli -> scan;
- planner [label="Queue planner\nqueue id별 FIFO head\n미예약 CPU + 작은 donor 우선",fillcolor="#ede9fe",color="#a78bfa"];
- mon -> planner [label="quota / drain / fairness"];
+ planner [label="Queue planner\n일반 head NP → quota/CPU 자동 배정\n동적 child NP → 미예약 CPU + donor",fillcolor="#ede9fe",color="#a78bfa"];
+ mon -> planner [label="derive / drain / fairness"];
  planner -> worker [label="승인 CPU → Popen"];
  worker -> calc [label="taskset / wait"];
  scan -> calc [label="/proc 관측",style=dashed];

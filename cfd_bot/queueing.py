@@ -1,4 +1,4 @@
-"""Named queue profiles and dynamic quota borrowing rules."""
+"""Named FIFO queues, derived CPU profiles, and dynamic borrowing rules."""
 import re
 
 from .config import cpu_set
@@ -8,11 +8,12 @@ QUEUE_ID = re.compile(r'[A-Za-z0-9._-]{1,48}')
 
 
 def queue_profile(case):
-    """Return the normalized named queue profile stored in a ticket/job case."""
+    """Return a queue id and any legacy CPU profile stored in a case."""
     profile = case.get('execution_queue') or {}
     if profile:
-        return {'id': profile['id'], 'cpu_set': profile['cpu_set'],
-                'cpus': cpu_set(profile['cpu_set'])}
+        value = profile.get('cpu_set')
+        return {'id': profile['id'], 'cpu_set': value,
+                'cpus': cpu_set(value) if value else set()}
     return None
 
 
@@ -22,7 +23,7 @@ def job_queue_id(job):
 
 
 def registered_profiles(jobs, cases=()):
-    """Collect consistent named profiles from tickets and live job snapshots."""
+    """Collect assigned job profiles plus legacy profiles embedded in tickets."""
     profiles = {}
     def add(qid, cpus):
         previous = profiles.get(qid)
@@ -58,18 +59,19 @@ def queue_heads(jobs):
 def borrowing_plan(job, profiles, pool):
     """Plan CPUs for a dynamic oversized head.
 
-    The queue's own quota and globally unreserved CPUs are free inputs. Donor
-    queues are added smallest-first until the requested count fits.
+    New dynamic queues own no fixed profile. Globally unreserved CPUs are the
+    first input, and assigned fixed queues are donors smallest-first. A legacy
+    dynamic job may also contribute its own stored profile.
     """
     qid = job_queue_id(job)
     own = set(profiles.get(qid, ()))
     pool = set(pool)
-    # A queue quota is an authorization boundary.  Never let a stale or
-    # hand-written ticket expand the scheduler beyond its managed CPU pool.
-    if not own or not own <= pool:
+    # A legacy stored profile is an authorization boundary. Never let it
+    # expand the scheduler beyond its managed CPU pool.
+    if own and not own <= pool:
         return None
     required = int(job['case']['cores']) + int(bool(job['case'].get('monitoring', {}).get('allocate_cpu')))
-    if required <= len(own):
+    if own and required <= len(own):
         return {'allowed': own, 'donors': [], 'required': required, 'oversized': False}
     if not job.get('dynamic_cores'):
         return None
@@ -85,7 +87,8 @@ def borrowing_plan(job, profiles, pool):
         allowed |= cpus
     if len(allowed) < required:
         return None
-    return {'allowed': allowed, 'donors': donors, 'required': required, 'oversized': True}
+    return {'allowed': allowed, 'donors': donors, 'required': required,
+            'oversized': bool(donors)}
 
 
 def queue_profile_conflict(candidate, others):
@@ -94,18 +97,18 @@ def queue_profile_conflict(candidate, others):
     if not profile:
         return None
     current_id = profile['id']
-    current_cpus = cpu_set(profile['cpu_set'])
+    current_cpus = cpu_set(profile['cpu_set']) if profile.get('cpu_set') else set()
     for other in others:
         if other.get('role', 'alone') == 'child' or not other.get('execution_queue'):
             continue
         existing = other['execution_queue']
-        existing_cpus = cpu_set(existing['cpu_set'])
+        existing_cpus = cpu_set(existing['cpu_set']) if existing.get('cpu_set') else set()
         if existing['id'] == current_id:
-            if existing_cpus != current_cpus:
+            if existing_cpus and current_cpus and existing_cpus != current_cpus:
                 return ('same_id', existing['id'], existing['cpu_set'])
             if candidate.get('task_type') == 'macro' or other.get('task_type') == 'macro':
                 return ('macro_shared', existing['id'], other.get('name', existing['id']))
-        elif current_cpus & existing_cpus:
+        elif current_cpus and existing_cpus and current_cpus & existing_cpus:
             overlap = ','.join(map(str, sorted(current_cpus & existing_cpus)))
             return ('overlap', existing['id'], overlap)
     return None

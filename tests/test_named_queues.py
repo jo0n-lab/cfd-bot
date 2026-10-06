@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
-from cfd_bot.config import ConfigError, cases_for, load_case
+from cfd_bot.config import ConfigError, cases_for, cpu_set, load_case
 from cfd_bot.editor import TicketService
 from cfd_bot.jobs import Scheduler, scheduling_candidates
 from cfd_bot.queueing import borrowing_plan, job_queue_id, registered_profiles
@@ -28,8 +28,7 @@ class QueuePlanningTests(TestCase):
                          ['a1', 'b1', 'z1'])
 
     def test_dynamic_plan_uses_unreserved_cpus_then_small_quotas_first(self):
-        profiles = {'macro1': set(range(16)), 'macro2': set(range(16, 21)),
-                    'shared': set(range(21, 29))}
+        profiles = {'macro1': set(range(16)), 'macro2': set(range(16, 21))}
         job = {'queue_id': 'shared', 'dynamic_cores': True, 'case': {'cores': 40}}
 
         plan = borrowing_plan(job, profiles, set(range(51)))
@@ -78,7 +77,7 @@ class QueueTicketSchemaTests(TestCase):
                 'version': 1, 'task_type': 'macro', 'role': 'alone',
                 'case_dir': str(batch), 'resource_source': 'macro', 'cores': 3,
                 'cpu_policy': 'auto', 'command': ['./Allrun'],
-                'execution_queue': {'id': 'shared', 'cpu_set': '0-7'},
+                'execution_queue': {'id': 'shared'},
                 'dynamic_cores': True, 'watcher': {'logs': ['log.solver']},
                 'cases': rows,
             }
@@ -90,7 +89,7 @@ class QueueTicketSchemaTests(TestCase):
             self.assertTrue(all(child['dynamic_cores'] for child in children))
             self.assertTrue(all(child['execution_queue']['id'] == 'shared' for child in children))
 
-    def test_ticket_service_rejects_overlapping_distinct_queue_profiles(self):
+    def test_ticket_service_derives_quota_from_cores_without_queue_cpu_input(self):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             tickets = root / 'tickets'
@@ -104,13 +103,16 @@ class QueueTicketSchemaTests(TestCase):
                 (case / 'Allrun').write_text('#!/bin/sh\n')
             first = service.new()['values']
             first.update(case_dir=str(cases / 'a'), name='a', execution_source='ticket',
-                         macro_cores='2', queue_id='queue-a', queue_cpu_set='0-3')
+                         macro_cores='2', queue_id='queue-a')
             service.save(first, 'a.json')
             second = service.new()['values']
             second.update(case_dir=str(cases / 'b'), name='b', execution_source='ticket',
-                          macro_cores='2', queue_id='queue-b', queue_cpu_set='3-5')
-            with self.assertRaisesRegex(ValueError, '겹칩니다'):
-                service.validate(second, 'b.json')
+                          macro_cores='5', queue_id='queue-b')
+            service.save(second, 'b.json')
+            self.assertEqual(load_case(tickets / 'alone-a.json')['execution_queue'],
+                             {'id': 'queue-a'})
+            self.assertEqual(load_case(tickets / 'alone-b.json')['execution_queue'],
+                             {'id': 'queue-b'})
 
     def test_config_check_rejects_hand_edited_overlapping_profiles(self):
         with TemporaryDirectory() as directory:
@@ -138,14 +140,99 @@ class DynamicFairnessTests(Environment):
         self.config['scheduler'].update(max_parallel=8, cpu_capacity=8)
         self.layout = {i: (0, 0, i) for i in range(8)}
 
-    def case_for(self, name, cores, queue_id, cpu_range, dynamic=False):
+    def case_for(self, name, cores, queue_id, cpu_range=None, dynamic=False):
         root = self.root / name
         root.mkdir(exist_ok=True)
         (root / 'Allrun').write_text('#!/bin/sh\n')
+        profile = {'id': queue_id}
+        if cpu_range:
+            profile['cpu_set'] = cpu_range
         return dict(deepcopy(self.case), _root=str(root), _config='', name=name,
                     cores=cores, cpu_policy='auto', resource_source='macro',
-                    execution_queue={'id': queue_id, 'cpu_set': cpu_range},
-                    dynamic_cores=dynamic)
+                    execution_queue=profile, dynamic_cores=dynamic)
+
+    def test_fixed_queue_profile_is_assigned_from_head_core_count(self):
+        queued = self.store.enqueue(self.case_for('fixed-auto', 3, 'fixed'),
+                                    queue_id='fixed')
+        with patch('cfd_bot.jobs.topology', self.layout, create=True), \
+                patch('cfd_bot.cpu_allocation.topology', return_value=self.layout), \
+                patch('cfd_bot.cpu_allocation.os.sched_getaffinity', return_value=set(range(8))), \
+                patch('cfd_bot.jobs.terminal_event'), \
+                patch('cfd_bot.jobs.snapshot', return_value={'cases': {}}), \
+                patch('cfd_bot.jobs.check_cpus', return_value=(True, 'SAFE')), \
+                patch('cfd_bot.jobs.subprocess.Popen'):
+            Scheduler(self.config, self.store).tick({})
+
+        started = self.store.job(queued['id'])
+        self.assertEqual(started['status'], 'starting')
+        self.assertEqual(len(cpu_set(started['queue_cpu_set'])), 3)
+        self.assertEqual(started['case']['cpu_set'], started['queue_cpu_set'])
+
+    def test_case_owned_np_is_the_fixed_queue_quota(self):
+        root = self.root / 'case-owned'
+        root.mkdir()
+        (root / 'Allrun').write_text('#!/bin/sh\nNP=5\nCPU_SET=0-4\n')
+        case = dict(deepcopy(self.case), _root=str(root), _config='', name='case-owned',
+                    execution_queue={'id': 'case-owned'}, dynamic_cores=False)
+        case.pop('resource_source', None)
+        queued = self.store.enqueue(case, queue_id='case-owned')
+        with patch('cfd_bot.cpu_allocation.topology', return_value=self.layout), \
+                patch('cfd_bot.cpu_allocation.os.sched_getaffinity', return_value=set(range(8))), \
+                patch('cfd_bot.jobs.terminal_event'), \
+                patch('cfd_bot.jobs.snapshot', return_value={'cases': {}}), \
+                patch('cfd_bot.jobs.check_cpus', return_value=(True, 'SAFE')), \
+                patch('cfd_bot.jobs.subprocess.Popen'):
+            Scheduler(self.config, self.store).tick({})
+
+        started = self.store.job(queued['id'])
+        self.assertEqual(started['status'], 'starting')
+        self.assertEqual(len(cpu_set(started['queue_cpu_set'])), 5)
+        self.assertEqual(started['case']['cores'], 5)
+
+    def test_fixed_queues_get_non_overlapping_profiles_and_start_together(self):
+        first = self.store.enqueue(self.case_for('parallel-a', 3, 'queue-a'),
+                                   queue_id='queue-a')
+        second = self.store.enqueue(self.case_for('parallel-b', 2, 'queue-b'),
+                                    queue_id='queue-b')
+        with patch('cfd_bot.cpu_allocation.topology', return_value=self.layout), \
+                patch('cfd_bot.cpu_allocation.os.sched_getaffinity', return_value=set(range(8))), \
+                patch('cfd_bot.jobs.terminal_event'), \
+                patch('cfd_bot.jobs.snapshot', return_value={'cases': {}}), \
+                patch('cfd_bot.jobs.check_cpus', return_value=(True, 'SAFE')), \
+                patch('cfd_bot.jobs.subprocess.Popen'):
+            Scheduler(self.config, self.store).tick({})
+
+        a, b = self.store.job(first['id']), self.store.job(second['id'])
+        self.assertEqual((a['status'], b['status']), ('starting', 'starting'))
+        self.assertEqual(len(cpu_set(a['queue_cpu_set'])), 3)
+        self.assertEqual(len(cpu_set(b['queue_cpu_set'])), 2)
+        self.assertFalse(cpu_set(a['queue_cpu_set']) & cpu_set(b['queue_cpu_set']))
+
+    def test_next_head_derives_its_own_smaller_quota_after_active_finishes(self):
+        first = self.store.enqueue(self.case_for('resize-first', 4, 'resize'),
+                                   queue_id='resize')
+        second = self.store.enqueue(self.case_for('resize-second', 2, 'resize'),
+                                    queue_id='resize')
+        patches = (
+            patch('cfd_bot.cpu_allocation.topology', return_value=self.layout),
+            patch('cfd_bot.cpu_allocation.os.sched_getaffinity', return_value=set(range(8))),
+            patch('cfd_bot.jobs.terminal_event'),
+            patch('cfd_bot.jobs.snapshot', return_value={'cases': {}}),
+            patch('cfd_bot.jobs.check_cpus', return_value=(True, 'SAFE')),
+            patch('cfd_bot.jobs.subprocess.Popen'),
+        )
+        with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+            scheduler = Scheduler(self.config, self.store)
+            scheduler.tick({})
+            self.assertEqual(self.store.job(first['id'])['status'], 'starting')
+            self.assertEqual(self.store.job(second['id'])['status'], 'queued')
+            self.assertNotIn('queue_cpu_set', self.store.job(second['id']))
+            self.store.update_job(first['id'], status='succeeded', finished=time.time())
+            scheduler.tick({})
+
+        resized = self.store.job(second['id'])
+        self.assertEqual(resized['status'], 'starting')
+        self.assertEqual(len(cpu_set(resized['queue_cpu_set'])), 2)
 
     def test_dynamic_job_drains_donors_then_yields_one_turn(self):
         donor_big = self.store.enqueue(self.case_for('big-active', 3, 'big', '0-2'),
@@ -156,8 +243,8 @@ class DynamicFairnessTests(Environment):
             case = deepcopy(job['case'])
             case['cpu_set'] = cpus
             self.store.update_job(job['id'], status='starting', claimed=time.time(), case=case)
-        dynamic = self.store.enqueue(self.case_for('dynamic-1', 6, 'dynamic', '5', True),
-                                     queue_id='dynamic', queue_cpu_set='5', dynamic_cores=True)
+        dynamic = self.store.enqueue(self.case_for('dynamic-1', 6, 'dynamic', dynamic=True),
+                                     queue_id='dynamic', dynamic_cores=True)
 
         with patch('cfd_bot.jobs.topology', self.layout, create=True), \
                 patch('cfd_bot.cpu_allocation.topology', return_value=self.layout), \
@@ -184,8 +271,8 @@ class DynamicFairnessTests(Environment):
                                           queue_id='big', queue_cpu_set='0-2')
             next_small = self.store.enqueue(self.case_for('small-next', 2, 'small', '3-4'),
                                             queue_id='small', queue_cpu_set='3-4')
-            next_dynamic = self.store.enqueue(self.case_for('dynamic-2', 6, 'dynamic', '5', True),
-                                              queue_id='dynamic', queue_cpu_set='5', dynamic_cores=True)
+            next_dynamic = self.store.enqueue(self.case_for('dynamic-2', 6, 'dynamic', dynamic=True),
+                                              queue_id='dynamic', dynamic_cores=True)
             scheduler.tick({})
 
         self.assertEqual(self.store.job(next_big['id'])['status'], 'starting')
@@ -203,24 +290,17 @@ class DynamicGuidanceTests(Environment):
     def resource(self, cores, dynamic):
         return dict(deepcopy(self.case), cores=cores, cpu_policy='auto',
                     resource_source='macro', dynamic_cores=dynamic,
-                    execution_queue={'id': 'shared', 'cpu_set': self.cpu})
+                    execution_queue={'id': 'shared'})
 
-    def test_fixed_oversized_queue_is_disabled_with_dynamic_guidance(self):
+    def test_fixed_queue_quota_is_derived_from_case_cores(self):
         status = self.runner._capacity([self.resource(2, False)], {}, [])
-        self.assertFalse(status['queue_possible'])
-        self.assertIn('동적 코어 옵션', status['availability_message'])
+        self.assertTrue(status['queue_possible'])
+        self.assertEqual(status['queue_quota'], 2)
 
     def test_dynamic_request_above_managed_capacity_is_disabled(self):
         status = self.runner._capacity([self.resource(9, True)], {}, [])
         self.assertFalse(status['queue_possible'])
         self.assertIn('동적 매크로로도 실행할 수 없', status['availability_message'])
-
-    def test_queue_outside_managed_pool_is_disabled(self):
-        case = self.resource(1, False)
-        case['execution_queue']['cpu_set'] = str(max(os.sched_getaffinity(0)) + 100)
-        status = self.runner._capacity([case], {}, [])
-        self.assertFalse(status['queue_possible'])
-        self.assertIn('관리 CPU 범위 밖', status['availability_message'])
 
     def test_legacy_lane_choice_is_not_overridden_by_old_ticket_state(self):
         case = dict(deepcopy(self.case), queue={'lane': 1, 'state': 'finished'})

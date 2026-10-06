@@ -48,10 +48,6 @@
       "title": "대기열 이름",
       "hint": "영문, 숫자, ._- 로 1~48자. 매크로는 전용 이름을 사용하세요."
     },
-    "queue_cpu_set": {
-      "title": "대기열 예약 CPU",
-      "hint": "다른 대기열과 겹치지 않는 CPU 범위. 예: 0-15 또는 21-28"
-    },
     "member_cores": {
       "title": "하위 케이스 코어 수",
       "hint": "이 하위 계산에서 사용할 1 이상의 NP를 입력하세요."
@@ -257,9 +253,11 @@
     "monitor_enabled": "활성화",
     "monitor_disabled": "비활성화"
     ,"queue_id": "대기열 이름"
-    ,"queue_cpu_set": "예약 CPU"
     ,"dynamic": "{mark} 동적 코어 매크로"
-    ,"profile": "대기열: {queue}\n예약 CPU: {cpu_set}"
+    ,"profile": "대기열: {queue}\nquota: {quota}"
+    ,"quota_fixed": "NP {cores}에서 자동 결정"
+    ,"quota_case": "케이스 .process-core/Allrun의 NP에서 자동 결정"
+    ,"quota_dynamic": "실행할 하위 케이스 NP에서 동적 결정"
   },
   "scripts": {
     "body": "전·후처리\n각 케이스 폴더에서 전처리 → 계산 → 정상 종료 후 후처리 순으로 실행합니다.\nAllclean은 기존 계산 결과를 정리합니다. 이어서 계산할 때는 전처리를 비우세요.\n\n전처리: {preprocess}\n후처리: {postprocess}",

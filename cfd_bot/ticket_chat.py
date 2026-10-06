@@ -24,7 +24,7 @@ FIELD_KEYS = {
     'macro_cpu_set', 'macro_command', 'preprocess', 'postprocess', 'x.name',
     'monitoring_command', 'x.pattern', 'x.max_files', 'template_name', 'browse_path',
     'case_include_patterns', 'case_exclude_patterns',
-    'queue_id', 'queue_cpu_set',
+    'queue_id',
 }
 CLEARABLE = {'name', 'residual_pattern', 'end_time', 'failure_patterns', 'updated_files', 'macro_ticket',
              'preprocess', 'postprocess', 'case_include_patterns', 'case_exclude_patterns'}
@@ -374,8 +374,7 @@ class TicketChat:
                              else 'strings.common.unchecked').strip()),
                            'toggle', 'macro_cross_socket')]]
         if not child:
-            rows += [[(self.t('queue.queue_id'), 'field', 'queue_id'),
-                      (self.t('queue.queue_cpu_set'), 'field', 'queue_cpu_set')]]
+            rows.append([(self.t('queue.queue_id'), 'field', 'queue_id')])
         if macro:
             rows.append([(self.t('queue.dynamic', mark=self.ui.text(
                 'strings.common.checked' if v.get('dynamic_cores')
@@ -397,9 +396,15 @@ class TicketChat:
             command=short(v.get('monitoring_command', './Allmonitor')))
             if monitoring else self.t('queue.monitor_status_disabled'))
         if not child:
+            if v.get('dynamic_cores'):
+                quota = self.t('queue.quota_dynamic')
+            elif v.get('execution_source') == 'case':
+                quota = self.t('queue.quota_case')
+            else:
+                quota = self.t('queue.quota_fixed', cores=v.get('macro_cores') or unspecified)
             text += '\n\n' + self.t('queue.profile',
                 queue=short(v.get('queue_id') or unspecified),
-                cpu_set=short(v.get('queue_cpu_set') or unspecified))
+                quota=quota)
         if not child:
             rows.append([(self.t('queue.monitor_cpu', mark=self.ui.text(
                 'strings.common.checked' if monitoring else 'strings.common.unchecked').strip()),
@@ -471,8 +476,6 @@ class TicketChat:
             elif key == 'macro_cpu_set':
                 if v['macro_cpu_policy'] != 'manual':
                     raise ValueError(self.t('errors.automatic_cpu'))
-                cpu_set(value)
-            elif key == 'queue_cpu_set' and value:
                 cpu_set(value)
             elif key == 'queue_id' and value:
                 import re

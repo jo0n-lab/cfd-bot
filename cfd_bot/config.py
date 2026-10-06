@@ -162,8 +162,7 @@ def load_case(path):
         if (not isinstance(execution_queue.get('id'), str)
                 or not re.fullmatch(r'[A-Za-z0-9._-]{1,48}', execution_queue['id'])):
             raise ConfigError(_message('execution_queue_id'))
-        queue_cpus = cpu_set(execution_queue.get('cpu_set'))
-        execution_queue['cpu_set'] = execution_queue['cpu_set']
+        queue_cpus = cpu_set(execution_queue['cpu_set']) if 'cpu_set' in execution_queue else set()
     else:
         queue_cpus = set()
     boolean(c.setdefault('dynamic_cores', False), 'dynamic_cores')
@@ -216,7 +215,7 @@ def load_case(path):
         if not residual.lower().endswith('.png'):
             raise ConfigError(_message('residual_png'))
     number(c.setdefault('cores', 1), 'cores', 1, True)
-    if execution_queue is not None and not c['dynamic_cores'] and c['cores'] > len(queue_cpus):
+    if queue_cpus and not c['dynamic_cores'] and c['cores'] > len(queue_cpus):
         raise ConfigError(_message('queue_quota', cores=c['cores'], quota=len(queue_cpus)))
     if 'cpu_set' in c:
         cpus = cpu_set(c['cpu_set'])
@@ -430,7 +429,7 @@ def cases_for(bot, tickets=None, *, force=False):
         pool = managed_cpus(bot)
         for ticket in top:
             profile = ticket.get('execution_queue')
-            if profile and (outside := cpu_set(profile['cpu_set']) - pool):
+            if profile and profile.get('cpu_set') and (outside := cpu_set(profile['cpu_set']) - pool):
                 raise ConfigError(_message(
                     'execution_queue_outside_pool', queue=profile['id'],
                     cpus=','.join(map(str, sorted(outside)))))

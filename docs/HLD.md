@@ -1,6 +1,6 @@
 # CFD bot High-Level Design
 
-> #20 운영 구조에 #21 이름 있는 대기열·CPU quota·동적 매크로와 #22 `.process-core` CPU binding 수정을 반영했다.
+> #20 운영 구조에 #21 이름 있는 대기열·동적 매크로, #22 `.process-core` CPU binding, #24 코어 수 기반 자동 quota를 반영했다. [#24 설계](history/2026-10-07-derived-queue-quota.md).
 
 > #20 운영 반영, 2026-10-04 · [기준 버전·플랫폼/UC 지도](ARCHITECTURE.md) · [함수 수준 LLD](LLD.md) · [근거와 성능 실험](analysis/performance.md). 개선 제안은 8절에 별도로 표시한다.
 
@@ -81,7 +81,7 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 | 현재 실행 CASE | `/proc` → fresh ofps | stat/Monitor/실행 검사/web | 시점별 snapshot; DB 과거 상태가 실행 목록을 제한하지 않음 |
 | 저장된 snapshot | Monitor·TicketRunner._snapshot·CLI·standalone ofps의 `kv.snapshot` | 편집 버튼·fallback | 여러 프로세스가 overwrite, 요청 간 단일 관측 시점 보장 없음 |
 | 티켓 설정 | `tickets/*.json`, TicketService/publish_macro | catalog·UI·Scheduler | 폴더 flock + 파일별 replace; revision으로 사용자 편집 충돌 검사 |
-| 티켓 queue 표시 | sync_ticket_states, request, accept_submissions | UI | 저장과 제출 분리; mode(run/queue), queue id·CPU quota·dynamic 여부를 job snapshot에 보존 |
+| 티켓 queue 표시 | sync_ticket_states, request, accept_submissions | UI | 저장과 제출 분리; mode(run/queue), queue id·dynamic 여부를 보존하고 CPU 위치는 admission 때 배정 |
 | jobs | Store + Scheduler + worker | 모든 UI·Monitor | active case unique index, 상태 CAS, 즉시 요청 우선 + 이름 있는 대기열별 FIFO |
 | queue drain/fair turn | Scheduler의 SQLite kv | Scheduler | oversized 동적 head 하나의 donor drain claim, 실행 뒤 donor 대기열별 1회 우선권 |
 | 외부 observed | Monitor의 `kv.observed:<root>` | 상세·실행 guard·동기화 | 연속 소멸 확인 후 종료; scan 실패는 소멸로 간주하지 않음 |
@@ -114,7 +114,7 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 | UC-02 Telegram stat | polling → handle → snapshot 대기/실행/parse → catalog → compact text → sendMessage | 별도 Monitor가 상태 동기화 |
 | UC-09 편집 열기 | open/load/검증 → cached state DB 읽기 → 화면 | Monitor가 다음 snapshot 갱신 |
 | UC-12 저장 | 폼 변환·색인 중복 검사 → revision/guard → atomic JSON → 화면 | 저장만 수행; 실행·큐 등록은 UC-18 |
-| UC-18 공용 실행 | fresh scan → 51-core 용량·멤버·revision·queue quota 검사 → mode 제출 → 응답 | Monitor 접수 → 즉시 요청 또는 queue id별 FIFO → 서로 독립인 quota에서 병렬 worker |
+| UC-18 공용 실행 | fresh scan → 51-core 용량·멤버·revision·요구 코어 검사 → mode 제출 → 응답 | Monitor 접수 → queue별 head NP에서 quota/CPU 자동 배정 → 독립 병렬 worker |
 | UC-02 web refresh | fresh scan+sync → live logs/ETA → 티켓별 state → jobs/macros → JSON → DOM | 다음 visible/idle 10초 polling |
 | BG-02 종료 | 연속 missing → 최신 로그·control 판정 → frozen payload → outbox | Delivery retry와 메시지/첨부 전송 |
 
@@ -122,7 +122,7 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 
 매크로의 로그·Residual·요청 데이터 pattern은 각 child case root에 적용되는 공통 상대경로다. Web 파일 선택기는 하위 케이스 검색이 끝난 뒤 첫 child를 기준으로 경로를 만들며, child가 없는 새 매크로에서는 부모 디렉터리를 대신 사용하지 않고 선택을 막는다.
 
-대기열 수에는 고정 상한이 없다. 각 최상위 티켓의 `execution_queue.id`가 FIFO 단위를 정하고 `execution_queue.cpu_set`이 예약 quota를 정한다. 서로 다른 ID의 quota는 겹칠 수 없으며 매크로는 자기 전용 대기열을 사용한다. 고정 대기열 작업은 자기 quota 안에서만 실행된다. `dynamic_cores=true`인 매크로 자식이 quota보다 크면 미예약 CPU를 먼저 사용하고, 그래도 부족할 때 작은 quota 대기열부터 필요한 만큼 donor로 선택한다. donor의 실행 중 작업은 강제 종료하지 않고 자연 종료시키며 새 head admission만 잠근다. 동적 작업 종료 뒤 사용한 donor 대기열의 head를 각각 한 번 admission한 후 다음 oversized 동적 작업이 drain claim을 얻는다.
+대기열 수에는 고정 상한이 없다. 최상위 티켓에는 `execution_queue.id`만 저장하며 이 값이 FIFO 단위를 정한다. 일반 티켓과 고정 매크로는 FIFO head의 실제 NP와 선택적 monitor 1코어가 quota 크기이고, Scheduler가 admission 때 겹치지 않는 CPU 위치를 자동 배정한다. 케이스 설정을 쓰는 티켓은 `.process-core`/`Allrun`의 NP를 읽는다. `dynamic_cores=true`인 매크로는 고정 quota를 소유하지 않고 현재 child의 NP만큼 미예약 CPU를 먼저 확보한다. 부족하면 작은 고정 대기열부터 필요한 만큼 donor로 선택한다. donor의 실행 중 작업은 강제 종료하지 않고 자연 종료시키며 새 head admission만 잠근다. 동적 작업 종료 뒤 사용한 donor 대기열의 head를 각각 한 번 admission한 후 다음 동적 작업이 drain claim을 얻는다. 기존 `{id,cpu_set}` 티켓과 저장된 `queue_cpu_set` job은 호환 입력으로만 읽는다.
 
 #20 구현은 공용 TicketIndex의 이벤트 기반 변경 감지와 전체 경로 색인을 사용한다. Monitor는 현재 실행과 이전 실행·종료 확인 중 대상만 감시하고, jobs/observed 상태 변화는 SQLite journal로 해당 티켓과 부모에 반영한다. `/stat`의 fresh ofps 경로는 유지한다. 전체 검증은 cold rebuild, 명시적 check, 변경 추적 손실 때 수행한다. [함수·자료구조·복구 LLD](LLD.md#catalog)를 참조한다.
 

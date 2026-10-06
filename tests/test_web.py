@@ -68,6 +68,10 @@ class WebTests(Environment):
             self.assertEqual(status, 200)
             self.assertTrue(body)
             self.assertIn("frame-ancestors 'none'", headers['Content-Security-Policy'])
+            if path == '/app.js':
+                source = body.decode()
+                self.assertNotIn('queue_cpu_set', source)
+                self.assertIn('코어 수로 자동 결정', source)
         for platform in ('Windows', 'macOS'):
             status, body, headers = self.request(f'/downloads/CFD-Control-Room-{platform}.zip')
             self.assertEqual(status, 200)

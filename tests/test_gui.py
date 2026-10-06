@@ -82,6 +82,15 @@ class FormTests(unittest.TestCase):
         self.assertNotIn('cores', inherited)
         self.assertNotIn('command', inherited)
 
+    def test_named_queue_uses_only_id_and_drops_legacy_cpu_profile(self):
+        legacy = dict(TEMPLATE, case_dir=str(self.case),
+                      execution_queue={'id': 'macro-a', 'cpu_set': '0-3'})
+        fields = form_values(legacy, self.tickets)
+        self.assertEqual(fields['queue_id'], 'macro-a')
+        self.assertNotIn('queue_cpu_set', fields)
+        rebuilt = self.validate(fields)
+        self.assertEqual(rebuilt['execution_queue'], {'id': 'macro-a'})
+
     def test_monitoring_cpu_and_script_roundtrip(self):
         self.assertFalse(self.fields['monitoring_cpu'])
         self.assertEqual(self.fields['monitoring_command'], './Allmonitor')

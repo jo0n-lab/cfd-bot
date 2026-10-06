@@ -69,7 +69,6 @@ def form_values(data, tickets_dir):
         'macro_command': shlex.join(data.get('command', ['./Allrun'])),
         'macro_cross_socket': data.get('allow_cross_socket', False),
         'queue_id': data.get('execution_queue', {}).get('id', ''),
-        'queue_cpu_set': data.get('execution_queue', {}).get('cpu_set', ''),
         'dynamic_cores': data.get('dynamic_cores', False),
         'monitoring_cpu': data.get('monitoring', {}).get('allocate_cpu', False),
         'monitoring_command': shlex.join(data.get('monitoring', {}).get(
@@ -139,11 +138,8 @@ def form_document(values):
         data.pop('cases', None)
         data.pop('discovery', None)
     queue_id = values.get('queue_id', '').strip()
-    queue_cpu_set = values.get('queue_cpu_set', '').strip()
-    if bool(queue_id) != bool(queue_cpu_set):
-        raise ValueError(load_ui().text('scenarios.diagnostics.editor.queue_pair'))
     if queue_id:
-        data['execution_queue'] = {'id': queue_id, 'cpu_set': queue_cpu_set}
+        data['execution_queue'] = {'id': queue_id}
     else:
         data.pop('execution_queue', None)
     data['dynamic_cores'] = bool(values.get('dynamic_cores', False)) if data['task_type'] == 'macro' else False

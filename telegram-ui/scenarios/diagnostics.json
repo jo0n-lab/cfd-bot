@@ -55,7 +55,7 @@
     "max_files_limit": "최대 파일 수는 10 이하로 입력하세요.",
     "cores": "코어 수",
     "member_cores": "하위 케이스 코어 수",
-    "queue_pair": "대기열 이름과 예약 CPU 범위를 함께 입력하세요.",
+    "queue_pair": "기존 대기열 CPU 설정이 올바르지 않습니다. 티켓을 다시 저장해 자동 quota 형식으로 전환하세요.",
     "queue_same_id": "대기열 {queue}의 예약 CPU가 기존 설정({detail})과 다릅니다.",
     "queue_macro_shared": "매크로 전용 대기열 {queue}는 다른 티켓({detail})과 공유할 수 없습니다.",
     "queue_overlap": "대기열 {queue}와 CPU {detail}이 겹칩니다. 대기열 quota는 서로 겹칠 수 없습니다.",

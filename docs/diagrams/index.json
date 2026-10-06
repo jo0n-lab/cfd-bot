@@ -473,7 +473,7 @@
   },
   {
     "key": "UC-17-tg",
-    "title": "실행·queue quota·동적 macro 설정",
+    "title": "실행·queue 이름·동적 macro 설정",
     "platform": "Telegram",
     "trigger": "execsource / cpupolicy / toggle / field / macrocores",
     "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
@@ -481,7 +481,7 @@
   },
   {
     "key": "UC-17-gui",
-    "title": "실행·queue quota·동적 macro 설정",
+    "title": "실행·queue 이름·동적 macro 설정",
     "platform": "cfd-ticket-gui",
     "trigger": "Tk event → update_execution_visibility",
     "outcome": "Tk status / widget / dialog 반영",
@@ -489,11 +489,11 @@
   },
   {
     "key": "UC-17-web",
-    "title": "실행·queue quota·동적 macro 설정",
+    "title": "실행·queue 이름·동적 macro 설정",
     "platform": "web",
     "trigger": "input/change → resources 탭",
-    "outcome": "queue profile·dynamic·행별 cores를 draft에 반영 후 저장 D-11; child는 부모에서 수정",
-    "error": "공용 TicketService가 queue 중복·quota·macro 전용 조건 검증"
+    "outcome": "queue id·dynamic·행별 cores를 draft에 반영 후 저장 D-11; quota는 NP에서 파생; child는 부모에서 수정",
+    "error": "공용 TicketService가 queue 이름 중복·macro 전용 조건 검증"
   },
   {
     "key": "UC-18-tg",
@@ -721,11 +721,11 @@
   },
   {
     "key": "BG-04",
-    "title": "queue quota·동적 borrow admission",
+    "title": "NP 기반 quota·동적 borrow admission",
     "platform": "Monitor thread",
     "trigger": "Scheduler.tick(observed)",
-    "outcome": "서로 다른 queue는 독립 병렬; oversized 동적 head는 donor 자연 종료 뒤 시작하고 종료 후 donor head에 1회 우선권",
-    "error": "환경/CPU 실패 queued 유지; fixed quota 초과는 안내; worker spawn OSError → failed + terminal_event"
+    "outcome": "일반 head NP가 quota; 동적 head는 child NP만큼 확보; 서로 다른 queue는 겹치지 않는 CPU에서 병렬 실행",
+    "error": "환경/CPU 실패 queued 유지; 전체 관리 용량 초과는 대기; worker spawn OSError → failed + terminal_event"
   },
   {
     "key": "BG-05",

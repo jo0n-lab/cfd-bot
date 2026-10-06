@@ -181,13 +181,15 @@ class Store:
             raise ValueError(load_ui(case.get('_ui_dir')).text('scenarios.diagnostics.storage.read_only'))
         profile = queue_profile(case)
         queue_id = queue_id or (profile['id'] if profile else None)
-        queue_cpu_set = queue_cpu_set or (profile['cpu_set'] if profile else None)
+        queue_cpu_set = queue_cpu_set or (profile.get('cpu_set') if profile else None)
         job = dict(id=uuid.uuid4().hex[:12], case=case, case_root=case['_root'], status='queued',
                    created=time.time(), reason='', telemetry={}, priority=priority,
                    queue_lane=queue_lane,
                    dynamic_cores=bool(case.get('dynamic_cores') if dynamic_cores is None else dynamic_cores))
         if queue_id:
-            job.update(queue_id=queue_id, queue_cpu_set=queue_cpu_set)
+            job['queue_id'] = queue_id
+            if queue_cpu_set:
+                job['queue_cpu_set'] = queue_cpu_set
         try:
             with self.connect() as db:
                 db.execute('BEGIN IMMEDIATE')
@@ -225,7 +227,7 @@ class Store:
                             'scenarios.diagnostics.storage.missing_command', name=case['name']))
                     profile = queue_profile(case)
                     qid = queue_id or (profile['id'] if profile else None)
-                    qcpus = queue_cpu_set or (profile['cpu_set'] if profile else None)
+                    qcpus = queue_cpu_set or (profile.get('cpu_set') if profile else None)
                     job = dict(id=uuid.uuid4().hex[:12], case=case, case_root=case['_root'],
                                status='queued', created=time.time(), reason='', telemetry={},
                                batch=request, batch_index=index, priority=priority,
@@ -233,7 +235,9 @@ class Store:
                                dynamic_cores=bool(case.get('dynamic_cores')
                                                   if dynamic_cores is None else dynamic_cores))
                     if qid:
-                        job.update(queue_id=qid, queue_cpu_set=qcpus)
+                        job['queue_id'] = qid
+                        if qcpus:
+                            job['queue_cpu_set'] = qcpus
                     db.execute('INSERT INTO jobs VALUES (?,?,?,?,?)',
                                (job['id'], job['case_root'], job['status'], job['created'], json.dumps(job)))
                     db.execute('INSERT INTO kv VALUES (?,?)', (key, json.dumps(job['id'])))

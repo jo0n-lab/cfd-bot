@@ -5,7 +5,7 @@ import time
 import uuid
 
 from .config import load_case, read_json
-from .cpu_allocation import capacity_status, managed_cpus
+from .cpu_allocation import capacity_status
 from .execution import execution_case
 from .processes import snapshot
 from .storage import LIVE
@@ -62,30 +62,15 @@ class TicketRunner:
                 capacity=status['capacity'], required=status['required_cores'])
         queue = members[0].get('execution_queue') if members else None
         if queue:
-            from .config import cpu_set
-            quota = len(cpu_set(queue['cpu_set']))
             largest = max(member['cores'] + int(bool(member.get('monitoring', {}).get('allocate_cpu')))
                           for member in resources)
-            status.update(queue_id=queue['id'], queue_cpu_set=queue['cpu_set'],
-                          queue_quota=quota, queue_required=largest, queue_possible=True)
-            outside = cpu_set(queue['cpu_set']) - managed_cpus(self.config)
-            if outside:
-                status['queue_possible'] = False
+            dynamic = any(member.get('dynamic_cores') for member in members)
+            status.update(queue_id=queue['id'], queue_quota=largest,
+                          queue_required=largest, queue_dynamic=dynamic,
+                          queue_possible=largest <= status['capacity'])
+            if largest > status['capacity']:
                 status['availability_message'] += '\n' + self.ui.text(
-                    'scenarios.runtime.ticket.queue_outside_pool', queue=queue['id'],
-                    cpus=','.join(map(str, sorted(outside))))
-            if largest > quota:
-                dynamic = any(member.get('dynamic_cores') for member in members)
-                if not dynamic:
-                    status['queue_possible'] = False
-                    key = 'scenarios.runtime.ticket.dynamic_suggest'
-                elif largest > status['capacity']:
-                    status['queue_possible'] = False
-                    key = 'scenarios.runtime.ticket.dynamic_impossible'
-                else:
-                    key = 'scenarios.runtime.ticket.dynamic_ready'
-                status['availability_message'] += '\n' + self.ui.text(
-                    key, required=largest, quota=quota, queue=queue['id'],
+                    'scenarios.runtime.ticket.dynamic_impossible', required=largest,
                     capacity=status['capacity'])
         return status
 
@@ -201,7 +186,7 @@ class TicketRunner:
             queue_data = dict(state='waiting', submit=True, request_id=request_id,
                               mode=mode, updated_at=time.time())
             if profile:
-                queue_data.update(id=profile['id'], cpu_set=profile['cpu_set'])
+                queue_data['id'] = profile['id']
             else:
                 queue_data['lane'] = lane
             data['queue'] = queue_data

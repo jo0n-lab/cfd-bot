@@ -57,3 +57,11 @@ D-01과 Telegram stat에 child×macro row 중첩 loop·Path.resolve의 파일 �
 전체 unittest 305개가 통과했고 Tk display 1개만 skip됐다. `bot.json check`는 운영 티켓 982개를 통과했다. UI JSON parse, JavaScript syntax, compileall, `git diff --check`가 통과했다. 문서 검사는 Markdown 13개, 로컬 링크 1,991개, 소스 fingerprint 36개, SVG 104개의 XML parse와 PNG 실제 렌더링을 확인했으며 오류와 텍스트 경계 초과가 없었다.
 
 bot·web user service를 2026-10-06 23:38:05 KST에 재시작했고 둘 다 active 상태다. 기존 detached worker와 40-rank OpenFOAM 계산은 같은 PID로 유지됐다. web health는 `cfd-control-room` version 1을 반환했고, 재시작 뒤 `monitor_error`, `queue_drain_claim`, `queue_fair_turns`는 각각 `None`, `None`, 빈 map으로 확인됐다.
+
+## #24 NP 기반 자동 quota 검증
+
+2026-10-07 재설계는 티켓의 예약 CPU 입력을 제거하고 일반 head의 실제 NP, 동적 macro의 현재 child NP에서 quota를 산정한다. 일반 queue의 자동 CPU profile, 서로 다른 queue의 병렬 시작, 같은 queue의 작업별 profile 크기 재산정, 케이스 `.process-core`/`Allrun` NP 상속, 동적 donor 선택, legacy profile과 lane 호환을 `test_named_queues.py`와 세 UI adapter 테스트로 확인했다.
+
+전체 unittest 309개가 통과했고 Tk display 1개만 skip됐다. `bot.json check`는 운영 티켓 982개를 통과했다. compileall, Telegram UI JSON parse, JavaScript syntax, `git diff --check`도 통과했다. 문서 검사는 Markdown 13개, 로컬 링크 1,994개, source fingerprint 36개, SVG 104개의 XML parse와 PNG 실제 렌더링을 확인했으며 오류와 텍스트 경계 초과가 없었다. Playwright 모듈이 없어 브라우저 E2E는 실행하지 못했지만 HTTP Web adapter 테스트는 전체 unittest에 포함했다.
+
+bot·web user service를 재시작했고 둘 다 active 상태이며 web `/api/health`가 `cfd-control-room` version 1을 반환했다. 재시작 직전 fresh `ofps` snapshot에는 활성 계산이 없었다.

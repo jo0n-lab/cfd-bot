@@ -1,6 +1,6 @@
 # CFD bot 아키텍처 — 유즈케이스와 플랫폼 지도
 
-> #20 공용 티켓 색인·증분 감시와 #21 이름 있는 대기열·CPU quota·동적 매크로를 반영한다. [#21 설계·검증 범위](history/2026-10-06-capacity-aware-parallel-execution.md) · [GitHub #21](https://github.com/jo0n-lab/cfd-bot/issues/21).
+> #20 공용 티켓 색인·증분 감시, #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota를 반영한다. [#24 설계·검증 범위](history/2026-10-07-derived-queue-quota.md) · [GitHub #24](https://github.com/jo0n-lab/cfd-bot/issues/24).
 
 ## 1. 문서 탐색
 
@@ -43,7 +43,7 @@
 | UC-14 개별/다중 삭제 | delete/breview → 확인 | delete → 확인 | delete-selected → preview → 확인 | N/A | [삭제](LLD.md#delete) |
 | UC-15 매크로 하위 검색·포함/제외 필터 | scan worker·stopscan | scan_cases worker | discover HTTP | N/A | [검색](LLD.md#discover) |
 | UC-16 매크로 구성원 선택·순서 | 검색 후 행 제거; 순서 이동 UI 없음 | 행 제거; 순서 이동 UI 없음 | 행 제거·위/아래 이동 | N/A | [구성원](LLD.md#members) |
-| UC-17 실행 출처·NP·CPU·모니터·queue quota 설정 | queue 편집 화면·동적 macro 자식별 NP | 실행 설정 폼·동적 macro 자식별 NP | resources 폼·동적 macro 자식별 NP | 파일 설정 읽기만 | [실행 설정](LLD.md#execution) |
+| UC-17 실행 출처·NP·CPU·모니터·queue 이름 설정 | queue 편집 화면·동적 macro 자식별 NP | 실행 설정 폼·동적 macro 자식별 NP | resources 폼·동적 macro 자식별 NP | 파일 설정 읽기만 | [실행 설정](LLD.md#execution) |
 | UC-18 즉시 실행·이름 있는 대기열 등록 | runstate/runreview/runyes | 즉시 실행·저장된 queue profile 등록 | requestRun(mode) → /api/run | enqueue: 직접 DB 등록 | [실행](LLD.md#run) |
 | UC-19 큐·이력·매크로 진행 조회 | `/queue`, queue; 결과 버튼 | 큐 창·새로고침·결과 목록 | queue/history·live_macros | queue, status --json | [큐](LLD.md#queue) |
 | UC-20 자동 시작 pause/resume | pause/resume | **N/A: 버튼 없음** | pause-queue/resume-queue | pause/resume | [큐](LLD.md#queue) |
@@ -55,7 +55,7 @@
 | UC-26 외부 PC 접속·배포 파일 받기 | N/A | SSH X11은 배포 환경 기능 | client-downloads ZIP·SSH 전달 후 웹 | Windows CMD/PS, macOS app, cfd-web-tunnel | [R](lld/runtime.md#launcher) |
 | UC-27 운영·검증·감시/서비스 기동 | 사용자 명령 N/A | CLI gui로 기동 | health endpoint·CLI web 기동 | check/identify/monitor/serve/_worker | [R](lld/runtime.md#cli) |
 
-세 UI의 공용 티켓 필드에는 이름, case_dir, task_type/role, end_time, watcher 로그·실패 정규식·오류 파일, 알림 events, Residual, exports, 전/후처리, 실행 출처·CPU·monitoring, `execution_queue` 이름·CPU quota, `dynamic_cores`, 매크로 필터·자식별 cores가 포함된다. 각 필드의 코드 변환은 [LLD 필드 계약](LLD.md#fields)에 정리했다.
+세 UI의 공용 티켓 필드에는 이름, case_dir, task_type/role, end_time, watcher 로그·실패 정규식·오류 파일, 알림 events, Residual, exports, 전/후처리, 실행 출처·CPU·monitoring, `execution_queue.id`, `dynamic_cores`, 매크로 필터·자식별 cores가 포함된다. quota는 입력 필드가 아니라 일반 head의 실제 NP 또는 동적 child NP에서 산정된다. 각 필드의 코드 변환은 [LLD 필드 계약](LLD.md#fields)에 정리했다.
 
 ## 3. 백그라운드 유즈케이스
 

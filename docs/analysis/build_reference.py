@@ -178,7 +178,7 @@ Windows `Start CFD.cmd → cfd-client.ps1 → Get-SshAliases`와 macOS `CFDContr
 
 Monitor.tick은 ticket_index → fresh snapshot → accept_submissions → recover → managed 관측 보강 → 현재 roots ∪ 영속 tracked roots 감시 → Scheduler.tick → 증분 sync_ticket_states 순서다. 등록 전체 CASE를 observe하지 않는다. Scheduler.tick 내부도 recover를 호출한다. Monitor 한 주기에서 recover가 두 번 실행되는 점은 현행 코드 그대로다.
 
-Scheduler는 즉시 실행 요청을 먼저 보고 개수 제한 없는 `queue_id`별 FIFO 선두를 각각 검토한다. 각 queue의 `cpu_set` quota는 겹치지 않으며 서로 독립적으로 병렬 실행한다. 동적 macro의 oversized head는 미예약 CPU를 먼저 쓰고 부족분은 작은 quota donor부터 drain한다. donor 작업은 자연 종료하고, 동적 작업 뒤 donor별 FIFO head에 한 번씩 우선권을 준다. automatic/monitor opt-in이면 추가 fresh snapshot, solver CPU check, monitor면 추가 CPU check를 수행한다. check_cpus는 SNAPSHOT_LOCK을 사용하지 않는다. worker는 fresh scan 자체를 주기적으로 하지 않고 로그를 0.5초 간격으로 읽는다.
+Scheduler는 즉시 실행 요청을 먼저 보고 개수 제한 없는 `queue_id`별 FIFO 선두를 각각 검토한다. 일반 head의 실제 NP와 선택적 monitor가 quota 크기이며 Scheduler가 겹치지 않는 CPU 위치를 자동 배정한다. 동적 macro head는 현재 child NP만큼 미예약 CPU를 먼저 쓰고 부족분은 작은 quota donor부터 drain한다. donor 작업은 자연 종료하고, 동적 작업 뒤 donor별 FIFO head에 한 번씩 우선권을 준다. automatic/monitor opt-in이면 추가 fresh snapshot, solver CPU check, monitor면 추가 CPU check를 수행한다. check_cpus는 SNAPSHOT_LOCK을 사용하지 않는다. worker는 fresh scan 자체를 주기적으로 하지 않고 로그를 0.5초 간격으로 읽는다.
 
 worker의 .process-core 반영 → 전처리 → 로그 cursor 수집 → solver (+ opt-in monitor) → 최종 log drain → decide → 성공 시 후처리 → artifact freeze → event payload 저장 → terminal state 저장 순서를 지킨다. monitor 종료는 최대 30초 기다린 뒤 정리하고 monitor/postprocess 오류는 solver verdict와 별도 기록한다. terminal state 전에 파일을 freeze한다. worker는 종료 payload를 kv에 저장하며 이후 Scheduler.terminal_event가 outbox에 넣는다.
 
@@ -218,7 +218,7 @@ for page in intro:
             'D-01':'정규화된 전체 경로의 공용 색인을 사용한다. 최초·check·변경 감지 손실은 전역 검증하고, 이후 변경 JSON만 재검증한다. macro membership은 set 조회다. [반복 횟수·예외·개선 조건](../LLD.md#catalog).',
             'D-13':'queued 전체의 history/ETA를 준비하고 본문도 전부 생성한다. 취소 버튼 20개 제한은 본문 제한이 아니다. [연결 횟수와 35개 메시지 분할 근거](../analysis/live-bottlenecks.md).',
             'BG-02':'감시 대상은 현재 CASE와 이전 실행·종료 확인 중 CASE다. DB 변화는 ticket_changes journal을 통해 대상 티켓과 부모만 반영한다. run_once가 끝난 뒤 5초 대기하므로 5초 고정 주기가 아니다. [호출별 반복 표](../LLD.md#catalog).',
-            'BG-04':'`queue_heads`가 queue id별 FIFO 선두를 고르고 `borrowing_plan`이 quota와 donor를 정한다. drain claim은 하나이며 동적 작업 뒤 donor별 다음 head에 1회 우선권을 준다.',
+            'BG-04':'`queue_heads`가 queue id별 FIFO 선두를 고르고 `_assign_queue_profiles`가 일반 head NP에서 quota와 CPU 위치를 정한다. `borrowing_plan`은 동적 child NP와 donor를 계산한다. drain claim은 하나이며 동적 작업 뒤 donor별 다음 head에 1회 우선권을 준다.',
             'UC-02-tg':'ofps 실행 시간 제한 45초는 뒤의 catalog/membership 시간 제한이 아니다. 현재 표본은 scan 약 1.06초, membership만 16.56~19.68초. [측정 범위](../analysis/live-bottlenecks.md).',
             'UC-19-tg':'전체 큐 본문은 별도 페이지 제한 없이 순차 sendMessage한다. 마지막 조각에만 keyboard가 붙는다. [큐 내부 상세](../diagrams/D-13.svg).',
         }

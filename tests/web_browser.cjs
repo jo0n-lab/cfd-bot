@@ -99,6 +99,8 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     await page.locator('#f-name').waitFor();
     await page.locator('#f-name').fill('Browser edited');
     await page.locator('[data-tab="resources"]').click();
+    assert.equal(await page.locator('#f-queue_cpu_set').count(),0);
+    assert.match(await page.locator('.editor-form').textContent(),/코어 수로 자동 결정/);
     await page.locator('#execution-source').selectOption('ticket');
     await page.locator('#f-macro_cores').fill('4');
     await page.locator('#f-macro_command').fill('./Allrun --foreground');

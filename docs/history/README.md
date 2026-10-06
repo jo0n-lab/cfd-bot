@@ -4,6 +4,7 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-10-07 | [케이스 코어 수에서 대기열 quota 파생](2026-10-07-derived-queue-quota.md) | [#24](https://github.com/jo0n-lab/cfd-bot/issues/24) |
 | 2026-10-07 | [매크로 파일 선택기의 부모 경로 fallback 차단](2026-10-07-macro-export-relative-path.md) | [#23](https://github.com/jo0n-lab/cfd-bot/issues/23) |
 | 2026-10-06 | [이름 있는 독립 대기열과 동적 코어 매크로](2026-10-06-capacity-aware-parallel-execution.md) | [#21](https://github.com/jo0n-lab/cfd-bot/issues/21), [#22](https://github.com/jo0n-lab/cfd-bot/issues/22) |
 | 2026-10-04 | [티켓 색인·증분 감시로 전역 재검증 제거](2026-10-04-ticket-index-incremental-monitor.md) | [#20](https://github.com/jo0n-lab/cfd-bot/issues/20) |

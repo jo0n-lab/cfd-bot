@@ -17,6 +17,6 @@ parts=['<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="730" viewBo
 for i,(title,sub,url) in enumerate(items):
     x=50+(i%4)*385;y=140+(i//4)*175
     parts.append(f'<a href="{url}"><rect x="{x}" y="{y}" width="355" height="135" rx="10" fill="white" stroke="#86efac"/><rect x="{x}" y="{y}" width="355" height="44" rx="10" fill="#16a34a"/><text x="{x+18}" y="{y+30}" fill="white" font-size="20" font-weight="700">{html.escape(title)}</text><text x="{x+18}" y="{y+83}" font-size="17">{html.escape(sub)}</text><text x="{x+18}" y="{y+112}" font-size="14" fill="#047857">요청 → 실제 함수 → 반환</text></a>')
-parts.append('<text x="50" y="704" font-size="15" fill="#64748b">#21 queue quota·동적 macro 반영 · 2026-10-06 · 미지원 플랫폼 기능은 ARCHITECTURE 표에서 N/A로 구분</text></g></svg>')
+parts.append('<text x="50" y="704" font-size="15" fill="#64748b">#24 NP 기반 자동 quota·동적 macro 반영 · 2026-10-07 · 미지원 플랫폼 기능은 ARCHITECTURE 표에서 N/A로 구분</text></g></svg>')
 (docs/'all-feature-flows.svg').write_text(''.join(parts)+'\n')
 print('Rendered 5 overview / compatibility SVGs')

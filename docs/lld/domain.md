@@ -55,7 +55,7 @@
 **정상 결과:** 저장된 document; 실행 제출은 submit 호출 인자로만 결정.
 **실패/취소:** revision/중복/실행 설정 guard 실패 → ValueError; 파일 실패 → OSError.
 
-**코드 연결:** [editor.TicketService.save](../../cfd_bot/editor.py#L353), [tickets.ticket_lock](../../cfd_bot/tickets.py#L29), [editor.TicketService.revision](../../cfd_bot/editor.py#L279), [editor.TicketService.validate](../../cfd_bot/editor.py#L329), [tickets.publish_macro](../../cfd_bot/tickets.py#L198), [tickets.atomic_json](../../cfd_bot/tickets.py#L47).
+**코드 연결:** [editor.TicketService.save](../../cfd_bot/editor.py#L349), [tickets.ticket_lock](../../cfd_bot/tickets.py#L29), [editor.TicketService.revision](../../cfd_bot/editor.py#L275), [editor.TicketService.validate](../../cfd_bot/editor.py#L325), [tickets.publish_macro](../../cfd_bot/tickets.py#L198), [tickets.atomic_json](../../cfd_bot/tickets.py#L47).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -72,7 +72,7 @@
 **정상 결과:** JSON 제출 기록 완료; Monitor.accept_submissions가 나중에 DB 큐 접수.
 **실패/취소:** scan/revision/running/command/member 오류 → ValueError; 쓰기 실패 → rollback.
 
-**코드 연결:** [ticket_run.TicketRunner.request](../../cfd_bot/ticket_run.py#L163), [ticket_run.TicketRunner._snapshot](../../cfd_bot/ticket_run.py#L21), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [storage.Store.put](../../cfd_bot/storage.py#L127), [tickets.ticket_lock](../../cfd_bot/tickets.py#L29), [ticket_run.TicketRunner._members](../../cfd_bot/ticket_run.py#L29), [config.load_case](../../cfd_bot/config.py#L114), [editor.TicketService.revision](../../cfd_bot/editor.py#L279), [ticket_run.TicketRunner._state](../../cfd_bot/ticket_run.py#L92), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [storage.Store.get](../../cfd_bot/storage.py#L106), [tickets.atomic_json](../../cfd_bot/tickets.py#L47).
+**코드 연결:** [ticket_run.TicketRunner.request](../../cfd_bot/ticket_run.py#L148), [ticket_run.TicketRunner._snapshot](../../cfd_bot/ticket_run.py#L21), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [storage.Store.put](../../cfd_bot/storage.py#L127), [tickets.ticket_lock](../../cfd_bot/tickets.py#L29), [ticket_run.TicketRunner._members](../../cfd_bot/ticket_run.py#L29), [config.load_case](../../cfd_bot/config.py#L114), [editor.TicketService.revision](../../cfd_bot/editor.py#L275), [ticket_run.TicketRunner._state](../../cfd_bot/ticket_run.py#L77), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [storage.Store.get](../../cfd_bot/storage.py#L106), [tickets.atomic_json](../../cfd_bot/tickets.py#L47).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -106,7 +106,7 @@
 **정상 결과:** 티켓 JSON만 삭제; 케이스/결과 유지.
 **실패/취소:** busy macro/child/running/queued/revision 충돌은 쓰기 전 거절; OSError rollback.
 
-**코드 연결:** [editor.TicketService.delete_many](../../cfd_bot/editor.py#L458), [tickets.ticket_lock](../../cfd_bot/tickets.py#L29), [editor.TicketService._deletion_plan](../../cfd_bot/editor.py#L417).
+**코드 연결:** [editor.TicketService.delete_many](../../cfd_bot/editor.py#L454), [tickets.ticket_lock](../../cfd_bot/tickets.py#L29), [editor.TicketService._deletion_plan](../../cfd_bot/editor.py#L413).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -157,7 +157,7 @@
 **정상 결과:** 시작되었거나 사라진 ID는 unavailable; solver kill 없음.
 **실패/취소:** 빈/잘못된 선택 ValueError; SQLite 실패 caller로 전달.
 
-**코드 연결:** [queue_control.cancel_queued_jobs](../../cfd_bot/queue_control.py#L6), [storage.Store.cancel_queued](../../cfd_bot/storage.py#L293).
+**코드 연결:** [queue_control.cancel_queued_jobs](../../cfd_bot/queue_control.py#L6), [storage.Store.cancel_queued](../../cfd_bot/storage.py#L297).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -208,7 +208,7 @@
 **정상 결과:** 정규화할 JSON 원문; 저장은 수행하지 않음.
 **실패/취소:** ConfigError/ValueError/OSError; validation .tmp는 finally 삭제.
 
-**코드 연결:** [editor.TicketService.validate](../../cfd_bot/editor.py#L329), [editor.form_document](../../cfd_bot/editor.py#L109), [editor.validate_document](../../cfd_bot/editor.py#L225), [config.load_case](../../cfd_bot/config.py#L114), [catalog.folder_index](../../cfd_bot/catalog.py#L285).
+**코드 연결:** [editor.TicketService.validate](../../cfd_bot/editor.py#L325), [editor.form_document](../../cfd_bot/editor.py#L108), [editor.validate_document](../../cfd_bot/editor.py#L221), [config.load_case](../../cfd_bot/config.py#L114), [catalog.folder_index](../../cfd_bot/catalog.py#L285).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -244,7 +244,7 @@
 
 **내부 로직·비용:** queued 전체의 history/ETA를 준비하고 본문도 전부 생성한다. 취소 버튼 20개 제한은 본문 제한이 아니다. [연결 횟수와 35개 메시지 분할 근거](../analysis/live-bottlenecks.md).
 
-**코드 연결:** [report.queue_text](../../cfd_bot/report.py#L127), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [storage.Store.runtime_history](../../cfd_bot/storage.py#L260), [logs.estimate](../../cfd_bot/logs.py#L226), [storage.Store.connect](../../cfd_bot/storage.py#L97), [storage.Store.get](../../cfd_bot/storage.py#L106).
+**코드 연결:** [report.queue_text](../../cfd_bot/report.py#L127), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [storage.Store.runtime_history](../../cfd_bot/storage.py#L264), [logs.estimate](../../cfd_bot/logs.py#L226), [storage.Store.connect](../../cfd_bot/storage.py#L97), [storage.Store.get](../../cfd_bot/storage.py#L106).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -261,7 +261,7 @@
 **정상 결과:** macro별 요약 list; 19:05 queue dispatcher 표본에서 이 함수 7.874초.
 **실패/취소:** 실행 중 로그의 OSError/ValueError는 _remaining이 무시; 나머지는 caller 오류 처리.
 
-**코드 연결:** [run_views.running_macro_views](../../cfd_bot/run_views.py#L62), [run_views._remaining](../../cfd_bot/run_views.py#L43), [logs.recent_case_log](../../cfd_bot/logs.py#L216), [logs.estimate](../../cfd_bot/logs.py#L226), [storage.Store.runtime_history](../../cfd_bot/storage.py#L260).
+**코드 연결:** [run_views.running_macro_views](../../cfd_bot/run_views.py#L62), [run_views._remaining](../../cfd_bot/run_views.py#L43), [logs.recent_case_log](../../cfd_bot/logs.py#L216), [logs.estimate](../../cfd_bot/logs.py#L226), [storage.Store.runtime_history](../../cfd_bot/storage.py#L264).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 

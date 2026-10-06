@@ -79,7 +79,7 @@ class Scheduler:
         if claim:
             return claim
         for job in sorted(candidates, key=lambda item: item['created']):
-            if job.get('priority') == 'run' or not job.get('queue_cpu_set'):
+            if job.get('priority') == 'run' or not job.get('dynamic_cores'):
                 continue
             plan = borrowing_plan(job, profiles, pool)
             if not plan or not plan['oversized']:
@@ -91,6 +91,63 @@ class Scheduler:
             self.store.put('queue_drain_claim', claim)
             return claim
         return None
+
+    def _assign_queue_profiles(self, candidates, profiles, pool, observed, active):
+        """Assign fixed queue CPU positions from the head job's core count.
+
+        New tickets store only a queue id.  A profile exists while queued or
+        active work needs it and is recreated from the next head when idle.
+        Legacy jobs that already carry queue_cpu_set keep their old contract.
+        """
+        blocked = set()
+        for job in sorted(candidates, key=lambda item: item['created']):
+            if (job.get('priority') == 'run' or not job.get('queue_id')
+                    or job.get('dynamic_cores')
+                    or job.get('queue_cpu_set')):
+                continue
+            qid = job_queue_id(job)
+            try:
+                case = execution_case(job['case'])
+                required = int(case['cores']) + int(
+                    bool(case.get('monitoring', {}).get('allocate_cpu')))
+            except (OSError, ValueError) as exc:
+                blocked.add(job['id'])
+                self.store.update_job(job['id'], expected=('queued',), reason=str(exc))
+                continue
+            assigned = profiles.get(qid)
+            if any(active_job.get('priority') != 'run'
+                   and job_queue_id(active_job) == qid for active_job in active):
+                # Do not copy the previous head's profile into the next job.
+                # Once the active head finishes, this job derives a fresh
+                # profile whose size matches its own NP.
+                blocked.add(job['id'])
+                continue
+            if assigned is not None and required > len(assigned):
+                blocked.add(job['id'])
+                self.store.update_job(
+                    job['id'], expected=('queued',),
+                    reason=self.ui.text('scenarios.jobs.queue_resize_waiting',
+                                        cores=required, current=len(assigned)))
+                continue
+            if assigned is None:
+                reserved = set().union(*profiles.values()) if profiles else set()
+                try:
+                    allocation = allocate_cpus(required, observed, active,
+                                               allowed=set(pool) - reserved)
+                    assigned = cpu_set(allocation['cpu_set'])
+                except (OSError, ValueError, RuntimeError) as exc:
+                    blocked.add(job['id'])
+                    self.store.update_job(job['id'], expected=('queued',), reason=str(exc))
+                    continue
+                profiles[qid] = assigned
+            value = format_cpus(assigned)
+            updated = self.store.update_job(job['id'], expected=('queued',),
+                                            queue_cpu_set=value, reason='')
+            if updated is None:
+                blocked.add(job['id'])
+                continue
+            job['queue_cpu_set'] = value
+        return profiles, blocked
 
     def recover(self):
         self.children = [p for p in self.children if p.poll() is None]
@@ -157,6 +214,8 @@ class Scheduler:
         # Job snapshots cover accepted work if the source ticket was renamed.
         profiles = registered_profiles((*all_queued, *active),
                                        ticket_index(self.config).queue_profiles())
+        profiles, profile_waiting = self._assign_queue_profiles(
+            queued, profiles, pool, observed, active)
         claim, fairness = self._borrow_state(all_queued, active)
         claim = self._claim_dynamic(queued, profiles, pool, claim, fairness)
         for job in queued:
@@ -164,6 +223,8 @@ class Scheduler:
                 return
             case = job['case']
             qid = job_queue_id(job)
+            if job['id'] in profile_waiting:
+                continue
             if (job.get('priority') != 'run'
                     and any(active_job.get('priority') != 'run'
                             and job_queue_id(active_job) == qid for active_job in active)):
@@ -224,7 +285,8 @@ class Scheduler:
             monitor_requested = bool(case.get('monitoring', {}).get('allocate_cpu'))
             allowed = pool
             borrowed = []
-            if job.get('priority') != 'run' and job.get('queue_cpu_set'):
+            if (job.get('priority') != 'run'
+                    and (job.get('queue_cpu_set') or job.get('dynamic_cores'))):
                 # The ticket may derive NP from the live case at dispatch
                 # time, so plan with the resolved execution contract.
                 plan = borrowing_plan(dict(job, case=case), profiles, pool)
@@ -232,7 +294,8 @@ class Scheduler:
                     self.store.update_job(job['id'], expected=('queued',),
                                           reason=self.ui.text('scenarios.jobs.queue_quota_insufficient'))
                     continue
-                if plan['oversized']:
+                claimed_dynamic = bool(claim and claim.get('job_id') == job['id'])
+                if plan['oversized'] or claimed_dynamic:
                     if not claim or claim.get('job_id') != job['id']:
                         continue
                     borrowed = list(claim.get('donors', plan['donors']))
@@ -241,8 +304,7 @@ class Scheduler:
                                               reason=self.ui.text('scenarios.jobs.queue_draining',
                                                                   queues=', '.join(borrowed)))
                         continue
-                allowed = (cpu_set(claim['allowed']) if plan['oversized'] and claim
-                           and claim.get('job_id') == job['id'] else plan['allowed'])
+                allowed = cpu_set(claim['allowed']) if claimed_dynamic else plan['allowed']
                 automatic = True
                 case['cpu_policy'] = 'auto'
             if not automatic:

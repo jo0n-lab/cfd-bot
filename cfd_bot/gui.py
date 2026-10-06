@@ -143,13 +143,11 @@ class TicketEditor:
         self.execution_source = self.field(queue_tab, 2, 'execution_source', '실행 설정 방식',
                                           choices={'case': '케이스 설정 사용', 'ticket': '티켓에서 지정'})
         self.execution_source.bind('<<ComboboxSelected>>', lambda _event: self.update_execution_visibility())
-        self.queue_profile = ttk.LabelFrame(queue_tab, text='이름 있는 대기열 quota', padding=10)
+        self.queue_profile = ttk.LabelFrame(queue_tab, text='이름 있는 대기열', padding=10)
         self.queue_profile.grid(row=5, column=0, columnspan=3, sticky='ew', pady=10)
         self.queue_profile.columnconfigure(1, weight=1)
         self.field(self.queue_profile, 0, 'queue_id', '대기열 이름',
-                   hint='개수 제한 없음 · 같은 이름의 일반 티켓은 같은 quota를 공유합니다. 매크로는 전용 이름을 사용하세요.')
-        self.field(self.queue_profile, 1, 'queue_cpu_set', '예약 CPU',
-                   hint='다른 대기열과 겹치지 않는 CPU 범위. 예: 0-15 또는 21-28')
+                   hint='개수 제한 없음 · 매크로는 전용 이름을 사용합니다. quota는 실행할 케이스의 코어 수에서 자동 결정됩니다.')
         self.execution_note = ttk.Label(queue_tab, wraplength=650)
         self.execution_note.grid(row=6, column=0, columnspan=3, sticky='w', pady=8)
         self.common_execution = ttk.LabelFrame(queue_tab, text='실행 설정', padding=10)
@@ -162,7 +160,7 @@ class TicketEditor:
         policy.bind('<<ComboboxSelected>>', lambda _event: self.update_execution_visibility())
         self.field(self.common_execution, 2, 'macro_command', '실행 명령', hint='예: ./Allrun · 지정한 NP/CPU_SET을 실행 시 케이스에 적용합니다.')
         dynamic = self.check(self.common_execution, 3, 'dynamic_cores',
-                             '동적 코어 매크로 · 하위 케이스별 NP 지정 및 필요 시 다른 quota 대기')
+                             '동적 코어 매크로 · 실행할 하위 케이스의 NP만큼 quota 자동 확보')
         dynamic.configure(command=lambda: (self.render_case_rows(), self.update_execution_visibility()))
         self.manual_execution = ttk.LabelFrame(self.common_execution, text='고급 수동 배정', padding=8)
         self.manual_execution.grid(row=6, column=0, columnspan=3, sticky='ew', pady=8)

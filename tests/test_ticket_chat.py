@@ -629,6 +629,8 @@ class TicketChatTests(Environment):
         self.field('case_dir', str(self.case_root))
         self.click('queue')
         self.assertIn('케이스 설정 사용', self.panel()['text'])
+        self.assertIn('.process-core/Allrun의 NP에서 자동 결정', self.panel()['text'])
+        self.assertNotIn('queue_cpu_set', str(self.panel()['reply_markup']))
         self.click('execsource', 'ticket')
         self.field('macro_cores', '3')
         self.click('queue')
@@ -643,6 +645,7 @@ class TicketChatTests(Environment):
         self.assertEqual(saved['cpu_policy'], 'auto')
         self.click('queue')
         self.assertIn('NP: 3', self.panel()['text'])
+        self.assertIn('quota: NP 3에서 자동 결정', self.panel()['text'])
         self.click('card')
         # Only enqueue, no scheduler or solver is started.
         self.bot.ticket_ui.runner.request(filename)
