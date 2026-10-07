@@ -20,7 +20,8 @@ from cfd_bot.logs import (estimate, finish_log, read_log, recent_case_log,
 from cfd_bot.monitor import Monitor, observation
 from cfd_bot.outcomes import decide
 from cfd_bot.processes import DaemonLock, identity, parse_snapshot
-from cfd_bot.queue_control import cancel_queued_jobs
+from cfd_bot.queue_control import (cancel_queued_jobs, interrupt_process_groups,
+                                   interrupt_running_job)
 from cfd_bot.report import render_run
 from cfd_bot.storage import Store
 from cfd_bot.telegram import Telegram, TelegramError, chunks
@@ -317,6 +318,13 @@ class StoreTests(Environment):
         with self.assertRaisesRegex(ValueError, '하나 이상 선택'):
             cancel_queued_jobs(self.store, [])
 
+    def test_stopping_job_keeps_case_unique_reservation(self):
+        job = self.claim()
+        stopped = self.store.request_interruption(job['id'], 'stop requested')
+        self.assertEqual(stopped['status'], 'stopping')
+        with self.assertRaises(ValueError):
+            self.store.enqueue(self.case, request_key='replacement')
+
     def test_outbox_per_recipient_dedup_and_retry(self):
         self.store.event('done', [20, 30], dict(kind='text', text='done'))
         with self.store.connect() as db:
@@ -349,6 +357,84 @@ class StoreTests(Environment):
 
 
 class WorkerTests(Environment):
+    def test_running_worker_interruption_stops_child_and_wins_verdict(self):
+        self.case_data['command'] = [sys.executable, '-c', 'import time; time.sleep(30)']
+        self.write_case()
+        job = self.claim()
+        result = []
+        thread = threading.Thread(
+            target=lambda: result.append(worker(self.store.root, job['id'])), daemon=True)
+        thread.start()
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            running = self.store.job(job['id'])
+            if running.get('solver_pid'):
+                break
+            time.sleep(.02)
+        else:
+            self.fail('test solver did not start')
+        solver_pid = running['solver_pid']
+
+        requested = interrupt_running_job(self.store, job['id'])
+        self.assertIn(requested['status'], ('stopping', 'interrupted'))
+        thread.join(timeout=5)
+
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(result, [1])
+        finished = self.store.job(job['id'])
+        self.assertEqual(finished['status'], 'interrupted')
+        self.assertIn('사용자 요청', finished['reason'])
+        self.assertIsNone(identity(solver_pid))
+
+    def test_stale_process_identity_is_never_signalled(self):
+        job = dict(hook_pid=4242, hook_identity='old:identity')
+        with (patch('cfd_bot.queue_control.identity', return_value=None),
+              patch('cfd_bot.queue_control.os.killpg') as kill):
+            self.assertEqual(interrupt_process_groups(job), [])
+        kill.assert_not_called()
+
+    def test_interruption_between_solver_and_postprocess_is_not_overwritten(self):
+        marker = self.case_root / 'post-ran'
+        self.case_data['postprocess'] = [dict(
+            command=[sys.executable, '-c',
+                     "from pathlib import Path; Path('post-ran').write_text('bad')"])]
+        self.write_case()
+        job = self.claim()
+        original = Store.update_job
+        injected = {'done': False}
+
+        def interrupt_before_post(instance, jid, expected=None, **changes):
+            if changes.get('status') == 'postprocessing' and not injected['done']:
+                injected['done'] = True
+                instance.request_interruption(jid, 'stop before postprocess')
+            return original(instance, jid, expected=expected, **changes)
+
+        with patch.object(Store, 'update_job', interrupt_before_post):
+            self.assertEqual(worker(self.store.root, job['id']), 1)
+
+        self.assertTrue(injected['done'])
+        self.assertEqual(self.store.job(job['id'])['status'], 'interrupted')
+        self.assertFalse(marker.exists())
+
+    def test_interruption_racing_terminal_commit_wins_and_updates_event(self):
+        job = self.claim()
+        original = Store.update_job
+        injected = {'done': False}
+
+        def interrupt_before_terminal(instance, jid, expected=None, **changes):
+            if changes.get('status') == 'succeeded' and not injected['done']:
+                injected['done'] = True
+                instance.request_interruption(jid, 'stop before terminal commit')
+            return original(instance, jid, expected=expected, **changes)
+
+        with patch.object(Store, 'update_job', interrupt_before_terminal):
+            self.assertEqual(worker(self.store.root, job['id']), 1)
+
+        self.assertTrue(injected['done'])
+        self.assertEqual(self.store.job(job['id'])['status'], 'interrupted')
+        event = self.store.get('event:' + job['id'])
+        self.assertEqual(event['run']['status'], 'interrupted')
+
     def test_transient_database_lock_does_not_stop_solver(self):
         self.case_data['command'] = [
             sys.executable, '-c',
@@ -487,6 +573,13 @@ class WorkerTests(Environment):
 
 
 class SchedulerTests(Environment):
+    def test_recovery_finalizes_stopping_job_after_processes_are_gone(self):
+        job = self.claim()
+        self.store.update_job(job['id'], status='stopping',
+                              worker_pid=99999999, worker_identity='gone')
+        Scheduler(self.config, self.store).recover()
+        self.assertEqual(self.store.job(job['id'])['status'], 'interrupted')
+
     def test_cpu_reservation_blocks_second_case_before_solver_is_visible(self):
         first = self.claim()
         self.store.update_job(first['id'], status='running', worker_pid=os.getpid(), worker_identity=identity(os.getpid()))
@@ -570,6 +663,103 @@ class SchedulerTests(Environment):
 class MonitorTests(Environment):
     def record(self):
         return dict(processes=[dict(pid=os.getpid(), cpu_list=self.cpu, mode='MPI')], supervisors=[])
+
+    def monitor_record(self):
+        return dict(engines=['Monitor'],
+                    processes=[dict(pid=os.getpid(), cpu_list=self.cpu, mode='monitor')],
+                    supervisors=[], actual_cores=1, actual_cpu_list=self.cpu)
+
+    def test_managed_completion_with_lingering_monitor_emits_one_terminal(self):
+        job = self.claim()
+        self.store.update_job(job['id'], status='succeeded', started=time.time() - 10,
+                              finished=time.time())
+        (self.case_root / 'log.solver').write_text('Time = 10\nEnd\n')
+        record = self.monitor_record()
+        with patch('cfd_bot.monitor.snapshot', return_value={
+                'raw': 'ENGINE: Monitor', 'cases': {self.case['_root']: record}}):
+            for _ in range(3):
+                # Persisted data must also work after a daemon restart.
+                Monitor(self.config, self.store).tick()
+        self.assertIsNone(self.store.get('observed:' + self.case['_root']))
+        self.assertEqual(self.store.get('snapshot')['cases'][self.case['_root']], record)
+        with patch('cfd_bot.monitor.snapshot', return_value={'raw': '', 'cases': {}}):
+            for _ in range(3):
+                Monitor(self.config, self.store).tick()
+        events = self.store.pending()
+        self.assertEqual([e['event_key'] for e in events], [job['id'] + ':terminal'])
+
+    def test_completion_during_scan_does_not_create_external_run(self):
+        job = self.claim()
+        self.store.update_job(job['id'], status='running', started=time.time() - 10)
+        (self.case_root / 'log.solver').write_text('Time = 10\nEnd\n')
+
+        def finish_during_scan(_command):
+            self.store.update_job(job['id'], status='succeeded', finished=time.time())
+            return {'raw': '', 'cases': {self.case['_root']: self.record()}}
+
+        with patch('cfd_bot.monitor.snapshot', side_effect=finish_during_scan):
+            Monitor(self.config, self.store).tick()
+        self.assertIsNone(self.store.get('observed:' + self.case['_root']))
+        self.assertEqual([e['event_key'] for e in self.store.pending()],
+                         [job['id'] + ':terminal'])
+
+    def test_external_completion_ignores_lingering_monitor_and_allows_rerun(self):
+        monitor = Monitor(self.config, self.store)
+        (self.case_root / 'log.solver').write_text('Time = 10\nEnd\n')
+        monitor.observe(self.case, self.record())
+        for _ in range(4):
+            monitor.observe(self.case, self.monitor_record())
+        completed = self.store.get('observed:' + self.case['_root'])
+        self.assertEqual(completed['status'], 'succeeded')
+        self.assertEqual(len(self.store.pending()), 2)
+        monitor.observe(self.case, self.record())
+        self.assertNotEqual(self.store.get('observed:' + self.case['_root'])['id'],
+                            completed['id'])
+        self.assertEqual(len(self.store.pending()), 3)
+
+    def test_external_solver_after_managed_completion_is_still_detected(self):
+        job = self.claim()
+        self.store.update_job(job['id'], status='succeeded', started=time.time() - 10,
+                              finished=time.time())
+        (self.case_root / 'log.solver').write_text('Time = 10\nEnd\n')
+        with patch('cfd_bot.monitor.snapshot', return_value={
+                'raw': '', 'cases': {self.case['_root']: self.record()}}):
+            Monitor(self.config, self.store).tick()
+        self.assertTrue(self.store.get('observed:' + self.case['_root'])['external'])
+
+    def test_mixed_snapshot_excludes_monitor_from_execution_identity(self):
+        record = self.record()
+        record.update(engines=['Monitor', 'OpenFOAM'], actual_cores=2,
+                      actual_cpu_list='0-1')
+        record['processes'].append(dict(pid=99999999, mode='monitor', cpu_list='1',
+                                        identity='monitor-process'))
+        monitor = Monitor(self.config, self.store)
+        monitor.observe(self.case, record)
+        run = self.store.get('observed:' + self.case['_root'])
+        self.assertNotIn('monitor-process', run['run_identity']['processes'])
+        self.assertEqual(run['actual_cores'], 2)
+        self.assertEqual(len(record['processes']), 2)  # Keep the shared snapshot intact.
+
+    def test_unregistered_monitor_only_case_does_not_start_a_calculation(self):
+        self.config['cases'] = []
+        record = self.monitor_record()
+        record['supervisors'] = [dict(pid=os.getpid())]
+        with patch('cfd_bot.monitor.snapshot', return_value={
+                'raw': 'ENGINE: Monitor', 'cases': {self.case['_root']: record}}):
+            monitor = Monitor(self.config, self.store)
+            self.assertTrue(monitor.run_once())
+            self.assertTrue(monitor.run_once())
+        self.assertEqual(self.store.pending(), [])
+        self.assertEqual(self.store.get('auto_observed_roots'), [])
+        self.assertIsNone(self.store.get('observed:' + self.case['_root']))
+        self.assertEqual(self.store.get('snapshot')['cases'][self.case['_root']], record)
+
+    def test_calculation_wrapper_remains_live_while_only_monitor_children_are_visible(self):
+        record = self.monitor_record()
+        record['engines'].append('OpenFOAM')
+        record['supervisors'] = [dict(pid=os.getpid())]
+        Monitor(self.config, self.store).observe(self.case, record)
+        self.assertEqual(self.store.get('observed:' + self.case['_root'])['status'], 'running')
 
     def test_wrapper_only_snapshot_keeps_last_solver_allocation(self):
         previous = dict(owner='SSH host · pts/1', actual_cores=24,
@@ -934,6 +1124,51 @@ class BotTests(Environment):
         self.assertEqual([self.store.job(job['id'])['status'] for job in jobs],
                          ['cancelled', 'cancelled', 'starting'])
         self.assertIn('선택 취소 완료: 2개 · 이미 시작/변경 1개', api.messages[-1][1])
+
+    def test_running_queue_select_all_interrupts_only_confirmed_jobs(self):
+        api = FakeAPI()
+        bot = Bot(self.config, self.store, api)
+        jobs = []
+        for index in range(12):
+            root = self.root / f'running-{index}'
+            root.mkdir()
+            job = self.store.enqueue(dict(self.case, _root=str(root), name=root.name))
+            self.store.update_job(job['id'], status='running')
+            jobs.append(job)
+        waiting = self.store.enqueue(self.case)
+        bot.dispatch(20, 'rselect', 'select')
+        bot.dispatch(20, 'rall', 'all')
+        self.assertEqual(len(self.store.get(bot.queue_selection_key(20, running=True))), 12)
+        bot.dispatch(20, 'rnone', 'clear')
+        self.assertEqual(self.store.get(bot.queue_selection_key(20, running=True)), [])
+        bot.dispatch(20, 'rall', 'all-again')
+        bot.dispatch(20, 'rcancel', 'confirm')
+        self.assertTrue(all(self.store.job(j['id'])['status'] == 'running' for j in jobs))
+        self.store.update_job(jobs[-1]['id'], status='succeeded')
+        self.store.update_job(waiting['id'], status='running')
+        bot.dispatch(20, 'rall', 'selection-changed-after-confirm')
+        bot.dispatch(20, 'rcancelyes', 'stop')
+        self.assertEqual([self.store.job(j['id'])['status'] for j in jobs],
+                         ['interrupted'] * 11 + ['succeeded'])
+        self.assertEqual(self.store.job(waiting['id'])['status'], 'running')
+        self.assertIn('중단 요청: 11개 · 이미 종료/변경 1개', api.messages[-1][1])
+
+    def test_queue_running_job_requires_confirmation_then_interrupts(self):
+        api = FakeAPI()
+        bot = Bot(self.config, self.store, api)
+        job = self.claim()
+        self.store.update_job(job['id'], status='running', started=time.time())
+
+        bot.dispatch(20, 'queue', 'queue-open')
+        buttons = [item for row in api.messages[-1][2]['inline_keyboard'] for item in row]
+        self.assertIn('stop:' + job['id'], [item['callback_data'] for item in buttons])
+        bot.dispatch(20, 'stop:' + job['id'], 'stop-review')
+        confirm = api.messages[-1][2]['inline_keyboard'][0][0]
+        self.assertEqual(confirm['callback_data'], 'stopyes:' + job['id'])
+        bot.dispatch(20, confirm['callback_data'], 'stop-confirm')
+
+        self.assertEqual(self.store.job(job['id'])['status'], 'interrupted')
+        self.assertIn('중단을 요청', api.messages[-1][1])
 
     def test_queue_result_buttons_exist_only_for_current_ticket_cases(self):
         api = FakeAPI()

@@ -118,6 +118,21 @@ class DiagnosticLevelTests(unittest.TestCase):
         self.assertEqual(calls['gui.TicketEditor.new']['initiator']['platform'],'gui')
         self.assertTrue(any(r['event']=='ui.telegram.received' and r['update_id']==123 for r in records))
 
+    def test_latest_interruption_path_keeps_job_and_signal_records(self):
+        from cfd_bot.queue_control import interrupt_running_jobs
+        store=Store(self.root/'state')
+        case=self.root/'interrupt-case';case.mkdir();(case/'Allrun').write_text('#!/bin/sh\nexit 0\n')
+        job=store.enqueue({'_root':str(case),'name':'fixture'})
+        pid=123456789
+        store.update_job(job['id'],status='running',solver_pid=pid,solver_identity='fixture-id')
+        with patch('cfd_bot.queue_control.identity',return_value='fixture-id'), patch('os.getpgid',return_value=pid), patch('os.killpg') as signal:
+            result=interrupt_running_jobs(store,[job['id']])
+        self.assertEqual(result['interrupted'],[job['id']]);signal.assert_called_once()
+        self.assertEqual(store.job(job['id'])['status'],'stopping')
+        records=self.records();calls={r.get('function') for r in records if r['event']=='function.call'}
+        self.assertTrue({'queue_control.interrupt_running_jobs','queue_control.interrupt_running_job','queue_control.interrupt_process_groups','storage.Store.request_interruption'} <= calls)
+        self.assertTrue(any(r['event']=='process.signal.request' and r['pid']==pid for r in records))
+
     def test_env_reload_children_and_off(self):
         os.environ['CFD_BOT_DIAGNOSTICS_LEVEL']='detailed'
         config={'diagnostic_logging':{'directory':str(self.root/'logs'),'level':'basic'}}

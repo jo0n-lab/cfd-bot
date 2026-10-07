@@ -11,7 +11,7 @@ from .config import cases_for, tickets_for
 from .catalog import ticket_index
 from .monitor import Monitor
 from .processes import DaemonLock, snapshot as process_snapshot
-from .queue_control import cancel_queued_jobs
+from .queue_control import cancel_queued_jobs, interrupt_running_job, interrupt_running_jobs
 from .queueing import job_queue_id
 from .run_views import case_id_for_root, running_macro_views, tracking_registry
 from .report import compact_status, macro_queue_text, queue_text, render_run
@@ -140,20 +140,48 @@ class Bot:
 
     @staticmethod
     @_diagnostics.trace
-    def queue_selection_key(chat, user=None):
-        return f'queue-selection:{chat}:{chat if user is None else user}'
+    def queue_selection_key(chat, user=None, running=False):
+        return f'queue-selection:{chat}:{chat if user is None else user}' + (':running' if running else '')
 
     @_diagnostics.trace
-    def queue_selection(self, chat, user=None):
-        jobs = self.store.jobs(('queued',))
+    def queue_selection(self, chat, user=None, running=False):
+        jobs = self.store.jobs(('starting', 'running', 'postprocessing') if running else ('queued',))
         available = {job['id'] for job in jobs}
-        selected = [jid for jid in self.store.get(self.queue_selection_key(chat, user), []) if jid in available]
-        self.store.put(self.queue_selection_key(chat, user), selected)
+        selected = [jid for jid in self.store.get(self.queue_selection_key(chat, user, running), []) if jid in available]
+        self.store.put(self.queue_selection_key(chat, user, running), selected)
+        scope = self.store.get(self.queue_selection_key(chat, user, running) + ':scope')
+        if scope:
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.queue_selection:M151:then')
+            jobs = [job for job in jobs if job_queue_id(job) == scope]
+            ids = {job['id'] for job in jobs}
+            selected = [jid for jid in selected if jid in ids]
         return jobs, selected
 
     @_diagnostics.trace
-    def show_queue_selection(self, chat, page=0, notice='', user=None):
-        jobs, selected = self.queue_selection(chat, user)
+    def set_queue_selection(self, chat, user, running, selected):
+        jobs, _ = self.queue_selection(chat, user, running)
+        ids = {job['id'] for job in jobs}
+        key = self.queue_selection_key(chat, user, running)
+        others = [jid for jid in self.store.get(key, []) if jid not in ids]
+        self.store.put(key, others + selected)
+
+    @_diagnostics.trace
+    def show_queue_selection(self, chat, page=0, notice='', user=None, running=False):
+        jobs, selected = self.queue_selection(chat, user, running)
+        prefix = 'r' if running else 'q'
+        key = self.queue_selection_key(chat, user, running)
+        scope = self.store.get(key + ':scope')
+        groups = sorted({job_queue_id(job) for job in jobs})
+        if scope is None and len(groups) > 1:
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.show_queue_selection:M170:then')
+            rows = [[button(group, prefix + 'group:' + group)] for group in groups]
+            rows.append([button(self.ui.text('menus.queue.back'), 'queue')])
+            self.send(chat, self.ui.text('menus.queue.choose_group'), keyboard(rows))
+            return
+        if scope is None and len(groups) == 1:
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.show_queue_selection:M175:then')
+            scope = groups[0]
+            self.store.put(key + ':scope', scope)
         page = max(0, min(int(page), max(0, (len(jobs) - 1) // QUEUE_PAGE)))
         visible = jobs[page * QUEUE_PAGE:(page + 1) * QUEUE_PAGE]
         rows = [[button(self.ui.text('strings.common.checked' if job['id'] in selected
@@ -161,22 +189,28 @@ class Bot:
                                self.ui.text('menus.queue.selection_item',
                                             queue=job_queue_id(job),
                                             case_name=job['case']['name']),
-                        'qtoggle:' + job['id'])] for job in visible]
+                        prefix + 'toggle:' + job['id'])] for job in visible]
         navigation = []
         if page:
-            if _diagnostics.detailed: _diagnostics.step('bot.Bot.show_queue_selection:L142:then')
-            navigation.append(button(self.ui.text('menus.queue.previous'), f'qpage:{page - 1}'))
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.show_queue_selection:M187:then')
+            navigation.append(button(self.ui.text('menus.queue.previous'), f'{prefix}page:{page - 1}'))
         if (page + 1) * QUEUE_PAGE < len(jobs):
-            if _diagnostics.detailed: _diagnostics.step('bot.Bot.show_queue_selection:L144:then')
-            navigation.append(button(self.ui.text('menus.queue.next'), f'qpage:{page + 1}'))
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.show_queue_selection:M189:then')
+            navigation.append(button(self.ui.text('menus.queue.next'), f'{prefix}page:{page + 1}'))
         if navigation:
             if _diagnostics.detailed: _diagnostics.step('bot.Bot.show_queue_selection:L146:then')
             rows.append(navigation)
-        rows += [[button(self.ui.text('menus.queue.select_all'), 'qall'),
-                  button(self.ui.text('menus.queue.clear_all'), 'qnone')],
-                 [button(self.ui.text('menus.queue.cancel_many', count=len(selected)), 'qcancel')],
+        rows += [[button(self.ui.text('menus.queue.select_all'), prefix + 'all'),
+                  button(self.ui.text('menus.queue.clear_all'), prefix + 'none')],
+                 [button(self.ui.text('menus.queue.interrupt_many' if running else 'menus.queue.cancel_many',
+                                      count=len(selected)), prefix + 'cancel')],
+                 [button(self.ui.text('menus.queue.change_group'), prefix + 'select')],
                  [button(self.ui.text('menus.queue.back'), 'queue')]]
-        text = self.ui.text('menus.queue.selection_title', selected=len(selected), total=len(jobs))
+        text = self.ui.text('menus.queue.running_selection_title' if running else 'menus.queue.selection_title',
+                            selected=len(selected), total=len(jobs))
+        if scope:
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.show_queue_selection:M202:then')
+            text = self.ui.text('menus.queue.selection_scope', queue=scope) + '\n' + text
         self.send(chat, (notice + '\n\n' if notice else '') + text, keyboard(rows))
 
     @_diagnostics.trace
@@ -384,56 +418,83 @@ class Bot:
             if self.store.jobs(('queued',)):
                 if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L314:then')
                 rows.append([button(self.ui.text('menus.queue.multi_select'), 'qselect')])
+            if any(j['status'] in ('starting', 'running', 'postprocessing') for j in jobs):
+                if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M411:then')
+                rows.append([button(self.ui.text('menus.queue.running_multi_select'), 'rselect')])
             rows += [[button(self.ui.text('menus.queue.cancel_case', case_name=j['case']['name'],
                                           queue=job_queue_id(j)),
                              'cancel:' + j['id'])]
                      for j in self.store.jobs(('queued',))[:20]]
+            rows += [[button(self.ui.text('menus.queue.interrupt_case',
+                                          case_name=j['case']['name']),
+                             'stop:' + j['id'])]
+                     for j in jobs if j['status'] in ('starting', 'running', 'postprocessing')][:20]
             rows += [[button(self.ui.text('menus.queue.result_data', case_name=j['case']['name']),
                              'case:' + registry[j['case_root']]['case_id'])]
                      for j in jobs if j['status'] == 'running' and j['case_root'] in registry]
             recent = [j for j in reversed(jobs) if j['status'] not in
-                      ('queued', 'starting', 'running', 'postprocessing')
+                      ('queued', 'starting', 'running', 'postprocessing', 'stopping')
                       and j['case_root'] in registry][:5]
             rows += [[button(self.ui.text('menus.queue.recent_result', case_name=j['case']['name']),
                              'case:' + registry[j['case_root']]['case_id'])] for j in recent]
             text = queue_text(self.store, enabled, self.ui) + macro_queue_text(macros, self.ui)
             self.send(chat, text, keyboard(rows))
             return
+        running_selection = action.split(':', 1)[0] in (
+            'rselect', 'rgroup', 'rback', 'rpage', 'rtoggle', 'rall', 'rnone', 'rcancel', 'rcancelyes')
+        prefix = 'r' if running_selection else 'q'
+        selection_key = self.queue_selection_key(chat, actor, running_selection)
+        if running_selection:
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M436:then')
+            action = 'q' + action[1:]
         if action == 'qselect':
-            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L331:then')
-            self.store.put(self.queue_selection_key(chat, actor), [])
-            self.show_queue_selection(chat, user=actor)
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M438:then')
+            self.store.put(selection_key + ':scope', None)
+            self.show_queue_selection(chat, user=actor, running=running_selection)
+            return
+        if action.startswith('qgroup:'):
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M442:then')
+            self.store.put(selection_key + ':scope', action.split(':', 1)[1])
+            self.show_queue_selection(chat, user=actor, running=running_selection)
             return
         if action == 'qback':
-            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L335:then')
-            self.show_queue_selection(chat, user=actor)
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M446:then')
+            self.show_queue_selection(chat, user=actor, running=running_selection)
             return
         if action.startswith('qpage:'):
-            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L338:then')
-            self.show_queue_selection(chat, int(action.split(':', 1)[1]), user=actor)
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M449:then')
+            self.show_queue_selection(chat, int(action.split(':', 1)[1]), user=actor, running=running_selection)
             return
         if action.startswith('qtoggle:'):
             if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L341:then')
             jid = action.split(':', 1)[1]
-            jobs, selected = self.queue_selection(chat, actor)
+            jobs, selected = self.queue_selection(chat, actor, running_selection)
             if jid not in {job['id'] for job in jobs}:
-                if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L344:then')
-                self.show_queue_selection(chat, notice=self.ui.text('menus.queue.cancel_unavailable'), user=actor)
+                if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M456:then')
+                self.show_queue_selection(chat, notice=self.ui.text('menus.queue.interrupt_unavailable' if running_selection else 'menus.queue.cancel_unavailable'), user=actor, running=running_selection)
                 return
             selected.remove(jid) if jid in selected else selected.append(jid)
-            self.store.put(self.queue_selection_key(chat, actor), selected)
-            self.show_queue_selection(chat, user=actor)
+            self.set_queue_selection(chat, actor, running_selection, selected)
+            self.show_queue_selection(chat, user=actor, running=running_selection)
             return
         if action in ('qall', 'qnone'):
-            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L351:then')
-            jobs, _ = self.queue_selection(chat, actor)
-            self.store.put(self.queue_selection_key(chat, actor),
-                           [job['id'] for job in jobs] if action == 'qall' else [])
-            self.show_queue_selection(chat, user=actor)
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M463:then')
+            if self.store.get(selection_key + ':scope') is None:
+                if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M464:then')
+                self.show_queue_selection(chat, user=actor, running=running_selection)
+                return
+            jobs, _ = self.queue_selection(chat, actor, running_selection)
+            self.set_queue_selection(chat, actor, running_selection,
+                                     [job['id'] for job in jobs] if action == 'qall' else [])
+            self.show_queue_selection(chat, user=actor, running=running_selection)
             return
         if action == 'qcancel':
-            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L357:then')
-            jobs, selected = self.queue_selection(chat, actor)
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M472:then')
+            if self.store.get(selection_key + ':scope') is None:
+                if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M473:then')
+                self.show_queue_selection(chat, user=actor, running=running_selection)
+                return
+            jobs, selected = self.queue_selection(chat, actor, running_selection)
             if not selected:
                 if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L359:then')
                 raise ValueError(self.ui.text('scenarios.diagnostics.queue.selection_required'))
@@ -442,20 +503,24 @@ class Bot:
             if len(selected) > 30:
                 if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L363:then')
                 preview += '\n…'
-            self.send(chat, self.ui.text('menus.queue.cancel_many_confirm', count=len(selected), names=preview),
-                      keyboard([[button(self.ui.text('menus.queue.cancel_many', count=len(selected)),
-                                        'qcancelyes'),
-                                 button(self.ui.text('strings.common.cancel'), 'qback')]]))
+            self.store.put(selection_key + ':pending', selected)
+            self.send(chat, self.ui.text('menus.queue.interrupt_many_confirm' if running_selection else 'menus.queue.cancel_many_confirm', count=len(selected), names=preview),
+                      keyboard([[button(self.ui.text('menus.queue.interrupt_many' if running_selection else 'menus.queue.cancel_many', count=len(selected)),
+                                        prefix + 'cancelyes'),
+                                 button(self.ui.text('strings.common.cancel'), prefix + 'back')]]))
             return
         if action == 'qcancelyes':
-            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L370:then')
-            selected = self.store.get(self.queue_selection_key(chat, actor), [])
-            result = cancel_queued_jobs(self.store, selected, ui=self.ui)
-            self.store.put(self.queue_selection_key(chat, actor), [])
-            notice = self.ui.text('menus.queue.cancel_many_result',
-                                  cancelled=len(result['cancelled']),
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M491:then')
+            selected = self.store.get(selection_key + ':pending', [])
+            control = interrupt_running_jobs if running_selection else cancel_queued_jobs
+            result = control(self.store, selected, ui=self.ui)
+            self.store.put(selection_key + ':pending', [])
+            remaining = [jid for jid in self.store.get(selection_key, []) if jid not in selected]
+            self.store.put(selection_key, remaining)
+            notice = self.ui.text('menus.queue.interrupt_many_result' if running_selection else 'menus.queue.cancel_many_result',
+                                  cancelled=len(result['interrupted' if running_selection else 'cancelled']),
                                   unavailable=len(result['unavailable']))
-            self.show_queue_selection(chat, notice=notice, user=actor)
+            self.show_queue_selection(chat, notice=notice, user=actor, running=running_selection)
             return
         parts = action.split(':')
         if parts[0] == 'cases':
@@ -467,6 +532,26 @@ class Bot:
             result = cancel_queued_jobs(self.store, [parts[1]], ui=self.ui)
             self.send(chat, self.ui.text('menus.queue.cancelled' if result['cancelled']
                                          else 'menus.queue.cancel_unavailable'))
+            return
+        if parts[0] == 'stop' and len(parts) == 2:
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M514:then')
+            job = self.store.job(parts[1])
+            if job['status'] not in ('starting', 'running', 'postprocessing'):
+                if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M516:then')
+                self.send(chat, self.ui.text('menus.queue.interrupt_unavailable'))
+                return
+            self.send(
+                chat,
+                self.ui.text('menus.queue.interrupt_confirm', case_name=job['case']['name']),
+                keyboard([[button(self.ui.text('menus.queue.interrupt_confirm_button'),
+                                  'stopyes:' + job['id']),
+                           button(self.ui.text('strings.common.cancel'), 'queue')]]))
+            return
+        if parts[0] == 'stopyes' and len(parts) == 2:
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:M526:then')
+            stopped = interrupt_running_job(self.store, parts[1], ui=self.ui)
+            self.send(chat, self.ui.text('menus.queue.interrupt_requested' if stopped else
+                                         'menus.queue.interrupt_unavailable'))
             return
         if len(parts) < 2:
             if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L388:then')

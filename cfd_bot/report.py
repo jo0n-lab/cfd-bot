@@ -133,8 +133,8 @@ def compact_status(run, ui=None):
     ui = _catalog(run, ui)
     context = _context(run, ui)
     owner = context['owner']
-    if run['status'] not in ('starting', 'running', 'postprocessing'):
-        if _diagnostics.detailed: _diagnostics.step('report.compact_status:L115:then')
+    if run['status'] not in ('starting', 'running', 'postprocessing', 'stopping'):
+        if _diagnostics.detailed: _diagnostics.step('report.compact_status:M136:then')
         owner = f"{context['status']} · {owner}"
     return ui.text('scenarios.status.compact', case_name=context['case_name'], owner=owner,
                    cores=context['cores'], cpu_list=context['cpu_list'],
@@ -150,7 +150,7 @@ def compact_unobserved(case, ui=None):
 @_diagnostics.trace
 def queue_text(store, enabled=True, ui=None):
     ui = ui or load_ui()
-    jobs = store.jobs(('queued', 'starting', 'running', 'postprocessing'))
+    jobs = store.jobs(('queued', 'starting', 'running', 'postprocessing', 'stopping'))
     lines = [ui.text('menus.queue.title') + ('' if enabled else ui.text('menus.queue.paused_suffix'))]
     if not jobs:
         if _diagnostics.detailed: _diagnostics.step('report.queue_text:L131:then')

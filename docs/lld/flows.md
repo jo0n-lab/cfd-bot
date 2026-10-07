@@ -33,6 +33,7 @@
 | UC-25 | 대화 일괄 정리 | [UC-25-tg](../diagrams/UC-25-tg.svg) | N/A¹ | N/A¹ | N/A¹ |
 | UC-26 | 외부 PC 접속과 브라우저 | N/A¹ | N/A¹ | N/A¹ | [UC-26](../diagrams/UC-26.svg) |
 | UC-27 | 운영 CLI 명령 분기 | N/A¹ | N/A¹ | N/A¹ | [UC-27](../diagrams/UC-27.svg) |
+| UC-28 | 실행 중 managed 작업 중단 | [UC-28-tg](../diagrams/UC-28-tg.svg) | [UC-28-gui](../diagrams/UC-28-gui.svg) | [UC-28-web](../diagrams/UC-28-web.svg) | N/A¹ |
 
 ¹ N/A의 구체적 이유와 부분 지원 범위는 [ARCHITECTURE 플랫폼 표](../ARCHITECTURE.md#2-전체-사용자-유즈케이스--플랫폼)에 있다. GUI의 데이터 조회는 경로 표시이며 다운로드가 아니다. Telegram legacy 실행은 별도 그림으로 분리했다.
 
@@ -58,6 +59,7 @@
 | BG-02 | [현재 CASE · 이전 실행/종료 확인 중 CASE 감시](../diagrams/BG-02.svg) |
 | BG-03 | [변경된 제출 티켓 접수](../diagrams/BG-03.svg) |
 | D-15 | [증분 상태 반영 · 종료 child와 부모 macro 재시도](../diagrams/D-15.svg) |
+| D-16 | [실행 중 managed 작업 안전 중단](../diagrams/D-16.svg) |
 | BG-04 | [현재 head 기반 quota·동적 borrow admission](../diagrams/BG-04.svg) |
 | BG-05 | [worker·solver·hooks·판정](../diagrams/BG-05.svg) |
 | BG-06 | [outbox 알림 전달·checkpoint](../diagrams/BG-06.svg) |
@@ -72,4 +74,4 @@ python3 docs/diagrams/build_flows.py
 python3 docs/analysis/build_reference.py
 ```
 
-현재 99개 SVG. [코드 함수 색인](../analysis/function-index.md), [검증 결과](../analysis/validation.md).
+현재 103개 SVG. [코드 함수 색인](../analysis/function-index.md), [검증 결과](../analysis/validation.md).

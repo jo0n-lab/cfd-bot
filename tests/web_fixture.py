@@ -37,7 +37,7 @@ class Forwarder(socketserver.BaseRequestHandler):
 def main():
     with tempfile.TemporaryDirectory(prefix='cfd-web-fixture-') as directory:
         root = Path(directory)
-        for name in ('demo', 'new-case', 'copy-case', 'queue-one', 'queue-two',
+        for name in ('demo', 'new-case', 'copy-case', 'queue-one', 'queue-two', 'running-job',
                      'batch/alpha', 'batch/beta', 'batch/skip-template', 'batch/group/deep'):
             case = root / name
             (case / 'system').mkdir(parents=True)
@@ -66,6 +66,9 @@ def main():
         app.store.update_job(untracked['id'], status='failed', started=2, finished=3)
         for name in ('queue-one', 'queue-two'):
             app.store.enqueue(dict(name=name, _root=str(root / name), command=['./Allrun'], watcher={}))
+        running = app.store.enqueue(dict(name='Browser running', _root=str(root / 'running-job'),
+                                         cores=1, cpu_set='0', command=['./Allrun'], watcher={}))
+        app.store.update_job(running['id'], status='running', started=4)
         with patch('cfd_bot.ticket_run.snapshot', return_value={'cases': {}, 'raw': 'No active jobs'}):
             server = WebServer(app, 0)
             forwarder = socketserver.ThreadingTCPServer(('127.0.0.1', 0), Forwarder)

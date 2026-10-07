@@ -50,6 +50,6 @@ lines += [f'| {number} | `{name}` |' for number,name in sorted(events.items())]
 for title,key in [('Python 함수','function_codes'),('Browser 함수','javascript_functions'),('ofps 함수','shell_functions')]:
     lines += ['', '## '+title, '', '| ID | 함수 |', '|---:|---|']
     lines += [f'| {index} | `{name}` |' for index,name in enumerate(book[key])]
-lines += ['', '분기 ID·소스 위치·HLD/LLD 99개 시퀀스는 [flow 대응표](diagnostic-flow-coverage.md)와 별도 source map에 있다. 동적 테스트/외부 callback은 알려지지 않은 함수 이름을 그대로 기록하며 사전에 없는 숫자 ID를 추정하지 않는다.', '']
+lines += ['', '분기 ID·소스 위치·HLD/LLD 103개 시퀀스는 [flow 대응표](diagnostic-flow-coverage.md)와 별도 source map에 있다. 동적 테스트/외부 callback은 알려지지 않은 함수 이름을 그대로 기록하며 사전에 없는 숫자 ID를 추정하지 않는다.', '']
 (ROOT/'docs/analysis/diagnostic-codebook.md').write_text('\n'.join(lines))
 print(json.dumps({'sha256':digest,'events':len(events),'functions':len(functions),'javascript':len(js),'shell':len(shell)}))

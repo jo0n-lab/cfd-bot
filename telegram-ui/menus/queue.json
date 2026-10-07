@@ -14,6 +14,11 @@
   "cancel_many": "선택 취소 ({count}개)",
   "cancel_many_confirm": "선택한 대기 작업 {count}개를 취소할까요?\n이미 시작된 작업은 취소되지 않습니다.\n\n{names}",
   "cancel_many_result": "선택 취소 완료: {cancelled}개 · 이미 시작/변경 {unavailable}개",
+  "interrupt_case": "실행 중단 · {case_name}",
+  "interrupt_confirm": "{case_name} 계산을 중단할까요?\nsolver와 monitor가 종료되며 결과는 사용자 중단으로 기록됩니다.",
+  "interrupt_confirm_button": "계산 중단",
+  "interrupt_requested": "계산 중단을 요청했습니다.",
+  "interrupt_unavailable": "이미 종료되었거나 중단할 수 없는 계산입니다.",
   "previous": "이전",
   "next": "다음",
   "back": "작업 큐로 돌아가기",
@@ -35,5 +40,13 @@
   "result_data": "결과 요청 데이터 · {case_name}",
   "recent_result": "최근 결과 · {case_name}",
   "macro_title": "실행 중인 매크로",
-  "macro_line": "{name} · {completed}/{target} cases ({progress})\n경과 {elapsed} · 예상 남은 시간 {remaining}\n현재 계산: {active}"
+  "macro_line": "{name} · {completed}/{target} cases ({progress})\n경과 {elapsed} · 예상 남은 시간 {remaining}\n현재 계산: {active}",
+  "running_multi_select": "실행 작업 선택·일괄 중단",
+  "running_selection_title": "실행 작업 다중 선택 · {selected}/{total}개 선택\n전체 선택 후 한 번에 중단할 수 있습니다.",
+  "interrupt_many": "선택 중단 ({count}개)",
+  "interrupt_many_confirm": "선택한 실행 작업 {count}개를 중단할까요?\n이미 종료된 작업은 건너뜁니다.\n\n{names}",
+  "interrupt_many_result": "중단 요청: {cancelled}개 · 이미 종료/변경 {unavailable}개",
+  "choose_group": "작업을 선택할 대기열을 고르세요.",
+  "change_group": "다른 대기열 선택",
+  "selection_scope": "대기열: {queue}"
 }

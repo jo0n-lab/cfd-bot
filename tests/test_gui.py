@@ -279,6 +279,40 @@ class FormTests(unittest.TestCase):
 
 
 class BulkDeleteControllerTests(unittest.TestCase):
+    def test_running_job_interruption_uses_shared_control(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        store = Store(root / 'state')
+        case_root = root / 'case'
+        case_root.mkdir()
+        job = store.enqueue(dict(name='running', _root=str(case_root), command=['./Allrun']))
+        store.update_job(job['id'], status='running', started=time.time())
+        second_root = root / 'case2'
+        second_root.mkdir()
+        second = store.enqueue(dict(name='second', _root=str(second_root), command=['./Allrun']))
+        store.update_job(second['id'], status='running')
+        editor = TicketEditor.__new__(TicketEditor)
+        editor.queue_store = store
+        editor.queue_active_listbox = Mock()
+        editor.queue_active_listbox.curselection.return_value = (0, 1)
+        editor.queue_active_jobs = [dict(id=job['id'], name='running', status='running'),
+                                    dict(id=second['id'], name='second', status='running')]
+        editor.queue_status = Mock()
+        editor.queue_window = None
+        editor.messagebox = Mock()
+        editor.messagebox.askyesno.return_value = True
+        editor.refresh_queue_manager = Mock()
+
+        editor.select_all_active_jobs()
+        self.assertEqual(editor.queue_active_listbox.selection_set.call_count, 2)
+        editor.interrupt_active_job()
+
+        self.assertEqual(store.job(job['id'])['status'], 'interrupted')
+        self.assertEqual(store.job(second['id'])['status'], 'interrupted')
+        editor.refresh_queue_manager.assert_called_once()
+        editor.messagebox.showerror.assert_not_called()
+
     def test_selected_tickets_are_deleted_while_unselected_current_draft_is_kept(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -393,6 +427,16 @@ class WidgetTests(unittest.TestCase):
         editor.queue_result_listbox.selection_set(0)
         editor.open_queue_result_data()
         self.assertIn('티켓 JSON', editor.queue_status.get())
+
+        running = store.enqueue(
+            dict(name='running', _root=str(self.folder / 'queued-0'), command=['./Allrun']),
+            request_key='running')
+        store.update_job(running['id'], status='running', started=time.time())
+        editor.refresh_queue_manager()
+        editor.queue_active_listbox.selection_set(0)
+        with patch('tkinter.messagebox.askyesno', return_value=True):
+            editor.interrupt_active_job()
+        self.assertEqual(store.job(running['id'])['status'], 'interrupted')
 
     def test_single_execution_controls_save_and_child_inherits(self):
         editor = self.editor

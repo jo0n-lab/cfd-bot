@@ -33,6 +33,11 @@
     "menus.queue.empty",
     "menus.queue.estimate_notice",
     "menus.queue.job",
+    "menus.queue.interrupt_case",
+    "menus.queue.interrupt_confirm",
+    "menus.queue.interrupt_confirm_button",
+    "menus.queue.interrupt_requested",
+    "menus.queue.interrupt_unavailable",
     "menus.queue.line",
     "menus.queue.lane_empty",
     "menus.queue.lane_title",
@@ -547,6 +552,8 @@
     "scenarios.jobs.verdict_failed",
     "scenarios.jobs.worker_error",
     "scenarios.jobs.worker_start_failed",
+    "scenarios.jobs.user_interrupt_requested",
+    "scenarios.jobs.user_interrupted",
     "scenarios.launch.already_queued",
     "scenarios.launch.already_running",
     "scenarios.launch.automatic_cpu",
@@ -672,7 +679,16 @@
     "strings.status.queued",
     "strings.status.running",
     "strings.status.starting",
+    "strings.status.stopping",
     "strings.status.succeeded",
-    "scenarios.notifications.external_restarted"
+    "scenarios.notifications.external_restarted",
+    "menus.queue.running_multi_select",
+    "menus.queue.running_selection_title",
+    "menus.queue.interrupt_many",
+    "menus.queue.interrupt_many_confirm",
+    "menus.queue.interrupt_many_result",
+    "menus.queue.choose_group",
+    "menus.queue.change_group",
+    "menus.queue.selection_scope"
   ]
 }

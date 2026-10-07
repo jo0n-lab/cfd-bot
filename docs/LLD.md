@@ -4,7 +4,7 @@
 
 > #18 사후 원인 분석 로그: [설정·기록·읽기](DIAGNOSTICS.md) · [모든 시퀀스 대응표](analysis/diagnostic-flow-coverage.md) · [ON/OFF 실측](analysis/diagnostic-performance.md). 업무 정책 변경 없이 기록만 추가하며 기본 OFF다.
 
-> #20 운영 구조와 #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota, #25 `ofps` monitor CPU 관측, #26 terminal outbox 1회 처리를 반영했다. [#25 변경 이력](history/2026-10-07-ofps-monitor-cpu-observation.md) · [#26 변경 이력](history/2026-10-07-terminal-event-db-lock.md).
+> #20 운영 구조와 #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota, #25 `ofps` monitor CPU 관측, #26 terminal outbox 1회 처리, #27 실행 중단을 반영했다. [#27 변경 이력](history/2026-10-07-running-job-interruption.md).
 
 > 2026-10-04 현행 코드 기준. [기준 버전·유즈케이스 지도](ARCHITECTURE.md) · [HLD](HLD.md) · [실측과 병목 후보](analysis/performance.md). 사용자 요청에 따라 **호출 주체를 가로로 배치한 시퀀스 다이어그램**을 중심으로 구성한다.
 
@@ -38,7 +38,7 @@
 | ProcessRecord | `root, engines[OpenFOAM|Basilisk|Monitor], processes[], supervisors[], owner, actual_cores, actual_cpu_list`; 같은 root의 solver·monitor affinity 합집합 | parse_snapshot → UI/Monitor/CPU admission |
 | RunState | `state`, `run_enabled`, `queue_enabled`, `capacity/used/free/required`, `queue_id/queue_quota/queue_required/queue_max_required/queue_dynamic`, `availability_message` | TicketRunner.state/_state → 세 UI 실행·큐 버튼; 동적 macro의 required는 현재 head, max는 전체 설정 검사 |
 | RunResult | `already_queued: bool`, `request_id: str|None`, 신규 수락 시 `count: int`, queue mode이면 저장된 profile 사용 | TicketRunner.request → UI; 아직 DB job이 아닐 수 있음 |
-| Job | `id, case_root, status, created, case, telemetry`, `queue_id, dynamic_cores`, admission 뒤 `queue_cpu_set`, optional `borrowed_queues, batch, started, finished, phase, *_pid, *_identity, terminal_event_published` | Store ↔ Scheduler/worker |
+| Job | `id, case_root, status, created, case, telemetry`, `queue_id, dynamic_cores`, admission 뒤 `queue_cpu_set`, optional `borrowed_queues, batch, started, finished, phase, *_pid, *_identity, interruption_requested, terminal_event_published` | Store ↔ Scheduler/worker |
 | Observed | Job 유사 + `external=True, missing:int, log_path, owner/CPU` | Monitor.observe → kv |
 | Telemetry | `time, execution, clock, rate_samples, errors, tail`, `inode, offset, backlog, missing, log_path` 등 | logs.read_log/recent_case_log |
 | Estimate | `remaining_seconds:number|None, progress:number|None, basis:str`, optional target/expected_seconds | logs.estimate → report/run_views/web |
@@ -48,6 +48,15 @@
 | Outbox row | `id,event_key,chat_id,body,sent,attempts,next_attempt` | Store.event → pending → deliver |
 
 <a id="catalog"></a>
+
+`Monitor.observe`는 먼저 `calculation_record(record)`를 적용한다. solver/계산 wrapper 없이
+monitor만 남으면 None으로 처리하고, 혼합 record는 `mode=monitor`를 실행 identity/시작 시각
+계산에서 제외한다. 합산 CPU metadata와 원본 snapshot은 유지한다. 기존 외부 실행은
+missing_polls 뒤 종료하며 monitor-only로 새 실행 ID를 생성하지 않는다.
+`Monitor.tick`은 scan 전과 recovery 후 LIVE root의 합집합을 제외하므로 scan 중 managed
+작업이 완료돼도 같은 tick에 외부 실행으로 재등록하지 않는다.
+[#28 설계·운영 근거](history/2026-10-07-monitor-tail-duplicate-notifications.md).
+
 ## 2.1 공용 티켓 색인 — cold 검증과 warm 조회
 
 ![공용 티켓 색인 요청·응답](diagrams/D-01.svg)
@@ -186,7 +195,7 @@ TG/GUI는 worker thread, web은 HTTP request thread에서 실행한다. TG stops
 Telegram 케이스 메뉴의 `prepare/enqueue`와 CLI enqueue는 별도 경로다. Telegram은 fresh state를 검사한 뒤 `Store.enqueue(case,update_id)`를 직접 호출하고 CLI는 Store.enqueue를 직접 호출한다. 편집기의 세 UI는 TicketRunner.request를 사용한다. [우회 경로 그림](diagrams/UC-18-legacy-tg.svg)을 공용 실행 그림과 비교해야 한다.
 
 <a id="queue"></a>
-## 12. UC-19/20/21 — 큐·이력·제어
+## 12. UC-19/20/21/28 — 큐·이력·제어·실행 중단
 
 ![대기 취소 요청·반환](diagrams/D-08.svg)
 
@@ -211,6 +220,18 @@ Telegram `queue_text`는 `Store.jobs(queued + LIVE)`를 전부 읽고, 먼저 �
 #20 변경 전 운영 코드의 19:05 표본에서는 실제 `Bot.dispatch(queue)`와 `Telegram.send`를 실행하되 API만 fake로 바꿨다. **전송 지연 없이도 전체 35.888초**, 그중 cases_for 21.837초(JSON 읽기 포함), running_macro_views 7.874초, queue_text 4.586초였다. 전체 history 1,837회/SQLite 연결 3,681회/fake sendMessage 35회였다. 매크로 요약과 개별 큐 본문이 공통 ETA/history 결과를 재사용하지 않는다. 단계 시간은 일부 포함 관계가 있으므로 단순 합산하지 않는다. 측정마다 실제 큐 진행 상황이 달라진다.
 
 pause/resume은 `Store.put('queue_paused', bool)`이며 Telegram/web/CLI에 존재한다. GUI 버튼은 없다. 실행 중 solver 중단 기능이 아니다. `cancel_queued_jobs → Store.cancel_queued`는 중복 제거된 ID를 한 BEGIN IMMEDIATE에서 재검사한다. queued만 cancelled로 바꾸고 나머지는 unavailable로 반환한다.
+
+![실행 중단 요청·반환](diagrams/D-16.svg)
+
+대기 선택은 `job_queue_id` 기준으로 분리한다. Web 카드와 GUI 탭의 버튼은 해당 대기열
+ID만 선택·해제·취소하고 다른 대기열의 선택을 보존한다. Telegram은 `qgroup:<id>`로
+선택 범위를 저장하고 `set_queue_selection`이 그 범위의 ID만 교체한다.
+
+`interrupt_running_jobs(store, ids)`는 중복 ID를 제거하고 기존 단일 중단 함수를 호출해
+`interrupted`(요청 접수 ID)와 `unavailable` 목록을 반환한다. Telegram은 확인 화면의 ID를
+고정하고, GUI/web도 선택한 목록만 전달한다. 이후 새로 시작된 작업은 포함하지 않는다.
+
+`interrupt_running_job(store,jid)`는 `starting|running|postprocessing`을 한 transaction에서 `stopping`으로 바꾸고 요청 시각과 사유를 기록한다. `stopping`은 LIVE/ACTIVE와 case unique index에 포함되므로 실제 child가 남은 동안 CPU와 case 예약이 풀리지 않는다. 저장된 hook·monitor·solver PID마다 현재 `/proc` identity가 저장값과 같은지 확인하고, session leader인 process group에만 SIGTERM을 보낸다. worker는 child 시작 직후와 0.5초 telemetry 갱신마다 상태를 확인하고 `_stop_child`에서 10초 후 SIGKILL로 올린다. 중단 요청은 solver return code와 정상·실패 판정보다 우선해 `interrupted`가 된다. Scheduler recovery는 구형 또는 소실 worker의 stopping 작업도 모든 identity가 사라진 뒤 terminal로 확정한다. ofps로만 발견한 외부 실행은 managed PID 계약이 없어 중단 대상이 아니다.
 
 <a id="data"></a>
 ## 13. UC-03/04/05/06 — 상세·ETA·artifact
@@ -240,6 +261,7 @@ pause/resume은 `Store.put('queue_paused', bool)`이며 Telegram/web/CLI에 존�
 | get/get_many | JSON 값 또는 기본값; get_many는 한 연결에서 500개씩 조회 |
 | enqueue/enqueue_batch | BEGIN IMMEDIATE, active case unique; request key 멱등, Job/Job[] |
 | update_job | BEGIN IMMEDIATE, expected 상태 불일치 None; 성공 Job |
+| request_interruption | BEGIN IMMEDIATE, stoppable → stopping; 이미 stopping이면 기존 Job, 그 밖은 None |
 | unpublished_terminal_jobs | succeeded/failed/interrupted 중 발행 marker와 기존 terminal outbox가 모두 없는 Job[] |
 | mark_terminal_published | managed terminal job body에 발행 완료 marker 저장; external/synthetic run은 False |
 | event | 기존 `(event_key,chat_id)`를 먼저 조회; 없는 recipient만 writer lock 아래 재확인 후 INSERT; None |
@@ -272,4 +294,4 @@ sequenceDiagram
     end
 ```
 
-[기계 판독 대응표](../cfd_bot/diagnostic_map.json)는 기존 99개 시퀀스의 모든 노드를 Python/JS/shell 기록 또는 외부 호출 경계에 연결한다. 정적 대응표의 완성도와 실제 환경에서 시나리오를 실행한 검증 범위는 구분한다. #30의 `log.batch.v2`는 함수/event 숫자 코드, 공통 context/call/value 사전, delta 시간/순서, error ID와 공유 stack을 사용한다. decoder는 기존 `log.batch`와 신형 Python/browser/ofps 기록을 모두 읽고 선택한 수집 수준에 포함된 개별 사건을 복원한다. basic에서 생략한 정상 helper 호출/분기는 복원하지 않는다. [정확한 필드 순서와 번호](analysis/diagnostic-codebook.md)를 별도 제공한다. 예외 객체 참조는 요청 종료 시 해제하며, 읽기 DB context 종료는 실제 commit과 다른 code를 쓴다.
+[기계 판독 대응표](../cfd_bot/diagnostic_map.json)는 기존 103개 시퀀스의 모든 노드를 Python/JS/shell 기록 또는 외부 호출 경계에 연결한다. 정적 대응표의 완성도와 실제 환경에서 시나리오를 실행한 검증 범위는 구분한다. #30의 `log.batch.v2`는 함수/event 숫자 코드, 공통 context/call/value 사전, delta 시간/순서, error ID와 공유 stack을 사용한다. decoder는 기존 `log.batch`와 신형 Python/browser/ofps 기록을 모두 읽고 선택한 수집 수준에 포함된 개별 사건을 복원한다. basic에서 생략한 정상 helper 호출/분기는 복원하지 않는다. [정확한 필드 순서와 번호](analysis/diagnostic-codebook.md)를 별도 제공한다. 예외 객체 참조는 요청 종료 시 해제하며, 읽기 DB context 종료는 실제 commit과 다른 code를 쓴다.

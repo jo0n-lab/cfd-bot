@@ -39,6 +39,9 @@ def main():
     shell=(ROOT/'bin/ofps').read_text()
     shell_names=set(re.findall(r'^([a-z_]+)\(\)',shell,re.M))
     boundaries={
+        'os.getpgid':'queue_control.interrupt_process_groups result/exception; detailed branch',
+        'os.killpg':'process.signal.request → existing signal call; exception propagation',
+        'tkinter.messagebox.askyesno':'gui.TicketEditor.interrupt_active_job / cancel_queue_selection → request/result/exception',
         'subprocess.run':'subprocess.request/response/error', 'subprocess.Popen':'subprocess.spawn/started/error',
         'urllib.request.urlopen':'telegram.Telegram.call → function.return/raise',
         'pathlib.Path.unlink':'TicketService.delete_many → function.return/raise + sequence steps',
@@ -54,9 +57,10 @@ def main():
         name=node['name'];result=[]
         if name:
             item={'node':name}
-            if name in functions:
-                item['function']=name
-                item['basic']=functions[name]['basic']
+            lookup=re.sub(r'\([^)]*\)$','',name)
+            if lookup in functions:
+                item['function']=lookup
+                item['basic']=functions[lookup]['basic']
             elif name.startswith('web_static.app.js:'):
                 js_name=name.split(':',1)[1].split('(')[0]
                 item['functions']=[key for key in js_ids if key.startswith('web.ui.'+js_name+':')]

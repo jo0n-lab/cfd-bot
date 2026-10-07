@@ -86,7 +86,8 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 | queue(편집 화면), mode, setmode, role, execsource, cpupolicy, toggle | UC-17 |
 | runstate, runreview, runyes / prepare:cid, enqueue:cid | UC-18 / UC-18-legacy |
 | /queue, queue(일반 dispatcher), pause, resume | UC-19 / 20 |
-| qselect,qback,qpage,qtoggle,qall,qnone,qcancel,qcancelyes,cancel:id | UC-21 |
+| qselect,qgroup:id,qback,qpage,qtoggle,qall,qnone,qcancel,qcancelyes,cancel:id | UC-21 |
+| stop:id, stopyes:id | UC-28 |
 | templates,template,savetemplate | UC-22 |
 | browse,bp,bd,bup,bf,bapply,bcancel; exports,xe,xnew,xkind,xapply,xdelete | UC-23 / UC-10 exports |
 | /cancel,backinput,discard,switch | UC-24 |
@@ -117,6 +118,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 | 검증·저장·실행 | document, validate, save, submit, execution_runner, update_execution_button |
 | 큐·결과 | open_queue_manager, refresh_queue_manager, open_queue_result_data |
 | 대기 취소 | select_all_queue, clear_queue_selection, cancel_queue_selection |
+| 실행 중단 | interrupt_active_job |
 | 템플릿 | refresh_patterns, apply_pattern, save_pattern |
 
 실제 display 기반 테스트가 환경에서 생략되는 경우 [검증 결과](../analysis/validation.md)에 표시한다.
@@ -150,7 +152,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 | POST /api/run | RunResult | 18 |
 | POST /api/discover | cases/skipped/postprocessed | 15 |
 | POST /api/patterns | 갱신 templates | 22 |
-| POST /api/queue | pause/resume {ok:true}; cancel CancelResult | 20,21 |
+| POST /api/queue | pause/resume {ok:true}; cancel CancelResult; interrupt JobView | 20,21,28 |
 
 403=Host/Origin/Fetch-Site/CSRF, 413=body 크기, 400=입력 타입·ValueError/OSError, 404=LookupError, 500=그 밖 예외다. browser.api는 non-2xx에서 Error를 던지고 click handler가 toast로 표시한다. overview 수집 실패는 HTTP 200+error와 이전 snapshot을 반환할 수 있다. refresh는 오류 표시를 유지한다. 클라이언트 fetch 자체에 timeout/AbortController는 없다. 서버 socket timeout 60초가 모든 domain 연산을 60초 안에 중단하는 것은 아니다.
 
@@ -174,15 +176,15 @@ Windows `Start CFD.cmd → cfd-client.ps1 → Get-SshAliases`와 macOS `CFDContr
 
 ## 실행·상태 전이
 
-`queued → starting → running(phase=preprocess/solver) → postprocessing? → succeeded/failed`. 취소는 queued에서만 cancelled다. 외부 observed는 running에서 missing 임계값 이후 수치 판정으로 이동한다. `interrupted`는 저장/표시 계약에 있지만 현재 decide는 일반적으로 succeeded/failed를 반환한다.
+`queued → starting → running(phase=preprocess/solver) → postprocessing? → succeeded/failed`가 정상 흐름이다. 대기 취소는 queued에서만 cancelled다. 명시적 실행 중단은 `starting|running|postprocessing → stopping → interrupted`이며 stopping도 LIVE/ACTIVE여서 child 소멸 전까지 CPU와 case unique 예약을 유지한다. 외부 observed는 running에서 missing 임계값 이후 수치 판정으로 이동하며 UI 중단 대상이 아니다.
 
-Monitor.tick은 ticket_index → fresh snapshot → accept_submissions → recover → managed 관측 보강 → 현재 roots ∪ 영속 tracked roots 감시 → Scheduler.tick → 증분 sync_ticket_states 순서다. 등록 전체 CASE를 observe하지 않는다. Scheduler.tick 내부도 recover를 호출한다. Monitor 한 주기에서 recover가 두 번 실행되는 점은 현행 코드 그대로다.
+Monitor.tick은 ticket_index → scan 전 LIVE root 조회 → fresh snapshot → accept_submissions → recover → managed 관측 보강 → 현재 roots ∪ 영속 tracked roots 감시 → Scheduler.tick → 증분 sync_ticket_states 순서다. scan 전후 LIVE root 합집합은 외부 감시에서 제외한다. observe는 calculation_record로 monitor-only를 None으로 처리하고 혼합 record의 monitor를 실행 identity에서 제외한다. 전체 CPU snapshot은 그대로 UI/스케줄러에 전달한다. 등록 전체 CASE를 observe하지 않는다. Scheduler.tick 내부도 recover를 호출한다. Monitor 한 주기에서 recover가 두 번 실행되는 점은 현행 코드 그대로다.
 
 `bin/ofps`는 OpenFOAM/Basilisk process 다음으로 monitor process를 판정한다. worker opt-in 경로는 `CFD_BOT_CASE_DIR`, `CFD_BOT_JOB_ID`, `CFD_BOT_MONITOR_CPU`를, TCB 내장·외부 실행 경로는 `TCB_MONITORED_SOLVER_PID`와 cwd를 사용한다. 유효 controlDict와 case 내부 cwd를 확인한 process만 `ENGINE: Monitor`로 출력한다. `parse_snapshot`은 동일 root의 solver와 monitor process를 하나의 ProcessRecord로 병합해 affinity 합집합을 `/stat`, web, scheduler, `ofps --check`에 제공한다.
 
 Scheduler는 outbox와 `terminal_event_published` marker가 모두 없는 terminal job만 종료 이벤트로 처리한다. 이미 발행된 legacy job은 기존 outbox로 제외되며 알림 대상이 아닌 job도 marker를 남겨 다음 tick의 반복 쓰기를 막는다. 이어서 active child가 없는 즉시 실행 batch마다 첫 queued child 하나만 보고, active job이 없는 `queue_id`별 FIFO 선두를 각각 검토한다. 일반 head의 실제 NP와 선택적 monitor가 quota 크기이며 Scheduler가 겹치지 않는 CPU 위치를 자동 배정한다. 동적 macro는 `priority=run|queue` 모두 현재 child NP만큼 미예약 CPU를 먼저 쓰고 부족분은 작은 quota donor부터 drain한다. 뒤 child는 앞 child가 끝나기 전 candidate나 drain claim을 얻지 않는다. donor 작업은 자연 종료하고, 동적 작업 뒤 donor별 FIFO head에 한 번씩 우선권을 준다. automatic/monitor opt-in이면 추가 fresh snapshot, solver CPU check, monitor면 추가 CPU check를 수행한다. check_cpus는 SNAPSHOT_LOCK을 사용하지 않는다. worker는 fresh scan 자체를 주기적으로 하지 않고 로그를 0.5초 간격으로 읽는다.
 
-worker의 .process-core 반영 → 전처리 → 로그 cursor 수집 → solver (+ opt-in monitor) → 최종 log drain → decide → 성공 시 후처리 → artifact freeze → event payload 저장 → terminal state 저장 순서를 지킨다. solver·monitor·hook이 시작된 뒤 Store 쓰기에서 SQLite locked/busy가 발생하면 child를 유지한 채 같은 쓰기를 재시도한다. monitor 종료는 최대 30초 기다린 뒤 정리하고 monitor/postprocess 오류는 solver verdict와 별도 기록한다. terminal state 전에 파일을 freeze한다. worker는 종료 payload를 kv에 저장하며 이후 Scheduler.terminal_event가 outbox에 넣는다.
+worker의 .process-core 반영 → 전처리 → 로그 cursor 수집 → solver (+ opt-in monitor) → 최종 log drain → decide → 성공 시 후처리 → artifact freeze → event payload 저장 → terminal state 저장 순서를 지킨다. solver·monitor·hook이 시작된 뒤 Store 쓰기에서 SQLite locked/busy가 발생하면 child를 유지한 채 같은 쓰기를 재시도한다. 각 child 시작 직후와 telemetry loop에서 stopping을 확인하며 process group에 TERM, 10초 뒤에도 살아 있으면 KILL을 보낸다. 중단 요청은 solver verdict보다 우선해 interrupted로 저장한다. monitor 종료는 최대 30초 기다린 뒤 정리하고 monitor/postprocess 오류는 solver verdict와 별도 기록한다. terminal state 전에 파일을 freeze한다. worker는 종료 payload를 kv에 저장하며 이후 Scheduler.terminal_event가 outbox에 넣는다.
 
 Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message_index/file_index를 각 성공 뒤 저장하고 실패는 retry_after+backoff로 재시도한다. API 성공 직후 checkpoint 전 crash는 재전송될 수 있다. API 응답 소요가 느리면 같은 batch 뒤 recipient도 기다린다.
 ''',
@@ -241,7 +243,7 @@ lines=['# 전체 유즈케이스 × 플랫폼 — 함수 요청·응답 그림',
        '각 링크는 **가로 participant·세로 lifeline·함수 요청/반환 화살표**로 그린 SVG다. 각 플랫폼 LLD에는 같은 그림과 함수 소스 링크를 함께 삽입했다. `ofps` 실행과 외부 Telegram API 경계도 그림 안에서 표시한다.','',
        '[Telegram 전체](telegram.md) · [GUI 전체](gui.md) · [Web 전체](web.md) · [Runtime 전체](runtime.md) · [공용 함수 상세](domain.md)','',
        '| UC | 사용자 동작 | Telegram | GUI | Web | 운영/접속 |','|---|---|---|---|---|---|']
-for i in range(1,28):
+for i in range(1,29):
     prefix=f'UC-{i:02}';group=[c for c in flows.charts if c['key'].startswith(prefix)]
     cells=[]
     for suffix in ('tg','gui','web','runtime'):

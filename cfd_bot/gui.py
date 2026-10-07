@@ -6,7 +6,7 @@ from pathlib import Path
 from .artifacts import export_files, residual_files
 from .patterns import DEFAULT_NAME, PatternLibrary
 from .control import control_times
-from .queue_control import cancel_queued_jobs
+from .queue_control import cancel_queued_jobs, interrupt_running_jobs
 from .run_views import job_view, running_macro_views, tracking_registry
 from .tickets import STATES, discover_cases, has_postprocessing, ticket_name
 from .queueing import job_queue_id
@@ -1147,25 +1147,21 @@ class TicketEditor:
         self.ttk.Label(frame, text='1. 대기 작업 선택', font=('TkDefaultFont', 11, 'bold')).pack(anchor='w')
         self.ttk.Label(frame, text='Ctrl / Shift 또는 아래 전체 선택 버튼으로 여러 작업을 선택하세요.').pack(
             anchor='w', pady=(4, 10))
-        listing = self.ttk.Frame(frame)
-        listing.pack(fill='x')
-        box = self.tk.Listbox(listing, exportselection=False, selectmode='extended', height=10)
-        box.pack(side='left', fill='both', expand=True)
-        scroll = self.ttk.Scrollbar(listing, command=box.yview)
-        scroll.pack(side='right', fill='y')
-        box.configure(yscrollcommand=scroll.set)
-        self.queue_listboxes['all'] = box
-        self.queue_listbox = box
-        controls = self.ttk.Frame(frame)
-        controls.pack(fill='x', pady=(10, 0))
-        self.ttk.Button(controls, text='전체 선택', command=self.select_all_queue).pack(side='left')
-        self.ttk.Button(controls, text='전체 해제', command=self.clear_queue_selection).pack(side='left', padx=6)
-        self.ttk.Button(controls, text='선택 취소', command=self.cancel_queue_selection).pack(side='left')
-        self.ttk.Button(controls, text='새로고침', command=self.refresh_queue_manager).pack(side='right')
+        self.queue_notebook = self.ttk.Notebook(frame)
+        self.queue_notebook.pack(fill='x')
+        self.queue_listboxes = {}
+        self.queue_jobs_by_lane = {}
+        self.ttk.Button(frame, text='새로고침', command=self.refresh_queue_manager).pack(anchor='e')
         self.ttk.Label(frame, text='2. 실행 중', font=('TkDefaultFont', 11, 'bold')).pack(
             anchor='w', pady=(14, 4))
-        self.queue_active_listbox = self.tk.Listbox(frame, exportselection=False, height=5)
+        self.queue_active_listbox = self.tk.Listbox(frame, exportselection=False, selectmode='extended', height=5)
         self.queue_active_listbox.pack(fill='x')
+        active_controls = self.ttk.Frame(frame)
+        active_controls.pack(fill='x', pady=(8, 0))
+        self.ttk.Button(active_controls, text='전체 선택', command=self.select_all_active_jobs).pack(side='left')
+        self.ttk.Button(active_controls, text='전체 해제',
+                        command=_diagnostics.callback(lambda: self.queue_active_listbox.selection_clear(0, 'end'), 'TicketEditor.callback:M1163')).pack(side='left', padx=6)
+        self.ttk.Button(active_controls, text='선택 작업 중단', command=self.interrupt_active_job).pack(side='right')
         self.ttk.Label(frame, text='3. 실행 이력', font=('TkDefaultFont', 11, 'bold')).pack(
             anchor='w', pady=(14, 4))
         self.ttk.Label(frame, text='[추적 가능]으로 표시된 실행 이력에서 결과 데이터를 열 수 있습니다.').pack(
@@ -1186,17 +1182,42 @@ class TicketEditor:
 
     @_diagnostics.trace
     def refresh_queue_manager(self):
-        if not self.queue_listboxes or not self.queue_listbox.winfo_exists():
-            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1022:then')
+        if self.queue_window is None or not self.queue_window.winfo_exists():
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:M1185:then')
             return
         selected = {self.queue_jobs_by_lane[lane][index]['id']
                     for lane, box in self.queue_listboxes.items()
                     for index in box.curselection()
                     if index < len(self.queue_jobs_by_lane[lane])}
         self.queue_jobs = self.queue_store.jobs(('queued',))
+        for lane in sorted({job_queue_id(job) for job in self.queue_jobs}):
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:M1192:loop', lane=lane)
+            if lane in self.queue_listboxes:
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:M1193:then')
+                continue
+            tab = self.ttk.Frame(self.queue_notebook, padding=6)
+            self.queue_notebook.add(tab, text=lane)
+            listing = self.ttk.Frame(tab)
+            listing.pack(fill='x')
+            box = self.tk.Listbox(listing, exportselection=False, selectmode='extended', height=8)
+            box.pack(side='left', fill='both', expand=True)
+            scroll = self.ttk.Scrollbar(listing, command=box.yview)
+            scroll.pack(side='right', fill='y')
+            box.configure(yscrollcommand=scroll.set)
+            self.queue_listboxes[lane] = box
+            self.queue_jobs_by_lane[lane] = []
+            self.queue_listbox = next(iter(self.queue_listboxes.values()))
+            controls = self.ttk.Frame(tab)
+            controls.pack(fill='x', pady=(6, 0))
+            for label, callback in [('전체 선택', self.select_all_queue),
+                                    ('전체 해제', self.clear_queue_selection),
+                                    ('선택 취소', self.cancel_queue_selection)]:
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:M1209:loop', label=label, callback=callback)
+                self.ttk.Button(controls, text=label,
+                                command=_diagnostics.callback(lambda q=lane, cb=callback: cb(q), 'TicketEditor.callback:M1217')).pack(side='left', padx=3)
         for lane, box in self.queue_listboxes.items():
-            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1029:loop', lane=lane, box=box)
-            self.queue_jobs_by_lane[lane] = list(self.queue_jobs)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:M1214:loop', lane=lane, box=box)
+            self.queue_jobs_by_lane[lane] = [job for job in self.queue_jobs if job_queue_id(job) == lane]
             box.delete(0, 'end')
             for index, job in enumerate(self.queue_jobs_by_lane[lane]):
                 if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1032:loop', index=index, job=job)
@@ -1209,14 +1230,20 @@ class TicketEditor:
         cases = cases_for(self.queue_config)
         self.queue_registry = tracking_registry(cases)
         jobs = self.queue_store.jobs()
-        active = [job for job in jobs if job['status'] in ('starting', 'running', 'postprocessing')]
+        active = [job for job in jobs if job['status'] in
+                  ('starting', 'running', 'postprocessing', 'stopping')]
+        selected_active = {self.queue_active_jobs[i]['id'] for i in self.queue_active_listbox.curselection()
+                           if i < len(self.queue_active_jobs)}
         self.queue_active_jobs = [job_view(job, self.queue_registry) for job in active]
         self.queue_active_listbox.delete(0, 'end')
-        for item in self.queue_active_jobs:
-            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1044:loop', item=item)
+        for i, item in enumerate(self.queue_active_jobs):
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:M1234:loop', i=i, item=item)
             cpus = item.get('actual_cpu_list') or 'CPU 배정 중'
             self.queue_active_listbox.insert(
                 'end', f"{item['name']} · {item['status']} · {cpus} · {item['case_dir']}")
+            if item['id'] in selected_active:
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:M1238:then')
+                self.queue_active_listbox.selection_set(i)
         selected_result = None
         if self.queue_result_listbox is not None and self.queue_result_listbox.curselection():
             if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1049:then')
@@ -1225,7 +1252,7 @@ class TicketEditor:
                 if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1051:then')
                 selected_result = self.queue_result_jobs[index]['id']
         history = [job for job in jobs if job['status'] not in
-                   ('queued', 'starting', 'running', 'postprocessing')]
+                   ('queued', 'starting', 'running', 'postprocessing', 'stopping')]
         self.queue_result_jobs = [job_view(job, self.queue_registry) for job in reversed(history)][:100]
         self.queue_result_listbox.delete(0, 'end')
         for index, item in enumerate(self.queue_result_jobs):
@@ -1262,6 +1289,38 @@ class TicketEditor:
         hours, rest = divmod(seconds, 3600)
         minutes, seconds = divmod(rest, 60)
         return f'{hours}시간 {minutes}분' if hours else f'{minutes}분 {seconds}초'
+
+    @_diagnostics.trace
+    def select_all_active_jobs(self):
+        self.queue_active_listbox.selection_clear(0, 'end')
+        for i, job in enumerate(self.queue_active_jobs):
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.select_all_active_jobs:M1288:loop', i=i, job=job)
+            if job['status'] in ('starting', 'running', 'postprocessing'):
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.select_all_active_jobs:M1289:then')
+                self.queue_active_listbox.selection_set(i)
+
+    @_diagnostics.trace
+    def interrupt_active_job(self):
+        indexes = (self.queue_active_listbox.curselection()
+                   if self.queue_active_listbox is not None else ())
+        if not indexes:
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.interrupt_active_job:M1295:then')
+            self.queue_status.set('중단할 실행 작업을 선택하세요.')
+            return
+        jobs = [self.queue_active_jobs[i] for i in indexes]
+        names = '\n'.join(job['name'] for job in jobs[:20])
+        if not self.messagebox.askyesno(
+                '실행 작업 중단', f"선택한 실행 작업 {len(jobs)}개를 중단할까요?\n\n{names}",
+                parent=self.queue_window):
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.interrupt_active_job:M1300:then')
+            return
+        try:
+            result = interrupt_running_jobs(self.queue_store, [job['id'] for job in jobs])
+            self.refresh_queue_manager()
+            self.queue_status.set(f"중단 요청: {len(result['interrupted'])}개 · 이미 종료/변경 {len(result['unavailable'])}개")
+        except (OSError, ValueError) as exc:
+            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.interrupt_active_job:M1308:except')
+            self.messagebox.showerror('작업 중단 실패', str(exc), parent=self.queue_window)
 
     @_diagnostics.trace
     def open_queue_result_data(self, _event=None):
@@ -1317,23 +1376,30 @@ class TicketEditor:
             listing.insert('end', line)
 
     @_diagnostics.trace
-    def select_all_queue(self):
-        for box in self.queue_listboxes.values():
-            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.select_all_queue:L1129:loop', box=box)
+    def select_all_queue(self, queue_id=None):
+        for lane, box in self.queue_listboxes.items():
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.select_all_queue:M1364:loop', lane=lane, box=box)
+            if queue_id is not None and lane != queue_id:
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.select_all_queue:M1365:then')
+                continue
             if box.size():
                 if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.select_all_queue:L1130:then')
                 box.selection_set(0, 'end')
 
     @_diagnostics.trace
-    def clear_queue_selection(self):
-        for box in self.queue_listboxes.values():
-            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.clear_queue_selection:L1134:loop', box=box)
+    def clear_queue_selection(self, queue_id=None):
+        for lane, box in self.queue_listboxes.items():
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.clear_queue_selection:M1372:loop', lane=lane, box=box)
+            if queue_id is not None and lane != queue_id:
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.clear_queue_selection:M1373:then')
+                continue
             box.selection_clear(0, 'end')
 
     @_diagnostics.trace
-    def cancel_queue_selection(self):
+    def cancel_queue_selection(self, queue_id=None):
         ids = [self.queue_jobs_by_lane[lane][index]['id']
                for lane, box in self.queue_listboxes.items()
+               if queue_id is None or lane == queue_id
                for index in box.curselection()]
         if not ids:
             if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.cancel_queue_selection:L1141:then')

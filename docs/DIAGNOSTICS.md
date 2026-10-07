@@ -1,6 +1,6 @@
 # 사후 원인 분석용 진단 로그 (#18)
 
-이미 일어난 문제에서 사용자 조작 → 함수 호출/반환 → 기존 판단 → 티켓/작업 변경 → 응답/예외를 연결한다. 로그 설정과 기록만 추가하며 업무 검증·실행 차단·재시도·복구 정책은 추가하지 않는다. [사전 설계](history/2026-10-07-diagnostic-sequence-logging.md), [99개 시퀀스 대응표](analysis/diagnostic-flow-coverage.md), [실측 결과](analysis/diagnostic-performance.md)를 함께 참고한다.
+이미 일어난 문제에서 사용자 조작 → 함수 호출/반환 → 기존 판단 → 티켓/작업 변경 → 응답/예외를 연결한다. 로그 설정과 기록만 추가하며 업무 검증·실행 차단·재시도·복구 정책은 추가하지 않는다. [사전 설계](history/2026-10-07-diagnostic-sequence-logging.md), [103개 시퀀스 대응표](analysis/diagnostic-flow-coverage.md), [실측 결과](analysis/diagnostic-performance.md)를 함께 참고한다.
 
 ## OFF / basic / detailed
 
@@ -34,7 +34,7 @@ Telegram, GUI, web backend는 같은 Python 모듈과 설정을 사용한다. �
 | basic (ON 기본) | 사용자 조작, 요청/응답, 업무 경계의 caller/trace/입력·결과, 티켓·작업 변경, DB/subprocess/관측 프로세스, 경고·예외·기존 catch 위치 |
 | detailed | basic + 계측된 전체 내부 함수의 정상 call/return, 정상 분기/반복, parser 각 줄, 브라우저 표시 helper |
 
-basic에서는 문구 조회·CPU 변환·HTML escape·map/filter 등의 정상 호출에 대해 context/시각/인자·결과 요약을 만들지 않는다. Python 정상 분기 1,342곳은 인자 평가 전 상세 모드 guard로 건너뛰고, 165개 except 지점은 두 ON 모드 모두 기록한다. 동일 예외의 전파는 필요한 별도 관측이며 code/value/error 참조를 계속 사용한다. SQL statement와 실제 transaction, 다른 티켓·작업·클릭은 제거하거나 하나로 합치지 않는다.
+basic에서는 문구 조회·CPU 변환·HTML escape·map/filter 등의 정상 호출에 대해 context/시각/인자·결과 요약을 만들지 않는다. Python 정상 분기는 인자 평가 전 상세 모드 guard로 건너뛰고, except 지점은 두 ON 모드 모두 기록한다. 동일 예외의 전파는 필요한 별도 관측이며 code/value/error 참조를 계속 사용한다. SQL statement와 실제 transaction, 다른 티켓·작업·클릭은 제거하거나 하나로 합치지 않는다.
 
 basic helper 오류는 Python `function.error`에 실제 함수·stack을 남기고 상위 업무 call/trace에 연결한다. 브라우저 helper `function.raise`는 call_id/duration이 null이며 parent_call_id가 기록된 업무 경계다. 정상 call이 생략됐으므로 임의의 시작 시각이나 지속 시간을 만들지 않는다. ofps는 scan/동기화/명령 함수 경계와 관측 프로세스·ERR/EXIT를 유지하며 정상 helper call/return은 detailed 전용이다. helper의 nonzero return은 두 ON 모드에 보존하며 shell 조건식의 false를 곧바로 업무 실패라고 해석하지 않는다.
 
@@ -44,8 +44,8 @@ basic helper 오류는 Python `function.error`에 실제 함수·stack을 남기
 
 | 경계 | 주요 기록 |
 |---|---|
-| Python 함수 392개 (전체는 detailed) | function.call / return / raise, caller, input/result 요약, call/parent/trace, 소요 시간 |
-| 기존 분기 1,507곳 (정상 분기는 detailed) | 원본 함수·위치 기반 step ID, 실제 선택한 분기/반복, 순서·시각, 반복 대상 요약, 처리된 예외 |
+| Python 함수 401개 (전체는 detailed) | function.call / return / raise, caller, input/result 요약, call/parent/trace, 소요 시간 |
+| 기존 분기 1,562곳 (정상 분기는 detailed) | 원본 함수·위치 기반 step ID, 실제 선택한 분기/반복, 순서·시각, 반복 대상 요약, 처리된 예외 |
 | Telegram | update ID, command/callback action, 비식별 actor, ACK thread 및 API request/response·오류 |
 | Tk GUI | 함수·버튼 callback, 기존 입력/상태와 작업 thread의 부모 호출 연결 |
 | web | HTTP method/path/status, 서버 trace 응답 헤더, 브라우저 클릭·필드·화면 이동·JS 함수/Promise 결과·예외 |

@@ -2,6 +2,8 @@
 
 **정상 921개 조회는 OFF 635.86 ms, basic 685.82 ms, detailed 5,021.94 ms였다.** 기본 모드의 중앙값 추가 지연은 약 7.9%, 상세 대비 시간은 약 86.3% 감소했다. 이는 내부 정상 helper 호출/분기를 수집하지 않는 변경이며 같은 전체 로그를 무손실 압축한 결과가 아니다.
 
+> 이 측정은 `be62e88`의 기본/상세 분리 구현 기준이다. 이후 PR 병합을 위해 main의 실행 중단·대기열 선택·monitor 종료 수정과 통합했으며, 통합 검증은 설계 이력에 별도로 기록한다. 이 표를 통합 후 새 측정으로 해석하지 않는다.
+
 ## 조건
 
 같은 수정본·호스트·Python 3.9.25, 임시 티켓 921개/활성 CASE 40개, 가짜 snapshot/transport를 사용했다. 각 모드를 새 interpreter에서 OFF → basic → detailed 순서로 실행했다. 시나리오별 3회 warmup과 5회 측정의 p50/p95다. p95는 작은 표본의 경험적 순위값이므로 운영 SLA 보증이 아니다. CPU는 측정 구간 합, VmHWM은 Linux process peak다. 마지막 shell 로그 필터의 가짜 ERR 제거는 이 Python/browser 측정 이후 별도 회귀 테스트로 확인했으며 측정된 Python/browser 경로는 바뀌지 않았다.

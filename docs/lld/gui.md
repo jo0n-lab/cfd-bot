@@ -21,6 +21,7 @@
 | 검증·저장·실행 | document, validate, save, submit, execution_runner, update_execution_button |
 | 큐·결과 | open_queue_manager, refresh_queue_manager, open_queue_result_data |
 | 대기 취소 | select_all_queue, clear_queue_selection, cancel_queue_selection |
+| 실행 중단 | interrupt_active_job |
 | 템플릿 | refresh_patterns, apply_pattern, save_pattern |
 
 실제 display 기반 테스트가 환경에서 생략되는 경우 [검증 결과](../analysis/validation.md)에 표시한다.
@@ -50,10 +51,11 @@
 - [UC-17-gui — 실행·queue 이름·동적 macro 설정](#uc-17)
 - [UC-18-gui — 즉시 실행·이름 있는 대기열 등록](#uc-18)
 - [UC-19-gui — 큐·이력·매크로 진행](#uc-19)
-- [UC-21-gui — 대기 작업 선택·취소](#uc-21)
+- [UC-21-gui — 대기열별 선택·취소](#uc-21)
 - [UC-22-gui — 실패 패턴 템플릿](#uc-22)
 - [UC-23-gui — 폴더·로그·Residual 선택](#uc-23)
 - [UC-24-gui — 저장/폐기/취소·닫기](#uc-24)
+- [UC-28-gui — 실행 중 managed 작업 중단](#uc-28)
 - [UC-10-exports-gui — 요청 데이터 정의 편집](#uc-10-exports)
 
 <a id="uc-01"></a>
@@ -85,7 +87,7 @@
 **정상 결과:** 파일 경로 표시; 이미지 preview/다운로드는 구현 없음.
 **실패/취소:** ValueError/OSError → messagebox; 초안 유지.
 
-**코드 연결:** [gui.TicketEditor.open_queue_result_data](../../cfd_bot/gui.py#L1267), [artifacts.residual_files](../../cfd_bot/artifacts.py#L72).
+**코드 연결:** [gui.TicketEditor.open_queue_result_data](../../cfd_bot/gui.py#L1326), [artifacts.residual_files](../../cfd_bot/artifacts.py#L72).
 
 **관련 검증:** [test_residual.py](../../tests/test_residual.py).
 
@@ -102,7 +104,7 @@
 **정상 결과:** 파일 경로 표시; 이미지 preview/다운로드는 구현 없음.
 **실패/취소:** ValueError/OSError → messagebox; 초안 유지.
 
-**코드 연결:** [gui.TicketEditor.open_queue_result_data](../../cfd_bot/gui.py#L1267), [artifacts.export_files](../../cfd_bot/artifacts.py#L15).
+**코드 연결:** [gui.TicketEditor.open_queue_result_data](../../cfd_bot/gui.py#L1326), [artifacts.export_files](../../cfd_bot/artifacts.py#L15).
 
 **관련 검증:** [test_web.py](../../tests/test_web.py), [test_core.py](../../tests/test_core.py).
 
@@ -238,7 +240,7 @@
 **정상 결과:** Tk status / widget / dialog 반영.
 **실패/취소:** ValueError/OSError → messagebox; 초안 유지.
 
-**코드 연결:** [gui.TicketEditor.delete](../../cfd_bot/gui.py#L1357), [editor.TicketService.deletion_preview](../../cfd_bot/editor.py#L558), [editor.TicketService.delete_many](../../cfd_bot/editor.py#L564), [gui.TicketEditor.refresh](../../cfd_bot/gui.py#L815).
+**코드 연결:** [gui.TicketEditor.delete](../../cfd_bot/gui.py#L1423), [editor.TicketService.deletion_preview](../../cfd_bot/editor.py#L558), [editor.TicketService.delete_many](../../cfd_bot/editor.py#L564), [gui.TicketEditor.refresh](../../cfd_bot/gui.py#L815).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py).
 
@@ -306,7 +308,7 @@
 **정상 결과:** Tk status / widget / dialog 반영.
 **실패/취소:** ValueError/OSError → messagebox; 초안 유지.
 
-**코드 연결:** [gui.TicketEditor.save](../../cfd_bot/gui.py#L1025), [gui.TicketEditor.submit.work](../../cfd_bot/gui.py#L1083), [ticket_run.TicketRunner.request](../../cfd_bot/ticket_run.py#L195), [ticket_run.TicketRunner._snapshot](../../cfd_bot/ticket_run.py#L24), [processes.snapshot](../../cfd_bot/processes.py#L229), [processes.parse_snapshot](../../cfd_bot/processes.py#L177), [processes.identity](../../cfd_bot/processes.py#L25), [processes.owner_label](../../cfd_bot/processes.py#L87), [processes.cpu_layout](../../cfd_bot/processes.py#L140), [storage.Store.put](../../cfd_bot/storage.py#L140), [tickets.ticket_lock](../../cfd_bot/tickets.py#L31), [ticket_run.TicketRunner._members](../../cfd_bot/ticket_run.py#L34), [config.load_case](../../cfd_bot/config.py#L146), [editor.TicketService.revision](../../cfd_bot/editor.py#L333), [ticket_run.TicketRunner._state](../../cfd_bot/ticket_run.py#L109), [storage.Store.jobs](../../cfd_bot/storage.py#L154), [storage.Store.get](../../cfd_bot/storage.py#L115), [ticket_run.TicketRunner._capacity](../../cfd_bot/ticket_run.py#L58), [tickets.atomic_json](../../cfd_bot/tickets.py#L52), [gui.TicketEditor.submit.finish](../../cfd_bot/gui.py#L1090), [gui.TicketEditor.update_execution_button](../../cfd_bot/gui.py#L267), [ticket_run.TicketRunner.state](../../cfd_bot/ticket_run.py#L146).
+**코드 연결:** [gui.TicketEditor.save](../../cfd_bot/gui.py#L1025), [gui.TicketEditor.submit.work](../../cfd_bot/gui.py#L1083), [ticket_run.TicketRunner.request](../../cfd_bot/ticket_run.py#L195), [ticket_run.TicketRunner._snapshot](../../cfd_bot/ticket_run.py#L24), [processes.snapshot](../../cfd_bot/processes.py#L229), [processes.parse_snapshot](../../cfd_bot/processes.py#L177), [processes.identity](../../cfd_bot/processes.py#L25), [processes.owner_label](../../cfd_bot/processes.py#L87), [processes.cpu_layout](../../cfd_bot/processes.py#L140), [storage.Store.put](../../cfd_bot/storage.py#L151), [tickets.ticket_lock](../../cfd_bot/tickets.py#L31), [ticket_run.TicketRunner._members](../../cfd_bot/ticket_run.py#L34), [config.load_case](../../cfd_bot/config.py#L146), [editor.TicketService.revision](../../cfd_bot/editor.py#L333), [ticket_run.TicketRunner._state](../../cfd_bot/ticket_run.py#L109), [storage.Store.jobs](../../cfd_bot/storage.py#L165), [storage.Store.get](../../cfd_bot/storage.py#L126), [ticket_run.TicketRunner._capacity](../../cfd_bot/ticket_run.py#L58), [tickets.atomic_json](../../cfd_bot/tickets.py#L52), [gui.TicketEditor.submit.finish](../../cfd_bot/gui.py#L1090), [gui.TicketEditor.update_execution_button](../../cfd_bot/gui.py#L267), [ticket_run.TicketRunner.state](../../cfd_bot/ticket_run.py#L146).
 
 **관련 검증:** [test_ticket_run.py](../../tests/test_ticket_run.py), [test_named_queues.py](../../tests/test_named_queues.py).
 
@@ -323,15 +325,15 @@
 **정상 결과:** Tk status / widget / dialog 반영.
 **실패/취소:** ValueError/OSError → messagebox; 초안 유지.
 
-**코드 연결:** [gui.TicketEditor.refresh_queue_manager](../../cfd_bot/gui.py#L1188), [storage.Store.jobs](../../cfd_bot/storage.py#L154), [config.cases_for](../../cfd_bot/config.py#L554), [run_views.tracking_registry](../../cfd_bot/run_views.py#L21), [run_views.job_view](../../cfd_bot/run_views.py#L36), [config.tickets_for](../../cfd_bot/config.py#L586), [run_views.running_macro_views](../../cfd_bot/run_views.py#L74).
+**코드 연결:** [gui.TicketEditor.refresh_queue_manager](../../cfd_bot/gui.py#L1184), [storage.Store.jobs](../../cfd_bot/storage.py#L165), [config.cases_for](../../cfd_bot/config.py#L554), [run_views.tracking_registry](../../cfd_bot/run_views.py#L19), [run_views.job_view](../../cfd_bot/run_views.py#L34), [config.tickets_for](../../cfd_bot/config.py#L586), [run_views.running_macro_views](../../cfd_bot/run_views.py#L72).
 
 **관련 검증:** [test_run_views.py](../../tests/test_run_views.py), [test_named_queues.py](../../tests/test_named_queues.py).
 
 
 <a id="uc-21"></a>
-## UC-21-gui — 대기 작업 선택·취소
+## UC-21-gui — 대기열별 선택·취소
 
-진입: `Tk event → cancel_queue_selection`.
+진입: `Tk event → cancel_queue_selection(queue_id)`.
 
 ![UC-21-gui 함수 요청·응답](../diagrams/UC-21-gui.svg)
 
@@ -340,7 +342,7 @@
 **정상 결과:** Tk status / widget / dialog 반영.
 **실패/취소:** ValueError/OSError → messagebox; 초안 유지.
 
-**코드 연결:** [gui.TicketEditor.cancel_queue_selection](../../cfd_bot/gui.py#L1334), [queue_control.cancel_queued_jobs](../../cfd_bot/queue_control.py#L8), [gui.TicketEditor.refresh_queue_manager](../../cfd_bot/gui.py#L1188).
+**코드 연결:** [queue_control.cancel_queued_jobs](../../cfd_bot/queue_control.py#L13), [gui.TicketEditor.refresh_queue_manager](../../cfd_bot/gui.py#L1184).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_web.py](../../tests/test_web.py).
 
@@ -394,6 +396,23 @@
 **코드 연결:** [gui.TicketEditor.confirm_switch](../../cfd_bot/gui.py#L831), [gui.TicketEditor.save](../../cfd_bot/gui.py#L1025).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py).
+
+
+<a id="uc-28"></a>
+## UC-28-gui — 실행 중 managed 작업 중단
+
+진입: `Tk event → interrupt_active_job`.
+
+![UC-28-gui 함수 요청·응답](../diagrams/UC-28-gui.svg)
+
+[SVG 원본 확대](../diagrams/UC-28-gui.svg)
+
+**정상 결과:** Tk status / widget / dialog 반영.
+**실패/취소:** ValueError/OSError → messagebox; 초안 유지.
+
+**코드 연결:** [gui.TicketEditor.interrupt_active_job](../../cfd_bot/gui.py#L1303), [queue_control.interrupt_running_jobs](../../cfd_bot/queue_control.py#L80), [gui.TicketEditor.refresh_queue_manager](../../cfd_bot/gui.py#L1184).
+
+**관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py), [test_web.py](../../tests/test_web.py).
 
 
 <a id="uc-10-exports"></a>

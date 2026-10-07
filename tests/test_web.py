@@ -72,6 +72,8 @@ class WebTests(Environment):
                 source = body.decode()
                 self.assertNotIn('queue_cpu_set', source)
                 self.assertIn('코어 수로 자동 결정', source)
+                self.assertIn("case 'stop-job'", source)
+                self.assertIn("action:'interrupt'", source)
         for platform in ('Windows', 'macOS'):
             status, body, headers = self.request(f'/downloads/CFD-Control-Room-{platform}.zip')
             self.assertEqual(status, 200)
@@ -186,9 +188,27 @@ class WebTests(Environment):
         self.assertFalse(self.store.get('queue_paused'))
         self.store.update_job(jobs[0]['id'], status='running')
         self.assertEqual(self.request('/api/queue', dict(action='cancel', id=jobs[0]['id']))[0], 400)
+        interrupted = self.post('/api/queue', dict(action='interrupt', id=jobs[0]['id']))
+        self.assertEqual(interrupted['status'], 'interrupted')
         self.store.update_job(jobs[0]['id'], status='queued')
         self.post('/api/queue', dict(action='cancel', id=jobs[0]['id']))
         self.assertEqual(self.store.job(jobs[0]['id'])['status'], 'cancelled')
+
+    def test_queue_bulk_interrupt_skips_finished_and_waiting_jobs(self):
+        jobs = []
+        for i, status in enumerate(('running', 'postprocessing', 'succeeded', 'queued')):
+            root = self.root / f'bulk-stop-{i}'
+            root.mkdir()
+            job = self.store.enqueue(dict(self.case, _root=str(root)))
+            self.store.update_job(job['id'], status=status)
+            jobs.append(job)
+        result = self.post('/api/queue', dict(action='interrupt_many',
+                           ids=[j['id'] for j in jobs] + [jobs[0]['id'], 'missing']))
+        self.assertEqual(result['interrupted'], [j['id'] for j in jobs[:2]])
+        self.assertEqual(result['unavailable'], [j['id'] for j in jobs[2:]] + ['missing'])
+        self.assertEqual([self.store.job(j['id'])['status'] for j in jobs],
+                         ['interrupted', 'interrupted', 'succeeded', 'queued'])
+        self.assertEqual(self.request('/api/queue', dict(action='interrupt_many', ids=[]))[0], 400)
 
     def test_queue_bulk_cancel_returns_cancelled_and_stale_selections(self):
         jobs = []

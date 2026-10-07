@@ -4,7 +4,7 @@ This is a logging policy only. It must never choose an application result.
 """
 _GROUPS = {
     'artifacts': 'export_files freeze_exports residual_files',
-    'bot.Bot': 'acknowledge_callback active_runs case_menu dispatch file fresh_runs handle queue_selection send show_cases show_queue_selection start_callback_ack status',
+    'bot.Bot': 'set_queue_selection show_queue_groups acknowledge_callback active_runs case_menu dispatch file fresh_runs handle queue_selection send show_cases show_queue_selection start_callback_ack status',
     'bot': 'deliver serve serve.monitor_loop serve.notification_loop',
     'catalog.TicketIndex': 'refresh changes acknowledge',
     'cli': 'main',
@@ -20,8 +20,8 @@ _GROUPS = {
     'outcomes': 'decide',
     'patterns.PatternLibrary': 'load save',
     'processes': 'snapshot DaemonLock.__enter__ DaemonLock.__exit__',
-    'queue_control': 'cancel_queued_jobs',
-    'storage.Store': 'acknowledge_ticket_changes cancel_queued clear_messages delivered enqueue enqueue_batch event finish_observation mark_terminal_published put remember_message remember_run retry save_delivery update_job',
+    'queue_control': 'cancel_queued_jobs interrupt_running_job interrupt_running_jobs interrupt_process_groups',
+    'storage.Store': 'request_interruption acknowledge_ticket_changes cancel_queued clear_messages delivered enqueue enqueue_batch event finish_observation mark_terminal_published put remember_message remember_run retry save_delivery update_job',
     'telegram.Telegram': 'call delete_messages file send updates',
     'ticket_chat.TicketChat': 'action apply_field basic browser bulk_list card delete_confirmed delete_review do_switch draft export_card exports field forget_panels handle input listing load members persist queue render review rules save_template scan scan.work scripts set_browser_path switch templates',
     'ticket_run.TicketRunner': 'request state states',

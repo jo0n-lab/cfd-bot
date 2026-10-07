@@ -85,3 +85,14 @@ basic은 명시된 업무 경계 함수와 UI 이벤트를 기록한다. 내부 
 Python 정책 목록과 생성 전 mode guard, browser 주요 업무 함수/사용자 Event 선택, ofps 기본 경계 및 nonzero/ERR 보존을 적용했다. 모든 adapter와 worker/ofps는 공통 level을 전달받는다. 정상 helper의 경고/예외를 보존하며 Python은 `function.error`, browser는 시작 기록이 없는 raise(null call_id/duration)로 표시한다. 기존 solver fatal 판단에도 명시적 오류 사건을 추가해 feed 정상 호출 생략 시에도 원인을 남긴다.
 
 [최종 성능/검증](../analysis/diagnostic-level-performance.md): 정상 921개 조회 OFF 0.636초 / basic 0.686초 / detailed 5.022초, 정상 기록 수 99.47% 감소. 오류가 많은 조회는 basic에서도 OFF 대비 약 67% 지연이 남는다. 업무 로직은 변경하지 않았고 운영 배포는 수행하지 않았다.
+
+## main 병합 통합
+
+PR #29 병합 요청에 따라 main d684922와의 충돌을 해결합니다. main에 추가된 #27 실행 중단, #28 monitor 잔류 종료 알림 수정, 일괄 중단·대기열별 선택/취소의 업무 로직을 보존하고 해당 경로에 기존 basic/detailed 로그 계약을 적용합니다.
+
+As-Is: be62e88 로그 계측 + 별도로 진행된 main의 작업 제어 변경 → 동일 adapter/service 소스 충돌.
+To-Be: main의 최신 Telegram/GUI/web → 공용 작업 제어/Store → 기존 결과를 유지하면서 요청/응답·상태 변경·프로세스 signal을 basic에서, 추가 정상 내부 호출/분기를 detailed에서 관측.
+
+새 업무 정책은 추가하지 않습니다. 업무 코드에서 로깅을 제거한 AST를 main과 비교하고 전체 Python/Chromium 회귀, config check, HLD/LLD 지도·소스 지문 재생성 후 병합합니다.
+
+통합 검증 결과: 전체 Python 테스트 364개 통과(1개 skip), 추가 중단 로그와 GUI를 포함한 관련 테스트 43개 통과(1개 skip). 최신 main과 비교해 로깅을 제거한 Python/JavaScript AST가 모두 동일하다. 실제 Chromium의 실행 중단·큐 선택/취소·티켓 편집·파일/매크로·모바일 시나리오와 기본/상세 로그 검증이 통과했다. 새 browser fixture의 실행 작업에는 main 업무 코드가 기대하는 case CPU 정보를 보완했다. 설정 check 985개 CASE, 최신 103개 시퀀스 mapping, SVG XML/렌더와 소스 지문도 확인했다. 이전 성능 표는 be62e88에서 측정한 값이며 통합 후 재측정으로 표시하지 않는다.

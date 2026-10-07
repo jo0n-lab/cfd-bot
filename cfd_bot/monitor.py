@@ -53,6 +53,24 @@ def observation(record, previous=None, ui=None):
 
 
 @_diagnostics.trace
+def calculation_record(record):
+    """Project a CPU snapshot onto a calculation, excluding monitor-only tails."""
+    if record is None:
+        if _diagnostics.detailed: _diagnostics.step('monitor.calculation_record:M57:then')
+        return None
+    engines = set(record.get('engines', []))
+    processes = [p for p in record.get('processes', []) if p.get('mode') != 'monitor']
+    calculation_wrapper = record.get('supervisors') and (engines - {'Monitor'})
+    if not processes and not calculation_wrapper and (
+            'Monitor' in engines or record.get('processes')):
+        if _diagnostics.detailed: _diagnostics.step('monitor.calculation_record:M62:then')
+        return None
+    # Keep combined CPU metadata for display/admission, but a plotting process
+    # must not establish a new execution identity or its start time.
+    return dict(record, processes=processes)
+
+
+@_diagnostics.trace
 def observed_identity(record):
     return {kind: sorted({p.get('identity') or identity(p['pid']) for p in record.get(kind, [])}
                          - {None}) for kind in ('supervisors', 'processes')}
@@ -137,6 +155,9 @@ class Monitor:
     @_diagnostics.trace
     def tick(self):
         index = ticket_index(self.config)
+        # A worker can finish while ofps is scanning. That snapshot still
+        # belongs to its managed job, even after it leaves LIVE below.
+        managed = {j['case_root'] for j in self.store.jobs(LIVE)}
         # Failed scans must never be interpreted as disappearance of all solvers.
         current = snapshot(self.config['ofps_command'])
         current['at'] = time.time()
@@ -145,7 +166,7 @@ class Monitor:
         accept_submissions(self.config, self.store)
         self.scheduler.recover()
         live_jobs = self.store.jobs(LIVE)
-        managed = {j['case_root'] for j in live_jobs}
+        managed.update(j['case_root'] for j in live_jobs)
         for job in live_jobs:
             if _diagnostics.detailed: _diagnostics.step('monitor.Monitor.tick:L130:loop', job=job)
             record = current['cases'].get(job['case_root'])
@@ -166,8 +187,8 @@ class Monitor:
                 case = automatic_case(root, previous.get('case') if previous else None, self.ui)
             self.observe(case, current['cases'].get(root))
             state = self.store.get('observed:' + root)
-            if case.get('auto_detected') and (root in current['cases'] or state.get('status') in LIVE):
-                if _diagnostics.detailed: _diagnostics.step('monitor.Monitor.tick:L146:then')
+            if case.get('auto_detected') and state and state.get('status') in LIVE:
+                if _diagnostics.detailed: _diagnostics.step('monitor.Monitor.tick:M186:then')
                 automatic.append(root)
         # Retain the old public metadata key for older readers.
         self.store.put('auto_observed_roots', automatic)
@@ -176,6 +197,7 @@ class Monitor:
 
     @_diagnostics.trace
     def observe(self, case, record):
+        record = calculation_record(record)
         key = 'observed:' + case['_root']
         previous = self.store.get(key)
         if previous and previous['status'] == 'succeeded':

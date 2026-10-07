@@ -78,8 +78,8 @@
 | [UC-20-web](../diagrams/UC-20-web.svg) | 자동 시작 pause/resume | 5 | 3 | 0 | 2 |
 | [UC-19-gui](../diagrams/UC-19-gui.svg) | 큐·이력·매크로 진행 | 7 | 1 | 6 | 0 |
 | [UC-21-tg](../diagrams/UC-21-tg.svg) | 대기 작업 선택·취소 | 13 | 9 | 3 | 1 |
-| [UC-21-gui](../diagrams/UC-21-gui.svg) | 대기 작업 선택·취소 | 3 | 3 | 0 | 0 |
-| [UC-21-web](../diagrams/UC-21-web.svg) | 대기 작업 선택·취소 | 5 | 3 | 0 | 2 |
+| [UC-21-gui](../diagrams/UC-21-gui.svg) | 대기열별 선택·취소 | 3 | 3 | 0 | 0 |
+| [UC-21-web](../diagrams/UC-21-web.svg) | 대기열 카드별 선택·취소 | 5 | 3 | 0 | 2 |
 | [UC-22-tg](../diagrams/UC-22-tg.svg) | 실패 패턴 템플릿 | 13 | 12 | 0 | 1 |
 | [UC-22-gui](../diagrams/UC-22-gui.svg) | 실패 패턴 템플릿 | 4 | 3 | 1 | 0 |
 | [UC-22-web](../diagrams/UC-22-web.svg) | 실패 패턴 템플릿 | 6 | 4 | 0 | 2 |
@@ -92,14 +92,18 @@
 | [UC-25-tg](../diagrams/UC-25-tg.svg) | 대화 일괄 정리 | 9 | 6 | 2 | 1 |
 | [UC-26](../diagrams/UC-26.svg) | 외부 PC 접속과 브라우저 | 1 | 0 | 0 | 1 |
 | [UC-27](../diagrams/UC-27.svg) | 운영 CLI 명령 분기 | 15 | 7 | 5 | 3 |
+| [UC-28-tg](../diagrams/UC-28-tg.svg) | 실행 중 managed 작업 중단 | 10 | 7 | 2 | 1 |
+| [UC-28-gui](../diagrams/UC-28-gui.svg) | 실행 중 managed 작업 중단 | 4 | 3 | 0 | 1 |
+| [UC-28-web](../diagrams/UC-28-web.svg) | 실행 중 managed 작업 중단 | 5 | 3 | 0 | 2 |
 | [BG-01](../diagrams/BG-01.svg) | solver·monitor CPU를 합치는 scanner | 11 | 2 | 1 | 8 |
-| [BG-02](../diagrams/BG-02.svg) | 현재 CASE · 이전 실행/종료 확인 중 CASE 감시 | 28 | 13 | 12 | 3 |
+| [BG-02](../diagrams/BG-02.svg) | 현재 CASE · 이전 실행/종료 확인 중 CASE 감시 | 30 | 13 | 14 | 3 |
 | [BG-03](../diagrams/BG-03.svg) | 변경된 제출 티켓 접수 | 7 | 4 | 3 | 0 |
 | [D-15](../diagrams/D-15.svg) | 증분 상태 반영 · 종료 child와 부모 macro 재시도 | 15 | 7 | 8 | 0 |
+| [D-16](../diagrams/D-16.svg) | 실행 중 managed 작업 안전 중단 | 8 | 5 | 1 | 2 |
 | [BG-04](../diagrams/BG-04.svg) | 현재 head 기반 quota·동적 borrow admission | 24 | 6 | 14 | 4 |
-| [BG-05](../diagrams/BG-05.svg) | worker·solver·hooks·판정 | 14 | 12 | 1 | 1 |
+| [BG-05](../diagrams/BG-05.svg) | worker·solver·hooks·판정 | 15 | 13 | 1 | 1 |
 | [BG-06](../diagrams/BG-06.svg) | outbox 알림 전달·checkpoint | 10 | 8 | 2 | 0 |
-| [BG-07](../diagrams/BG-07.svg) | worker 소실·재시작 복구 | 7 | 4 | 3 | 0 |
+| [BG-07](../diagrams/BG-07.svg) | worker 소실·재시작 복구 | 8 | 5 | 3 | 0 |
 | [UC-05-file-web](../diagrams/UC-05-file-web.svg) | Residual 실제 HTTP 전송 | 6 | 2 | 3 | 1 |
 | [UC-06-file-web](../diagrams/UC-06-file-web.svg) | 결과 파일 실제 HTTP 전송 | 6 | 2 | 3 | 1 |
 | [UC-10-exports-tg](../diagrams/UC-10-exports-tg.svg) | 요청 데이터 정의 편집 | 18 | 16 | 0 | 2 |

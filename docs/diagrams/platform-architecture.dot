@@ -1,5 +1,5 @@
 digraph platform {
- graph [rankdir=LR,bgcolor=white,pad=.3,nodesep=.5,ranksep=.8,fontname="Noto Sans CJK KR",fontsize=24,label="플랫폼별 함수 경계와 solver·monitor 공용 snapshot · #25",labelloc=t];
+ graph [rankdir=LR,bgcolor=white,pad=.3,nodesep=.5,ranksep=.8,fontname="Noto Sans CJK KR",fontsize=24,label="플랫폼별 함수 경계 · 계산 감시와 실행 제어 (#28)",labelloc=t];
  node [shape=box,style="rounded,filled",fillcolor="#f0fdf4",color="#86efac",fontname="Noto Sans CJK KR",fontsize=17,margin=".18,.12"];
  edge [fontname="Noto Sans CJK KR",fontsize=13,color="#16a34a"];
  tg [label="Telegram\nBot / TicketChat",URL="lld/telegram.md"];
@@ -9,12 +9,16 @@ digraph platform {
  service [label="TicketService\n폼·검증·저장·복제·삭제",URL="diagrams/D-02.svg"];
  run [label="TicketRunner\ncached state / fresh request\n동적 macro: 첫 child 즉시 판정",URL="diagrams/D-03.svg"];
  store [shape=cylinder,label="Store / SQLite\njob CAS / terminal marker\noutbox / session"];
+ stop [label="interrupt_running_job\nLIVE → stopping CAS\nidentity 일치 process group만 TERM",URL="diagrams/D-16.svg"];
  json [shape=folder,label="tickets/*.json\nqueue id / cores / dynamic cores\nsubmission / 표시 상태"];
  snapshot [label="processes.snapshot\nsolver + 표식 monitor ofps scan\nCASE별 affinity 병합",URL="diagrams/D-04.svg"];
- monitor [label="Monitor / Scheduler\n미발행 terminal 1회 처리\nbatch별 head admission / fair turn",URL="diagrams/BG-04.svg"];
+ monitor [label="Monitor / Scheduler\nmonitor-only 신규 실행 제외\n미발행 terminal / head admission",URL="diagrams/BG-04.svg"];
  worker [label="worker\nhooks / solver / 판정\nDB lock 재시도",URL="diagrams/BG-05.svg"];
  tg -> service;gui -> service;web -> service;
  tg -> run;gui -> run;web -> run;
+ tg -> stop;gui -> stop;web -> stop;
+ stop -> store [label="stopping / interrupted"];
+ stop -> worker [label="중단 요청",style=dashed];
  service -> json [label="read / atomic write",dir=both];
  run -> snapshot [label="fresh 실행 전 검사"];
  run -> json [label="submit=True"];

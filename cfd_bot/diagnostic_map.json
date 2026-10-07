@@ -383,9 +383,21 @@
       "basic": "call/return/raise"
     },
     {
+      "function": "bot.Bot.set_queue_selection",
+      "file": "cfd_bot/bot.py",
+      "line": 161,
+      "events": [
+        "function.call",
+        "function.return",
+        "function.raise"
+      ],
+      "detailed": "all occurrences",
+      "basic": "call/return/raise"
+    },
+    {
       "function": "bot.Bot.show_queue_selection",
       "file": "cfd_bot/bot.py",
-      "line": 155,
+      "line": 169,
       "events": [
         "function.call",
         "function.return",
@@ -397,7 +409,7 @@
     {
       "function": "bot.Bot.status",
       "file": "cfd_bot/bot.py",
-      "line": 183,
+      "line": 217,
       "events": [
         "function.call",
         "function.return",
@@ -409,7 +421,7 @@
     {
       "function": "bot.Bot.status_keyboard",
       "file": "cfd_bot/bot.py",
-      "line": 207,
+      "line": 241,
       "events": [
         "function.call",
         "function.return",
@@ -421,7 +433,7 @@
     {
       "function": "bot.Bot.acknowledge_callback",
       "file": "cfd_bot/bot.py",
-      "line": 218,
+      "line": 252,
       "events": [
         "function.call",
         "function.return",
@@ -433,7 +445,7 @@
     {
       "function": "bot.Bot.start_callback_ack",
       "file": "cfd_bot/bot.py",
-      "line": 230,
+      "line": 264,
       "events": [
         "function.call",
         "function.return",
@@ -445,7 +457,7 @@
     {
       "function": "bot.Bot.show_cases",
       "file": "cfd_bot/bot.py",
-      "line": 235,
+      "line": 269,
       "events": [
         "function.call",
         "function.return",
@@ -457,7 +469,7 @@
     {
       "function": "bot.Bot.case_menu",
       "file": "cfd_bot/bot.py",
-      "line": 252,
+      "line": 286,
       "events": [
         "function.call",
         "function.return",
@@ -469,7 +481,7 @@
     {
       "function": "bot.Bot.case_runner",
       "file": "cfd_bot/bot.py",
-      "line": 272,
+      "line": 306,
       "events": [
         "function.call",
         "function.return",
@@ -481,7 +493,7 @@
     {
       "function": "bot.Bot.detail_keyboard",
       "file": "cfd_bot/bot.py",
-      "line": 278,
+      "line": 312,
       "events": [
         "function.call",
         "function.return",
@@ -493,7 +505,7 @@
     {
       "function": "bot.Bot.latest_run",
       "file": "cfd_bot/bot.py",
-      "line": 284,
+      "line": 318,
       "events": [
         "function.call",
         "function.return",
@@ -505,7 +517,7 @@
     {
       "function": "bot.Bot.handle",
       "file": "cfd_bot/bot.py",
-      "line": 298,
+      "line": 332,
       "events": [
         "function.call",
         "function.return",
@@ -517,7 +529,7 @@
     {
       "function": "bot.Bot.dispatch",
       "file": "cfd_bot/bot.py",
-      "line": 340,
+      "line": 374,
       "events": [
         "function.call",
         "function.return",
@@ -529,7 +541,7 @@
     {
       "function": "bot.remember_sent",
       "file": "cfd_bot/bot.py",
-      "line": 588,
+      "line": 673,
       "events": [
         "function.call",
         "function.return",
@@ -541,7 +553,7 @@
     {
       "function": "bot.deliver",
       "file": "cfd_bot/bot.py",
-      "line": 601,
+      "line": 686,
       "events": [
         "function.call",
         "function.return",
@@ -553,7 +565,7 @@
     {
       "function": "bot.serve",
       "file": "cfd_bot/bot.py",
-      "line": 656,
+      "line": 741,
       "events": [
         "function.call",
         "function.return",
@@ -565,7 +577,7 @@
     {
       "function": "bot.serve.monitor_loop",
       "file": "cfd_bot/bot.py",
-      "line": 673,
+      "line": 758,
       "events": [
         "function.call",
         "function.return",
@@ -577,7 +589,7 @@
     {
       "function": "bot.serve.notification_loop",
       "file": "cfd_bot/bot.py",
-      "line": 680,
+      "line": 765,
       "events": [
         "function.call",
         "function.return",
@@ -589,7 +601,7 @@
     {
       "step": "bot.remember_sent:L478:then",
       "file": "cfd_bot/bot.py",
-      "line": 590,
+      "line": 675,
       "events": [
         "sequence.step",
         "steps[]"
@@ -600,7 +612,7 @@
     {
       "step": "bot.remember_sent:L481:loop",
       "file": "cfd_bot/bot.py",
-      "line": 594,
+      "line": 679,
       "events": [
         "sequence.step",
         "steps[]"
@@ -611,7 +623,7 @@
     {
       "step": "bot.deliver:L488:loop",
       "file": "cfd_bot/bot.py",
-      "line": 604,
+      "line": 689,
       "events": [
         "sequence.step",
         "steps[]"
@@ -622,7 +634,7 @@
     {
       "step": "bot.serve:L532:then",
       "file": "cfd_bot/bot.py",
-      "line": 659,
+      "line": 744,
       "events": [
         "sequence.step",
         "steps[]"
@@ -633,7 +645,7 @@
     {
       "step": "bot.serve:L535:then",
       "file": "cfd_bot/bot.py",
-      "line": 663,
+      "line": 748,
       "events": [
         "sequence.step",
         "steps[]"
@@ -697,9 +709,9 @@
       "basic": "omitted"
     },
     {
-      "step": "bot.Bot.show_queue_selection:L142:then",
+      "step": "bot.Bot.queue_selection:M151:then",
       "file": "cfd_bot/bot.py",
-      "line": 167,
+      "line": 154,
       "events": [
         "sequence.step",
         "steps[]"
@@ -708,9 +720,9 @@
       "basic": "omitted"
     },
     {
-      "step": "bot.Bot.show_queue_selection:L144:then",
+      "step": "bot.Bot.show_queue_selection:M170:then",
       "file": "cfd_bot/bot.py",
-      "line": 170,
+      "line": 176,
       "events": [
         "sequence.step",
         "steps[]"
@@ -719,9 +731,9 @@
       "basic": "omitted"
     },
     {
-      "step": "bot.Bot.show_queue_selection:L146:then",
+      "step": "bot.Bot.show_queue_selection:M175:then",
       "file": "cfd_bot/bot.py",
-      "line": 173,
+      "line": 182,
       "events": [
         "sequence.step",
         "steps[]"
@@ -730,29 +742,7 @@
       "basic": "omitted"
     },
     {
-      "step": "bot.Bot.status:L157:then",
-      "file": "cfd_bot/bot.py",
-      "line": 186,
-      "events": [
-        "sequence.step",
-        "steps[]"
-      ],
-      "detailed": "all occurrences",
-      "basic": "omitted"
-    },
-    {
-      "step": "bot.Bot.status:L161:then",
-      "file": "cfd_bot/bot.py",
-      "line": 191,
-      "events": [
-        "sequence.step",
-        "steps[]"
-      ],
-      "detailed": "all occurrences",
-      "basic": "omitted"
-    },
-    {
-      "step": "bot.Bot.status:L164:loop",
+      "step": "bot.Bot.show_queue_selection:M187:then",
       "file": "cfd_bot/bot.py",
       "line": 195,
       "events": [
@@ -763,9 +753,75 @@
       "basic": "omitted"
     },
     {
+      "step": "bot.Bot.show_queue_selection:M189:then",
+      "file": "cfd_bot/bot.py",
+      "line": 198,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.show_queue_selection:L146:then",
+      "file": "cfd_bot/bot.py",
+      "line": 201,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.show_queue_selection:M202:then",
+      "file": "cfd_bot/bot.py",
+      "line": 212,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.status:L157:then",
+      "file": "cfd_bot/bot.py",
+      "line": 220,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.status:L161:then",
+      "file": "cfd_bot/bot.py",
+      "line": 225,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.status:L164:loop",
+      "file": "cfd_bot/bot.py",
+      "line": 229,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
       "step": "bot.Bot.status:L169:then",
       "file": "cfd_bot/bot.py",
-      "line": 202,
+      "line": 236,
       "events": [
         "sequence.step",
         "steps[]"
@@ -776,7 +832,7 @@
     {
       "step": "bot.Bot.status_keyboard:L175:loop",
       "file": "cfd_bot/bot.py",
-      "line": 210,
+      "line": 244,
       "events": [
         "sequence.step",
         "steps[]"
@@ -787,7 +843,7 @@
     {
       "step": "bot.Bot.acknowledge_callback:L183:then",
       "file": "cfd_bot/bot.py",
-      "line": 221,
+      "line": 255,
       "events": [
         "sequence.step",
         "steps[]"
@@ -798,7 +854,7 @@
     {
       "step": "bot.Bot.show_cases:L199:then",
       "file": "cfd_bot/bot.py",
-      "line": 241,
+      "line": 275,
       "events": [
         "sequence.step",
         "steps[]"
@@ -809,7 +865,7 @@
     {
       "step": "bot.Bot.show_cases:L201:then",
       "file": "cfd_bot/bot.py",
-      "line": 244,
+      "line": 278,
       "events": [
         "sequence.step",
         "steps[]"
@@ -820,7 +876,7 @@
     {
       "step": "bot.Bot.show_cases:L203:then",
       "file": "cfd_bot/bot.py",
-      "line": 247,
+      "line": 281,
       "events": [
         "sequence.step",
         "steps[]"
@@ -831,7 +887,7 @@
     {
       "step": "bot.Bot.case_menu:L209:then",
       "file": "cfd_bot/bot.py",
-      "line": 255,
+      "line": 289,
       "events": [
         "sequence.step",
         "steps[]"
@@ -842,7 +898,7 @@
     {
       "step": "bot.Bot.case_menu:L212:then",
       "file": "cfd_bot/bot.py",
-      "line": 259,
+      "line": 293,
       "events": [
         "sequence.step",
         "steps[]"
@@ -853,7 +909,7 @@
     {
       "step": "bot.Bot.case_menu:L215:then",
       "file": "cfd_bot/bot.py",
-      "line": 263,
+      "line": 297,
       "events": [
         "sequence.step",
         "steps[]"
@@ -864,7 +920,7 @@
     {
       "step": "bot.Bot.latest_run:L236:then",
       "file": "cfd_bot/bot.py",
-      "line": 288,
+      "line": 322,
       "events": [
         "sequence.step",
         "steps[]"
@@ -875,7 +931,7 @@
     {
       "step": "bot.Bot.latest_run:L238:then",
       "file": "cfd_bot/bot.py",
-      "line": 291,
+      "line": 325,
       "events": [
         "sequence.step",
         "steps[]"
@@ -886,7 +942,7 @@
     {
       "step": "bot.Bot.handle:L250:then",
       "file": "cfd_bot/bot.py",
-      "line": 305,
+      "line": 339,
       "events": [
         "sequence.step",
         "steps[]"
@@ -897,7 +953,7 @@
     {
       "step": "bot.Bot.handle:L254:then",
       "file": "cfd_bot/bot.py",
-      "line": 311,
+      "line": 345,
       "events": [
         "sequence.step",
         "steps[]"
@@ -908,7 +964,7 @@
     {
       "step": "bot.Bot.handle:L256:then",
       "file": "cfd_bot/bot.py",
-      "line": 314,
+      "line": 348,
       "events": [
         "sequence.step",
         "steps[]"
@@ -919,7 +975,7 @@
     {
       "step": "bot.Bot.handle:L258:then",
       "file": "cfd_bot/bot.py",
-      "line": 317,
+      "line": 351,
       "events": [
         "sequence.step",
         "steps[]"
@@ -930,7 +986,7 @@
     {
       "step": "bot.Bot.handle:L261:then",
       "file": "cfd_bot/bot.py",
-      "line": 321,
+      "line": 355,
       "events": [
         "sequence.step",
         "steps[]"
@@ -941,7 +997,7 @@
     {
       "step": "bot.Bot.handle:L263:then",
       "file": "cfd_bot/bot.py",
-      "line": 324,
+      "line": 358,
       "events": [
         "sequence.step",
         "steps[]"
@@ -952,7 +1008,7 @@
     {
       "step": "bot.Bot.handle:L263:else",
       "file": "cfd_bot/bot.py",
-      "line": 327,
+      "line": 361,
       "events": [
         "sequence.step",
         "steps[]"
@@ -963,7 +1019,7 @@
     {
       "step": "bot.Bot.dispatch:L278:then",
       "file": "cfd_bot/bot.py",
-      "line": 343,
+      "line": 377,
       "events": [
         "sequence.step",
         "steps[]"
@@ -974,7 +1030,7 @@
     {
       "step": "bot.Bot.dispatch:L283:then",
       "file": "cfd_bot/bot.py",
-      "line": 349,
+      "line": 383,
       "events": [
         "sequence.step",
         "steps[]"
@@ -985,7 +1041,7 @@
     {
       "step": "bot.Bot.dispatch:L287:then",
       "file": "cfd_bot/bot.py",
-      "line": 357,
+      "line": 391,
       "events": [
         "sequence.step",
         "steps[]"
@@ -996,7 +1052,7 @@
     {
       "step": "bot.Bot.dispatch:L299:then",
       "file": "cfd_bot/bot.py",
-      "line": 368,
+      "line": 402,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1005,9 +1061,9 @@
       "basic": "omitted"
     },
     {
-      "step": "bot.Bot.dispatch:L331:then",
+      "step": "bot.Bot.dispatch:M436:then",
       "file": "cfd_bot/bot.py",
-      "line": 403,
+      "line": 448,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1016,62 +1072,7 @@
       "basic": "omitted"
     },
     {
-      "step": "bot.Bot.dispatch:L335:then",
-      "file": "cfd_bot/bot.py",
-      "line": 408,
-      "events": [
-        "sequence.step",
-        "steps[]"
-      ],
-      "detailed": "all occurrences",
-      "basic": "omitted"
-    },
-    {
-      "step": "bot.Bot.dispatch:L338:then",
-      "file": "cfd_bot/bot.py",
-      "line": 412,
-      "events": [
-        "sequence.step",
-        "steps[]"
-      ],
-      "detailed": "all occurrences",
-      "basic": "omitted"
-    },
-    {
-      "step": "bot.Bot.dispatch:L341:then",
-      "file": "cfd_bot/bot.py",
-      "line": 416,
-      "events": [
-        "sequence.step",
-        "steps[]"
-      ],
-      "detailed": "all occurrences",
-      "basic": "omitted"
-    },
-    {
-      "step": "bot.Bot.dispatch:L351:then",
-      "file": "cfd_bot/bot.py",
-      "line": 428,
-      "events": [
-        "sequence.step",
-        "steps[]"
-      ],
-      "detailed": "all occurrences",
-      "basic": "omitted"
-    },
-    {
-      "step": "bot.Bot.dispatch:L357:then",
-      "file": "cfd_bot/bot.py",
-      "line": 435,
-      "events": [
-        "sequence.step",
-        "steps[]"
-      ],
-      "detailed": "all occurrences",
-      "basic": "omitted"
-    },
-    {
-      "step": "bot.Bot.dispatch:L370:then",
+      "step": "bot.Bot.dispatch:M438:then",
       "file": "cfd_bot/bot.py",
       "line": 451,
       "events": [
@@ -1082,9 +1083,86 @@
       "basic": "omitted"
     },
     {
+      "step": "bot.Bot.dispatch:M442:then",
+      "file": "cfd_bot/bot.py",
+      "line": 456,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.dispatch:M446:then",
+      "file": "cfd_bot/bot.py",
+      "line": 461,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.dispatch:M449:then",
+      "file": "cfd_bot/bot.py",
+      "line": 465,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.dispatch:L341:then",
+      "file": "cfd_bot/bot.py",
+      "line": 469,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.dispatch:M463:then",
+      "file": "cfd_bot/bot.py",
+      "line": 481,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.dispatch:M472:then",
+      "file": "cfd_bot/bot.py",
+      "line": 492,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.dispatch:M491:then",
+      "file": "cfd_bot/bot.py",
+      "line": 513,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
       "step": "bot.Bot.dispatch:L380:then",
       "file": "cfd_bot/bot.py",
-      "line": 462,
+      "line": 527,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1095,7 +1173,29 @@
     {
       "step": "bot.Bot.dispatch:L383:then",
       "file": "cfd_bot/bot.py",
-      "line": 466,
+      "line": 531,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.dispatch:M514:then",
+      "file": "cfd_bot/bot.py",
+      "line": 537,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.dispatch:M526:then",
+      "file": "cfd_bot/bot.py",
+      "line": 551,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1106,7 +1206,7 @@
     {
       "step": "bot.Bot.dispatch:L388:then",
       "file": "cfd_bot/bot.py",
-      "line": 472,
+      "line": 557,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1117,7 +1217,7 @@
     {
       "step": "bot.Bot.dispatch:L392:then",
       "file": "cfd_bot/bot.py",
-      "line": 477,
+      "line": 562,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1128,7 +1228,7 @@
     {
       "step": "bot.Bot.dispatch:L394:then",
       "file": "cfd_bot/bot.py",
-      "line": 480,
+      "line": 565,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1139,7 +1239,7 @@
     {
       "step": "bot.remember_sent:L482:then",
       "file": "cfd_bot/bot.py",
-      "line": 596,
+      "line": 681,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1150,7 +1250,7 @@
     {
       "step": "bot.serve.monitor_loop:L545:loop",
       "file": "cfd_bot/bot.py",
-      "line": 675,
+      "line": 760,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1161,7 +1261,7 @@
     {
       "step": "bot.serve.notification_loop:L550:loop",
       "file": "cfd_bot/bot.py",
-      "line": 682,
+      "line": 767,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1172,7 +1272,7 @@
     {
       "step": "bot.serve:L560:then",
       "file": "cfd_bot/bot.py",
-      "line": 693,
+      "line": 778,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1183,7 +1283,7 @@
     {
       "step": "bot.serve:L564:loop",
       "file": "cfd_bot/bot.py",
-      "line": 698,
+      "line": 783,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1227,7 +1327,7 @@
     {
       "step": "bot.Bot.status:L165:then",
       "file": "cfd_bot/bot.py",
-      "line": 197,
+      "line": 231,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1238,7 +1338,7 @@
     {
       "step": "bot.Bot.status_keyboard:L176:then",
       "file": "cfd_bot/bot.py",
-      "line": 212,
+      "line": 246,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1249,7 +1349,7 @@
     {
       "step": "bot.Bot.acknowledge_callback:L187:except",
       "file": "cfd_bot/bot.py",
-      "line": 226,
+      "line": 260,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1260,7 +1360,7 @@
     {
       "step": "bot.Bot.handle:L251:then",
       "file": "cfd_bot/bot.py",
-      "line": 307,
+      "line": 341,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1271,7 +1371,7 @@
     {
       "step": "bot.Bot.handle:L273:except",
       "file": "cfd_bot/bot.py",
-      "line": 336,
+      "line": 370,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1282,7 +1382,7 @@
     {
       "step": "bot.Bot.dispatch:L296:then",
       "file": "cfd_bot/bot.py",
-      "line": 364,
+      "line": 398,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1293,7 +1393,7 @@
     {
       "step": "bot.Bot.dispatch:L300:then",
       "file": "cfd_bot/bot.py",
-      "line": 370,
+      "line": 404,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1304,7 +1404,7 @@
     {
       "step": "bot.Bot.dispatch:L314:then",
       "file": "cfd_bot/bot.py",
-      "line": 385,
+      "line": 419,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1313,9 +1413,9 @@
       "basic": "omitted"
     },
     {
-      "step": "bot.Bot.dispatch:L344:then",
+      "step": "bot.Bot.dispatch:M411:then",
       "file": "cfd_bot/bot.py",
-      "line": 420,
+      "line": 422,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1324,9 +1424,9 @@
       "basic": "omitted"
     },
     {
-      "step": "bot.Bot.dispatch:L359:then",
+      "step": "bot.Bot.dispatch:M456:then",
       "file": "cfd_bot/bot.py",
-      "line": 438,
+      "line": 473,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1335,18 +1435,7 @@
       "basic": "omitted"
     },
     {
-      "step": "bot.Bot.dispatch:L363:then",
-      "file": "cfd_bot/bot.py",
-      "line": 443,
-      "events": [
-        "sequence.step",
-        "steps[]"
-      ],
-      "detailed": "all occurrences",
-      "basic": "omitted"
-    },
-    {
-      "step": "bot.Bot.dispatch:L396:then",
+      "step": "bot.Bot.dispatch:M464:then",
       "file": "cfd_bot/bot.py",
       "line": 483,
       "events": [
@@ -1357,9 +1446,64 @@
       "basic": "omitted"
     },
     {
+      "step": "bot.Bot.dispatch:M473:then",
+      "file": "cfd_bot/bot.py",
+      "line": 494,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.dispatch:L359:then",
+      "file": "cfd_bot/bot.py",
+      "line": 499,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.dispatch:L363:then",
+      "file": "cfd_bot/bot.py",
+      "line": 504,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.dispatch:M516:then",
+      "file": "cfd_bot/bot.py",
+      "line": 540,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "bot.Bot.dispatch:L396:then",
+      "file": "cfd_bot/bot.py",
+      "line": 568,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
       "step": "bot.deliver:L491:then",
       "file": "cfd_bot/bot.py",
-      "line": 608,
+      "line": 693,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1370,7 +1514,7 @@
     {
       "step": "bot.deliver:L506:loop",
       "file": "cfd_bot/bot.py",
-      "line": 627,
+      "line": 712,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1381,7 +1525,7 @@
     {
       "step": "bot.deliver:L511:loop",
       "file": "cfd_bot/bot.py",
-      "line": 633,
+      "line": 718,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1392,7 +1536,7 @@
     {
       "step": "bot.deliver:L522:except",
       "file": "cfd_bot/bot.py",
-      "line": 646,
+      "line": 731,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1403,7 +1547,7 @@
     {
       "step": "bot.deliver:L525:except",
       "file": "cfd_bot/bot.py",
-      "line": 650,
+      "line": 735,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1414,7 +1558,7 @@
     {
       "step": "bot.serve:L567:loop",
       "file": "cfd_bot/bot.py",
-      "line": 702,
+      "line": 787,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1425,7 +1569,7 @@
     {
       "step": "bot.serve:L582:loop",
       "file": "cfd_bot/bot.py",
-      "line": 721,
+      "line": 806,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1436,7 +1580,7 @@
     {
       "step": "bot.Bot.dispatch:L401:then",
       "file": "cfd_bot/bot.py",
-      "line": 489,
+      "line": 574,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1447,7 +1591,7 @@
     {
       "step": "bot.deliver:L492:then",
       "file": "cfd_bot/bot.py",
-      "line": 610,
+      "line": 695,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1458,7 +1602,7 @@
     {
       "step": "bot.deliver:L492:else",
       "file": "cfd_bot/bot.py",
-      "line": 619,
+      "line": 704,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1469,7 +1613,7 @@
     {
       "step": "bot.Bot.dispatch:L404:then",
       "file": "cfd_bot/bot.py",
-      "line": 493,
+      "line": 578,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1480,7 +1624,7 @@
     {
       "step": "bot.Bot.dispatch:L406:then",
       "file": "cfd_bot/bot.py",
-      "line": 496,
+      "line": 581,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1491,7 +1635,7 @@
     {
       "step": "bot.Bot.dispatch:L411:then",
       "file": "cfd_bot/bot.py",
-      "line": 502,
+      "line": 587,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1502,7 +1646,7 @@
     {
       "step": "bot.Bot.dispatch:L413:then",
       "file": "cfd_bot/bot.py",
-      "line": 505,
+      "line": 590,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1513,7 +1657,7 @@
     {
       "step": "bot.Bot.dispatch:L431:then",
       "file": "cfd_bot/bot.py",
-      "line": 526,
+      "line": 611,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1524,7 +1668,7 @@
     {
       "step": "bot.deliver:L497:then",
       "file": "cfd_bot/bot.py",
-      "line": 616,
+      "line": 701,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1535,7 +1679,7 @@
     {
       "step": "bot.deliver:L516:except",
       "file": "cfd_bot/bot.py",
-      "line": 639,
+      "line": 724,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1546,7 +1690,7 @@
     {
       "step": "bot.serve:L570:loop",
       "file": "cfd_bot/bot.py",
-      "line": 706,
+      "line": 791,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1557,7 +1701,7 @@
     {
       "step": "bot.serve:L577:except",
       "file": "cfd_bot/bot.py",
-      "line": 715,
+      "line": 800,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1568,7 +1712,7 @@
     {
       "step": "bot.Bot.dispatch:L415:then",
       "file": "cfd_bot/bot.py",
-      "line": 508,
+      "line": 593,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1579,7 +1723,7 @@
     {
       "step": "bot.Bot.dispatch:L415:else",
       "file": "cfd_bot/bot.py",
-      "line": 515,
+      "line": 600,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1590,7 +1734,7 @@
     {
       "step": "bot.Bot.dispatch:L435:then",
       "file": "cfd_bot/bot.py",
-      "line": 531,
+      "line": 616,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1601,7 +1745,7 @@
     {
       "step": "bot.Bot.dispatch:L437:then",
       "file": "cfd_bot/bot.py",
-      "line": 534,
+      "line": 619,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1612,7 +1756,7 @@
     {
       "step": "bot.Bot.dispatch:L440:then",
       "file": "cfd_bot/bot.py",
-      "line": 538,
+      "line": 623,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1623,7 +1767,7 @@
     {
       "step": "bot.Bot.dispatch:L442:then",
       "file": "cfd_bot/bot.py",
-      "line": 541,
+      "line": 626,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1634,7 +1778,7 @@
     {
       "step": "bot.Bot.dispatch:L450:then",
       "file": "cfd_bot/bot.py",
-      "line": 550,
+      "line": 635,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1645,7 +1789,7 @@
     {
       "step": "bot.Bot.dispatch:L451:then",
       "file": "cfd_bot/bot.py",
-      "line": 552,
+      "line": 637,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1656,7 +1800,7 @@
     {
       "step": "bot.Bot.dispatch:L455:then",
       "file": "cfd_bot/bot.py",
-      "line": 557,
+      "line": 642,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1667,7 +1811,7 @@
     {
       "step": "bot.Bot.dispatch:L457:loop",
       "file": "cfd_bot/bot.py",
-      "line": 560,
+      "line": 645,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1678,7 +1822,7 @@
     {
       "step": "bot.Bot.dispatch:L459:then",
       "file": "cfd_bot/bot.py",
-      "line": 563,
+      "line": 648,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1689,7 +1833,7 @@
     {
       "step": "bot.Bot.dispatch:L459:else",
       "file": "cfd_bot/bot.py",
-      "line": 583,
+      "line": 668,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1700,7 +1844,7 @@
     {
       "step": "bot.serve:L573:except",
       "file": "cfd_bot/bot.py",
-      "line": 710,
+      "line": 795,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1711,7 +1855,7 @@
     {
       "step": "bot.Bot.dispatch:L461:then",
       "file": "cfd_bot/bot.py",
-      "line": 566,
+      "line": 651,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1722,7 +1866,7 @@
     {
       "step": "bot.Bot.dispatch:L464:then",
       "file": "cfd_bot/bot.py",
-      "line": 570,
+      "line": 655,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1733,7 +1877,7 @@
     {
       "step": "bot.Bot.dispatch:L466:loop",
       "file": "cfd_bot/bot.py",
-      "line": 573,
+      "line": 658,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1744,7 +1888,7 @@
     {
       "step": "bot.Bot.dispatch:L467:then",
       "file": "cfd_bot/bot.py",
-      "line": 575,
+      "line": 660,
       "events": [
         "sequence.step",
         "steps[]"
@@ -1755,7 +1899,7 @@
     {
       "step": "bot.Bot.dispatch:L467:else",
       "file": "cfd_bot/bot.py",
-      "line": 578,
+      "line": 663,
       "events": [
         "sequence.step",
         "steps[]"
@@ -7675,7 +7819,7 @@
     {
       "function": "gui.TicketEditor.refresh_queue_manager",
       "file": "cfd_bot/gui.py",
-      "line": 1188,
+      "line": 1184,
       "events": [
         "function.call",
         "function.return",
@@ -7687,7 +7831,7 @@
     {
       "function": "gui.TicketEditor._queue_duration",
       "file": "cfd_bot/gui.py",
-      "line": 1257,
+      "line": 1284,
       "events": [
         "function.call",
         "function.return",
@@ -7697,9 +7841,33 @@
       "basic": "exception only; normal calls omitted"
     },
     {
+      "function": "gui.TicketEditor.select_all_active_jobs",
+      "file": "cfd_bot/gui.py",
+      "line": 1294,
+      "events": [
+        "function.call",
+        "function.return",
+        "function.raise"
+      ],
+      "detailed": "all occurrences",
+      "basic": "call/return/raise"
+    },
+    {
+      "function": "gui.TicketEditor.interrupt_active_job",
+      "file": "cfd_bot/gui.py",
+      "line": 1303,
+      "events": [
+        "function.call",
+        "function.return",
+        "function.raise"
+      ],
+      "detailed": "all occurrences",
+      "basic": "call/return/raise"
+    },
+    {
       "function": "gui.TicketEditor.open_queue_result_data",
       "file": "cfd_bot/gui.py",
-      "line": 1267,
+      "line": 1326,
       "events": [
         "function.call",
         "function.return",
@@ -7711,7 +7879,7 @@
     {
       "function": "gui.TicketEditor.select_all_queue",
       "file": "cfd_bot/gui.py",
-      "line": 1320,
+      "line": 1379,
       "events": [
         "function.call",
         "function.return",
@@ -7723,7 +7891,7 @@
     {
       "function": "gui.TicketEditor.clear_queue_selection",
       "file": "cfd_bot/gui.py",
-      "line": 1328,
+      "line": 1390,
       "events": [
         "function.call",
         "function.return",
@@ -7735,7 +7903,7 @@
     {
       "function": "gui.TicketEditor.cancel_queue_selection",
       "file": "cfd_bot/gui.py",
-      "line": 1334,
+      "line": 1399,
       "events": [
         "function.call",
         "function.return",
@@ -7747,7 +7915,7 @@
     {
       "function": "gui.TicketEditor.delete",
       "file": "cfd_bot/gui.py",
-      "line": 1357,
+      "line": 1423,
       "events": [
         "function.call",
         "function.return",
@@ -7759,7 +7927,7 @@
     {
       "function": "gui.TicketEditor.close",
       "file": "cfd_bot/gui.py",
-      "line": 1388,
+      "line": 1454,
       "events": [
         "function.call",
         "function.return",
@@ -7771,7 +7939,7 @@
     {
       "function": "gui.launch",
       "file": "cfd_bot/gui.py",
-      "line": 1396,
+      "line": 1462,
       "events": [
         "function.call",
         "function.return",
@@ -7783,7 +7951,7 @@
     {
       "function": "gui.main",
       "file": "cfd_bot/gui.py",
-      "line": 1410,
+      "line": 1476,
       "events": [
         "function.call",
         "function.return",
@@ -8519,9 +8687,9 @@
       "basic": "omitted"
     },
     {
-      "step": "gui.TicketEditor.refresh_queue_manager:L1022:then",
+      "step": "gui.TicketEditor.refresh_queue_manager:M1185:then",
       "file": "cfd_bot/gui.py",
-      "line": 1190,
+      "line": 1186,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8530,9 +8698,9 @@
       "basic": "omitted"
     },
     {
-      "step": "gui.TicketEditor.refresh_queue_manager:L1029:loop",
+      "step": "gui.TicketEditor.refresh_queue_manager:M1192:loop",
       "file": "cfd_bot/gui.py",
-      "line": 1198,
+      "line": 1194,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8541,9 +8709,20 @@
       "basic": "omitted"
     },
     {
-      "step": "gui.TicketEditor.refresh_queue_manager:L1044:loop",
+      "step": "gui.TicketEditor.refresh_queue_manager:M1214:loop",
       "file": "cfd_bot/gui.py",
-      "line": 1216,
+      "line": 1219,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "gui.TicketEditor.refresh_queue_manager:M1234:loop",
+      "file": "cfd_bot/gui.py",
+      "line": 1240,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8554,7 +8733,7 @@
     {
       "step": "gui.TicketEditor.refresh_queue_manager:L1049:then",
       "file": "cfd_bot/gui.py",
-      "line": 1222,
+      "line": 1249,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8565,7 +8744,7 @@
     {
       "step": "gui.TicketEditor.refresh_queue_manager:L1057:loop",
       "file": "cfd_bot/gui.py",
-      "line": 1232,
+      "line": 1259,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8576,7 +8755,7 @@
     {
       "step": "gui.TicketEditor.refresh_queue_manager:L1066:then",
       "file": "cfd_bot/gui.py",
-      "line": 1243,
+      "line": 1270,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8587,7 +8766,7 @@
     {
       "step": "gui.TicketEditor.refresh_queue_manager:L1066:else",
       "file": "cfd_bot/gui.py",
-      "line": 1252,
+      "line": 1279,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8598,7 +8777,40 @@
     {
       "step": "gui.TicketEditor._queue_duration:L1078:then",
       "file": "cfd_bot/gui.py",
-      "line": 1259,
+      "line": 1286,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "gui.TicketEditor.select_all_active_jobs:M1288:loop",
+      "file": "cfd_bot/gui.py",
+      "line": 1297,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "gui.TicketEditor.interrupt_active_job:M1295:then",
+      "file": "cfd_bot/gui.py",
+      "line": 1307,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "gui.TicketEditor.interrupt_active_job:M1300:then",
+      "file": "cfd_bot/gui.py",
+      "line": 1315,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8609,7 +8821,7 @@
     {
       "step": "gui.TicketEditor.open_queue_result_data:L1087:then",
       "file": "cfd_bot/gui.py",
-      "line": 1270,
+      "line": 1329,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8620,7 +8832,7 @@
     {
       "step": "gui.TicketEditor.open_queue_result_data:L1091:then",
       "file": "cfd_bot/gui.py",
-      "line": 1275,
+      "line": 1334,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8631,7 +8843,7 @@
     {
       "step": "gui.TicketEditor.open_queue_result_data:L1095:then",
       "file": "cfd_bot/gui.py",
-      "line": 1280,
+      "line": 1339,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8642,7 +8854,7 @@
     {
       "step": "gui.TicketEditor.open_queue_result_data:L1100:then",
       "file": "cfd_bot/gui.py",
-      "line": 1286,
+      "line": 1345,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8653,7 +8865,7 @@
     {
       "step": "gui.TicketEditor.open_queue_result_data:L1107:loop",
       "file": "cfd_bot/gui.py",
-      "line": 1295,
+      "line": 1354,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8664,7 +8876,7 @@
     {
       "step": "gui.TicketEditor.open_queue_result_data:L1114:then",
       "file": "cfd_bot/gui.py",
-      "line": 1304,
+      "line": 1363,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8675,7 +8887,7 @@
     {
       "step": "gui.TicketEditor.open_queue_result_data:L1125:loop",
       "file": "cfd_bot/gui.py",
-      "line": 1316,
+      "line": 1375,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8684,9 +8896,9 @@
       "basic": "omitted"
     },
     {
-      "step": "gui.TicketEditor.select_all_queue:L1129:loop",
+      "step": "gui.TicketEditor.select_all_queue:M1364:loop",
       "file": "cfd_bot/gui.py",
-      "line": 1322,
+      "line": 1381,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8695,9 +8907,9 @@
       "basic": "omitted"
     },
     {
-      "step": "gui.TicketEditor.clear_queue_selection:L1134:loop",
+      "step": "gui.TicketEditor.clear_queue_selection:M1372:loop",
       "file": "cfd_bot/gui.py",
-      "line": 1330,
+      "line": 1392,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8708,7 +8920,7 @@
     {
       "step": "gui.TicketEditor.cancel_queue_selection:L1141:then",
       "file": "cfd_bot/gui.py",
-      "line": 1339,
+      "line": 1405,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8719,7 +8931,7 @@
     {
       "step": "gui.TicketEditor.cancel_queue_selection:L1144:then",
       "file": "cfd_bot/gui.py",
-      "line": 1344,
+      "line": 1410,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8730,7 +8942,7 @@
     {
       "step": "gui.TicketEditor.delete:L1158:then",
       "file": "cfd_bot/gui.py",
-      "line": 1360,
+      "line": 1426,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8741,7 +8953,7 @@
     {
       "step": "gui.TicketEditor.delete:L1174:then",
       "file": "cfd_bot/gui.py",
-      "line": 1379,
+      "line": 1445,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8752,7 +8964,7 @@
     {
       "step": "gui.TicketEditor.delete:L1174:else",
       "file": "cfd_bot/gui.py",
-      "line": 1383,
+      "line": 1449,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8763,7 +8975,7 @@
     {
       "step": "gui.TicketEditor.close:L1182:then",
       "file": "cfd_bot/gui.py",
-      "line": 1390,
+      "line": 1456,
       "events": [
         "sequence.step",
         "steps[]"
@@ -8774,7 +8986,7 @@
     {
       "step": "gui.launch:L1192:except",
       "file": "cfd_bot/gui.py",
-      "line": 1403,
+      "line": 1469,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9168,9 +9380,42 @@
       "basic": "handled exception"
     },
     {
+      "step": "gui.TicketEditor.refresh_queue_manager:M1193:then",
+      "file": "cfd_bot/gui.py",
+      "line": 1196,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "gui.TicketEditor.refresh_queue_manager:M1209:loop",
+      "file": "cfd_bot/gui.py",
+      "line": 1215,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
       "step": "gui.TicketEditor.refresh_queue_manager:L1032:loop",
       "file": "cfd_bot/gui.py",
-      "line": 1202,
+      "line": 1223,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "gui.TicketEditor.refresh_queue_manager:M1238:then",
+      "file": "cfd_bot/gui.py",
+      "line": 1245,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9181,7 +9426,7 @@
     {
       "step": "gui.TicketEditor.refresh_queue_manager:L1051:then",
       "file": "cfd_bot/gui.py",
-      "line": 1225,
+      "line": 1252,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9192,7 +9437,7 @@
     {
       "step": "gui.TicketEditor.refresh_queue_manager:L1061:then",
       "file": "cfd_bot/gui.py",
-      "line": 1237,
+      "line": 1264,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9203,7 +9448,40 @@
     {
       "step": "gui.TicketEditor.refresh_queue_manager:L1068:loop",
       "file": "cfd_bot/gui.py",
-      "line": 1246,
+      "line": 1273,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "gui.TicketEditor.select_all_active_jobs:M1289:then",
+      "file": "cfd_bot/gui.py",
+      "line": 1299,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "gui.TicketEditor.interrupt_active_job:M1308:except",
+      "file": "cfd_bot/gui.py",
+      "line": 1322,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "handled exception"
+    },
+    {
+      "step": "gui.TicketEditor.select_all_queue:M1365:then",
+      "file": "cfd_bot/gui.py",
+      "line": 1383,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9214,7 +9492,18 @@
     {
       "step": "gui.TicketEditor.select_all_queue:L1130:then",
       "file": "cfd_bot/gui.py",
-      "line": 1324,
+      "line": 1386,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "gui.TicketEditor.clear_queue_selection:M1373:then",
+      "file": "cfd_bot/gui.py",
+      "line": 1394,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9225,7 +9514,7 @@
     {
       "step": "gui.TicketEditor.cancel_queue_selection:L1149:except",
       "file": "cfd_bot/gui.py",
-      "line": 1349,
+      "line": 1415,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9236,7 +9525,7 @@
     {
       "step": "gui.TicketEditor.delete:L1168:then",
       "file": "cfd_bot/gui.py",
-      "line": 1371,
+      "line": 1437,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9247,7 +9536,7 @@
     {
       "step": "gui.TicketEditor.delete:L1171:except",
       "file": "cfd_bot/gui.py",
-      "line": 1375,
+      "line": 1441,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9368,7 +9657,7 @@
     {
       "step": "gui.TicketEditor.refresh_queue_manager:L1034:then",
       "file": "cfd_bot/gui.py",
-      "line": 1205,
+      "line": 1226,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9379,7 +9668,7 @@
     {
       "step": "gui.TicketEditor.open_queue_result_data:L1105:except",
       "file": "cfd_bot/gui.py",
-      "line": 1292,
+      "line": 1351,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9390,7 +9679,7 @@
     {
       "step": "gui.TicketEditor.open_queue_result_data:L1112:except",
       "file": "cfd_bot/gui.py",
-      "line": 1301,
+      "line": 1360,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9423,7 +9712,7 @@
     {
       "function": "jobs.terminal_event",
       "file": "cfd_bot/jobs.py",
-      "line": 28,
+      "line": 29,
       "events": [
         "function.call",
         "function.return",
@@ -9435,7 +9724,7 @@
     {
       "function": "jobs.scheduling_candidates",
       "file": "cfd_bot/jobs.py",
-      "line": 51,
+      "line": 52,
       "events": [
         "function.call",
         "function.return",
@@ -9447,7 +9736,7 @@
     {
       "function": "jobs.Scheduler.__init__",
       "file": "cfd_bot/jobs.py",
-      "line": 76,
+      "line": 77,
       "events": [
         "function.call",
         "function.return",
@@ -9459,7 +9748,7 @@
     {
       "function": "jobs.Scheduler._borrow_state",
       "file": "cfd_bot/jobs.py",
-      "line": 82,
+      "line": 83,
       "events": [
         "function.call",
         "function.return",
@@ -9471,7 +9760,7 @@
     {
       "function": "jobs.Scheduler._claim_dynamic",
       "file": "cfd_bot/jobs.py",
-      "line": 110,
+      "line": 111,
       "events": [
         "function.call",
         "function.return",
@@ -9483,7 +9772,7 @@
     {
       "function": "jobs.Scheduler._assign_queue_profiles",
       "file": "cfd_bot/jobs.py",
-      "line": 133,
+      "line": 134,
       "events": [
         "function.call",
         "function.return",
@@ -9495,7 +9784,7 @@
     {
       "function": "jobs.Scheduler.recover",
       "file": "cfd_bot/jobs.py",
-      "line": 199,
+      "line": 200,
       "events": [
         "function.call",
         "function.return",
@@ -9507,7 +9796,7 @@
     {
       "function": "jobs.Scheduler.tick",
       "file": "cfd_bot/jobs.py",
-      "line": 260,
+      "line": 276,
       "events": [
         "function.call",
         "function.return",
@@ -9519,7 +9808,7 @@
     {
       "function": "jobs._retry_locked",
       "file": "cfd_bot/jobs.py",
-      "line": 493,
+      "line": 509,
       "events": [
         "function.call",
         "function.return",
@@ -9531,7 +9820,7 @@
     {
       "function": "jobs.run_hook",
       "file": "cfd_bot/jobs.py",
-      "line": 509,
+      "line": 525,
       "events": [
         "function.call",
         "function.return",
@@ -9543,7 +9832,7 @@
     {
       "function": "jobs.run_case_hooks",
       "file": "cfd_bot/jobs.py",
-      "line": 543,
+      "line": 559,
       "events": [
         "function.call",
         "function.return",
@@ -9553,9 +9842,21 @@
       "basic": "call/return/raise"
     },
     {
+      "function": "jobs.run_case_hooks.record_hook",
+      "file": "cfd_bot/jobs.py",
+      "line": 578,
+      "events": [
+        "function.call",
+        "function.return",
+        "function.raise"
+      ],
+      "detailed": "all occurrences",
+      "basic": "exception only; normal calls omitted"
+    },
+    {
       "function": "jobs._case_command",
       "file": "cfd_bot/jobs.py",
-      "line": 580,
+      "line": 602,
       "events": [
         "function.call",
         "function.return",
@@ -9567,7 +9868,7 @@
     {
       "function": "jobs._stop_child",
       "file": "cfd_bot/jobs.py",
-      "line": 589,
+      "line": 611,
       "events": [
         "function.call",
         "function.return",
@@ -9579,7 +9880,7 @@
     {
       "function": "jobs.worker",
       "file": "cfd_bot/jobs.py",
-      "line": 611,
+      "line": 633,
       "events": [
         "function.call",
         "function.return",
@@ -9591,7 +9892,7 @@
     {
       "step": "jobs.terminal_event:L28:then",
       "file": "cfd_bot/jobs.py",
-      "line": 31,
+      "line": 32,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9602,7 +9903,7 @@
     {
       "step": "jobs.terminal_event:L31:then",
       "file": "cfd_bot/jobs.py",
-      "line": 35,
+      "line": 36,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9613,7 +9914,7 @@
     {
       "step": "jobs.terminal_event:L36:then",
       "file": "cfd_bot/jobs.py",
-      "line": 41,
+      "line": 42,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9624,7 +9925,7 @@
     {
       "step": "jobs.scheduling_candidates:L52:loop",
       "file": "cfd_bot/jobs.py",
-      "line": 60,
+      "line": 61,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9635,7 +9936,7 @@
     {
       "step": "jobs._retry_locked:L414:loop",
       "file": "cfd_bot/jobs.py",
-      "line": 496,
+      "line": 512,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9646,7 +9947,7 @@
     {
       "step": "jobs.run_hook:L445:then",
       "file": "cfd_bot/jobs.py",
-      "line": 537,
+      "line": 553,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9657,7 +9958,7 @@
     {
       "step": "jobs.run_case_hooks:L453:then",
       "file": "cfd_bot/jobs.py",
-      "line": 547,
+      "line": 563,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9668,7 +9969,7 @@
     {
       "step": "jobs._case_command:L483:then",
       "file": "cfd_bot/jobs.py",
-      "line": 583,
+      "line": 605,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9679,7 +9980,7 @@
     {
       "step": "jobs._stop_child:L489:then",
       "file": "cfd_bot/jobs.py",
-      "line": 591,
+      "line": 613,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9690,7 +9991,7 @@
     {
       "step": "jobs.worker:L516:then",
       "file": "cfd_bot/jobs.py",
-      "line": 623,
+      "line": 645,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9701,7 +10002,7 @@
     {
       "step": "jobs.scheduling_candidates:L55:then",
       "file": "cfd_bot/jobs.py",
-      "line": 63,
+      "line": 64,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9712,7 +10013,7 @@
     {
       "step": "jobs.scheduling_candidates:L57:then",
       "file": "cfd_bot/jobs.py",
-      "line": 66,
+      "line": 67,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9723,7 +10024,7 @@
     {
       "step": "jobs.Scheduler._borrow_state:L76:loop",
       "file": "cfd_bot/jobs.py",
-      "line": 88,
+      "line": 89,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9734,7 +10035,7 @@
     {
       "step": "jobs.Scheduler._borrow_state:L88:then",
       "file": "cfd_bot/jobs.py",
-      "line": 104,
+      "line": 105,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9745,7 +10046,7 @@
     {
       "step": "jobs.Scheduler._claim_dynamic:L94:then",
       "file": "cfd_bot/jobs.py",
-      "line": 112,
+      "line": 113,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9756,7 +10057,7 @@
     {
       "step": "jobs.Scheduler._claim_dynamic:L96:loop",
       "file": "cfd_bot/jobs.py",
-      "line": 115,
+      "line": 116,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9767,7 +10068,7 @@
     {
       "step": "jobs.Scheduler._assign_queue_profiles:L118:loop",
       "file": "cfd_bot/jobs.py",
-      "line": 142,
+      "line": 143,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9778,7 +10079,7 @@
     {
       "step": "jobs.Scheduler.recover:L169:loop",
       "file": "cfd_bot/jobs.py",
-      "line": 202,
+      "line": 203,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9789,7 +10090,7 @@
     {
       "step": "jobs.Scheduler.tick:L220:loop",
       "file": "cfd_bot/jobs.py",
-      "line": 263,
+      "line": 279,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9800,7 +10101,7 @@
     {
       "step": "jobs.Scheduler.tick:L223:then",
       "file": "cfd_bot/jobs.py",
-      "line": 267,
+      "line": 283,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9811,7 +10112,7 @@
     {
       "step": "jobs.Scheduler.tick:L236:loop",
       "file": "cfd_bot/jobs.py",
-      "line": 281,
+      "line": 297,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9822,7 +10123,7 @@
     {
       "step": "jobs.run_hook:L430:except",
       "file": "cfd_bot/jobs.py",
-      "line": 516,
+      "line": 532,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9833,7 +10134,7 @@
     {
       "step": "jobs.run_hook:L433:then",
       "file": "cfd_bot/jobs.py",
-      "line": 520,
+      "line": 536,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9844,7 +10145,7 @@
     {
       "step": "jobs.run_hook:L436:except",
       "file": "cfd_bot/jobs.py",
-      "line": 525,
+      "line": 541,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9855,7 +10156,7 @@
     {
       "step": "jobs.run_hook:L440:except",
       "file": "cfd_bot/jobs.py",
-      "line": 530,
+      "line": 546,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9866,7 +10167,7 @@
     {
       "step": "jobs.run_case_hooks:L457:loop",
       "file": "cfd_bot/jobs.py",
-      "line": 552,
+      "line": 568,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9877,7 +10178,7 @@
     {
       "step": "jobs._stop_child:L493:except",
       "file": "cfd_bot/jobs.py",
-      "line": 596,
+      "line": 618,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9888,7 +10189,7 @@
     {
       "step": "jobs._stop_child:L497:except",
       "file": "cfd_bot/jobs.py",
-      "line": 601,
+      "line": 623,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9897,9 +10198,9 @@
       "basic": "handled exception"
     },
     {
-      "step": "jobs.worker:L596:then",
+      "step": "jobs.worker:M664:then",
       "file": "cfd_bot/jobs.py",
-      "line": 714,
+      "line": 669,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9908,9 +10209,53 @@
       "basic": "omitted"
     },
     {
-      "step": "jobs.worker:L624:then",
+      "step": "jobs.worker:L596:then",
       "file": "cfd_bot/jobs.py",
-      "line": 746,
+      "line": 750,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "jobs.worker:M771:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 781,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "jobs.worker:M775:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 786,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "jobs.worker:M787:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 801,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "jobs.worker:M801:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 816,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9921,7 +10266,7 @@
     {
       "step": "jobs.worker:L643:except",
       "file": "cfd_bot/jobs.py",
-      "line": 766,
+      "line": 836,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9932,7 +10277,7 @@
     {
       "step": "jobs.Scheduler._borrow_state:L78:then",
       "file": "cfd_bot/jobs.py",
-      "line": 91,
+      "line": 92,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9943,7 +10288,7 @@
     {
       "step": "jobs.Scheduler._borrow_state:L80:loop",
       "file": "cfd_bot/jobs.py",
-      "line": 94,
+      "line": 95,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9954,7 +10299,7 @@
     {
       "step": "jobs.Scheduler._claim_dynamic:L97:then",
       "file": "cfd_bot/jobs.py",
-      "line": 117,
+      "line": 118,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9965,7 +10310,7 @@
     {
       "step": "jobs.Scheduler._claim_dynamic:L100:then",
       "file": "cfd_bot/jobs.py",
-      "line": 121,
+      "line": 122,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9976,7 +10321,7 @@
     {
       "step": "jobs.Scheduler._claim_dynamic:L102:then",
       "file": "cfd_bot/jobs.py",
-      "line": 124,
+      "line": 125,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9987,7 +10332,7 @@
     {
       "step": "jobs.Scheduler._assign_queue_profiles:L119:then",
       "file": "cfd_bot/jobs.py",
-      "line": 146,
+      "line": 147,
       "events": [
         "sequence.step",
         "steps[]"
@@ -9998,7 +10343,7 @@
     {
       "step": "jobs.Scheduler._assign_queue_profiles:L133:then",
       "file": "cfd_bot/jobs.py",
-      "line": 164,
+      "line": 165,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10009,7 +10354,7 @@
     {
       "step": "jobs.Scheduler._assign_queue_profiles:L140:then",
       "file": "cfd_bot/jobs.py",
-      "line": 168,
+      "line": 169,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10020,7 +10365,7 @@
     {
       "step": "jobs.Scheduler._assign_queue_profiles:L147:then",
       "file": "cfd_bot/jobs.py",
-      "line": 176,
+      "line": 177,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10031,7 +10376,18 @@
     {
       "step": "jobs.Scheduler._assign_queue_profiles:L161:then",
       "file": "cfd_bot/jobs.py",
-      "line": 192,
+      "line": 193,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "jobs.Scheduler.recover:M205:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 206,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10042,7 +10398,7 @@
     {
       "step": "jobs.Scheduler.recover:L171:then",
       "file": "cfd_bot/jobs.py",
-      "line": 205,
+      "line": 221,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10053,7 +10409,7 @@
     {
       "step": "jobs.Scheduler.recover:L174:then",
       "file": "cfd_bot/jobs.py",
-      "line": 209,
+      "line": 225,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10064,7 +10420,7 @@
     {
       "step": "jobs.Scheduler.recover:L177:then",
       "file": "cfd_bot/jobs.py",
-      "line": 213,
+      "line": 229,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10075,7 +10431,7 @@
     {
       "step": "jobs.Scheduler.recover:L182:then",
       "file": "cfd_bot/jobs.py",
-      "line": 219,
+      "line": 235,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10086,7 +10442,7 @@
     {
       "step": "jobs.Scheduler.recover:L192:then",
       "file": "cfd_bot/jobs.py",
-      "line": 230,
+      "line": 246,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10097,7 +10453,7 @@
     {
       "step": "jobs.Scheduler.recover:L197:then",
       "file": "cfd_bot/jobs.py",
-      "line": 237,
+      "line": 253,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10108,7 +10464,7 @@
     {
       "step": "jobs.Scheduler.tick:L237:then",
       "file": "cfd_bot/jobs.py",
-      "line": 283,
+      "line": 299,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10119,7 +10475,7 @@
     {
       "step": "jobs.Scheduler.tick:L241:then",
       "file": "cfd_bot/jobs.py",
-      "line": 288,
+      "line": 304,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10130,7 +10486,7 @@
     {
       "step": "jobs.Scheduler.tick:L243:then",
       "file": "cfd_bot/jobs.py",
-      "line": 293,
+      "line": 309,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10141,7 +10497,7 @@
     {
       "step": "jobs.Scheduler.tick:L247:then",
       "file": "cfd_bot/jobs.py",
-      "line": 297,
+      "line": 313,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10152,7 +10508,7 @@
     {
       "step": "jobs.Scheduler.tick:L250:then",
       "file": "cfd_bot/jobs.py",
-      "line": 300,
+      "line": 316,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10163,7 +10519,7 @@
     {
       "step": "jobs.Scheduler.tick:L252:then",
       "file": "cfd_bot/jobs.py",
-      "line": 303,
+      "line": 319,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10174,7 +10530,7 @@
     {
       "step": "jobs.Scheduler.tick:L257:then",
       "file": "cfd_bot/jobs.py",
-      "line": 309,
+      "line": 325,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10185,7 +10541,7 @@
     {
       "step": "jobs.Scheduler.tick:L261:then",
       "file": "cfd_bot/jobs.py",
-      "line": 315,
+      "line": 331,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10196,7 +10552,7 @@
     {
       "step": "jobs.Scheduler.tick:L303:then",
       "file": "cfd_bot/jobs.py",
-      "line": 367,
+      "line": 383,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10207,7 +10563,7 @@
     {
       "step": "jobs.Scheduler.tick:L325:then",
       "file": "cfd_bot/jobs.py",
-      "line": 391,
+      "line": 407,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10218,7 +10574,7 @@
     {
       "step": "jobs.Scheduler.tick:L374:then",
       "file": "cfd_bot/jobs.py",
-      "line": 451,
+      "line": 467,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10229,7 +10585,7 @@
     {
       "step": "jobs.Scheduler.tick:L386:then",
       "file": "cfd_bot/jobs.py",
-      "line": 464,
+      "line": 480,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10240,7 +10596,7 @@
     {
       "step": "jobs.Scheduler.tick:L388:then",
       "file": "cfd_bot/jobs.py",
-      "line": 467,
+      "line": 483,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10251,7 +10607,7 @@
     {
       "step": "jobs._retry_locked:L417:except",
       "file": "cfd_bot/jobs.py",
-      "line": 500,
+      "line": 516,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10262,7 +10618,7 @@
     {
       "step": "jobs.run_hook:L441:then",
       "file": "cfd_bot/jobs.py",
-      "line": 532,
+      "line": 548,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10273,7 +10629,7 @@
     {
       "step": "jobs.run_case_hooks:L460:then",
       "file": "cfd_bot/jobs.py",
-      "line": 556,
+      "line": 572,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10282,9 +10638,20 @@
       "basic": "omitted"
     },
     {
-      "step": "jobs.worker:L548:then",
+      "step": "jobs.worker:M674:then",
       "file": "cfd_bot/jobs.py",
-      "line": 656,
+      "line": 680,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "jobs.worker:M678:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 685,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10295,7 +10662,7 @@
     {
       "step": "jobs.worker:L563:then",
       "file": "cfd_bot/jobs.py",
-      "line": 672,
+      "line": 705,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10306,7 +10673,7 @@
     {
       "step": "jobs.worker:L572:loop",
       "file": "cfd_bot/jobs.py",
-      "line": 682,
+      "line": 715,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10317,7 +10684,40 @@
     {
       "step": "jobs.worker:L604:then",
       "file": "cfd_bot/jobs.py",
-      "line": 724,
+      "line": 760,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "jobs.worker:M778:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 790,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "jobs.worker:M803:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 819,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "jobs.worker:M814:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 831,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10328,7 +10728,7 @@
     {
       "step": "jobs.worker:L646:then",
       "file": "cfd_bot/jobs.py",
-      "line": 770,
+      "line": 840,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10339,7 +10739,7 @@
     {
       "step": "jobs.Scheduler._borrow_state:L81:then",
       "file": "cfd_bot/jobs.py",
-      "line": 96,
+      "line": 97,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10350,7 +10750,7 @@
     {
       "step": "jobs.Scheduler._assign_queue_profiles:L128:except",
       "file": "cfd_bot/jobs.py",
-      "line": 154,
+      "line": 155,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10359,9 +10759,20 @@
       "basic": "handled exception"
     },
     {
+      "step": "jobs.Scheduler.recover:M213:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 215,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
       "step": "jobs.Scheduler.recover:L213:except",
       "file": "cfd_bot/jobs.py",
-      "line": 254,
+      "line": 270,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10372,7 +10783,7 @@
     {
       "step": "jobs.Scheduler.tick:L270:then",
       "file": "cfd_bot/jobs.py",
-      "line": 324,
+      "line": 340,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10383,7 +10794,7 @@
     {
       "step": "jobs.Scheduler.tick:L280:then",
       "file": "cfd_bot/jobs.py",
-      "line": 336,
+      "line": 352,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10394,7 +10805,7 @@
     {
       "step": "jobs.Scheduler.tick:L286:then",
       "file": "cfd_bot/jobs.py",
-      "line": 344,
+      "line": 360,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10405,7 +10816,7 @@
     {
       "step": "jobs.Scheduler.tick:L291:except",
       "file": "cfd_bot/jobs.py",
-      "line": 351,
+      "line": 367,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10416,7 +10827,7 @@
     {
       "step": "jobs.Scheduler.tick:L308:then",
       "file": "cfd_bot/jobs.py",
-      "line": 370,
+      "line": 386,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10427,7 +10838,7 @@
     {
       "step": "jobs.Scheduler.tick:L313:then",
       "file": "cfd_bot/jobs.py",
-      "line": 376,
+      "line": 392,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10438,7 +10849,7 @@
     {
       "step": "jobs.Scheduler.tick:L328:then",
       "file": "cfd_bot/jobs.py",
-      "line": 395,
+      "line": 411,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10449,7 +10860,7 @@
     {
       "step": "jobs.Scheduler.tick:L333:then",
       "file": "cfd_bot/jobs.py",
-      "line": 401,
+      "line": 417,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10460,7 +10871,7 @@
     {
       "step": "jobs.Scheduler.tick:L342:except",
       "file": "cfd_bot/jobs.py",
-      "line": 411,
+      "line": 427,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10471,7 +10882,7 @@
     {
       "step": "jobs.Scheduler.tick:L353:then",
       "file": "cfd_bot/jobs.py",
-      "line": 423,
+      "line": 439,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10482,7 +10893,7 @@
     {
       "step": "jobs.Scheduler.tick:L357:then",
       "file": "cfd_bot/jobs.py",
-      "line": 429,
+      "line": 445,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10493,7 +10904,7 @@
     {
       "step": "jobs.Scheduler.tick:L368:then",
       "file": "cfd_bot/jobs.py",
-      "line": 443,
+      "line": 459,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10504,7 +10915,7 @@
     {
       "step": "jobs.Scheduler.tick:L372:except",
       "file": "cfd_bot/jobs.py",
-      "line": 448,
+      "line": 464,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10515,7 +10926,7 @@
     {
       "step": "jobs.Scheduler.tick:L405:except",
       "file": "cfd_bot/jobs.py",
-      "line": 485,
+      "line": 501,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10526,7 +10937,7 @@
     {
       "step": "jobs._retry_locked:L419:then",
       "file": "cfd_bot/jobs.py",
-      "line": 503,
+      "line": 519,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10537,7 +10948,7 @@
     {
       "step": "jobs.run_case_hooks:L471:except",
       "file": "cfd_bot/jobs.py",
-      "line": 568,
+      "line": 590,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10548,7 +10959,7 @@
     {
       "step": "jobs._stop_child:L500:except",
       "file": "cfd_bot/jobs.py",
-      "line": 605,
+      "line": 627,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10557,9 +10968,20 @@
       "basic": "handled exception"
     },
     {
+      "step": "jobs.worker:M694:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 702,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
       "step": "jobs.worker:L578:then",
       "file": "cfd_bot/jobs.py",
-      "line": 692,
+      "line": 725,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10570,7 +10992,18 @@
     {
       "step": "jobs.worker:L578:else",
       "file": "cfd_bot/jobs.py",
-      "line": 700,
+      "line": 733,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "jobs.worker:M729:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 738,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10581,7 +11014,7 @@
     {
       "step": "jobs.worker:L589:then",
       "file": "cfd_bot/jobs.py",
-      "line": 705,
+      "line": 741,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10592,7 +11025,7 @@
     {
       "step": "jobs.worker:L591:then",
       "file": "cfd_bot/jobs.py",
-      "line": 708,
+      "line": 744,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10603,7 +11036,7 @@
     {
       "step": "jobs.worker:L599:except",
       "file": "cfd_bot/jobs.py",
-      "line": 718,
+      "line": 754,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10614,7 +11047,18 @@
     {
       "step": "jobs.worker:L606:then",
       "file": "cfd_bot/jobs.py",
-      "line": 727,
+      "line": 763,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "jobs.worker:M781:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 794,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10625,7 +11069,7 @@
     {
       "step": "jobs.Scheduler._assign_queue_profiles:L153:except",
       "file": "cfd_bot/jobs.py",
-      "line": 183,
+      "line": 184,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10636,7 +11080,7 @@
     {
       "step": "jobs.Scheduler.recover:L195:except",
       "file": "cfd_bot/jobs.py",
-      "line": 234,
+      "line": 250,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10647,7 +11091,7 @@
     {
       "step": "jobs.Scheduler.tick:L272:then",
       "file": "cfd_bot/jobs.py",
-      "line": 327,
+      "line": 343,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10658,7 +11102,7 @@
     {
       "step": "jobs.Scheduler.tick:L283:then",
       "file": "cfd_bot/jobs.py",
-      "line": 340,
+      "line": 356,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10669,7 +11113,7 @@
     {
       "step": "jobs.Scheduler.tick:L288:then",
       "file": "cfd_bot/jobs.py",
-      "line": 347,
+      "line": 363,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10680,7 +11124,7 @@
     {
       "step": "jobs.Scheduler.tick:L314:then",
       "file": "cfd_bot/jobs.py",
-      "line": 378,
+      "line": 394,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10691,7 +11135,7 @@
     {
       "step": "jobs.Scheduler.tick:L317:then",
       "file": "cfd_bot/jobs.py",
-      "line": 382,
+      "line": 398,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10702,7 +11146,7 @@
     {
       "step": "jobs.Scheduler.tick:L355:then",
       "file": "cfd_bot/jobs.py",
-      "line": 426,
+      "line": 442,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10713,7 +11157,7 @@
     {
       "step": "jobs.Scheduler.tick:L362:then",
       "file": "cfd_bot/jobs.py",
-      "line": 435,
+      "line": 451,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10724,7 +11168,18 @@
     {
       "step": "jobs.Scheduler.tick:L364:then",
       "file": "cfd_bot/jobs.py",
-      "line": 438,
+      "line": 454,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "jobs.run_case_hooks.record_hook:M579:then",
+      "file": "cfd_bot/jobs.py",
+      "line": 583,
       "events": [
         "sequence.step",
         "steps[]"
@@ -10735,7 +11190,7 @@
     {
       "step": "jobs.run_case_hooks:L472:then",
       "file": "cfd_bot/jobs.py",
-      "line": 570,
+      "line": 592,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11417,7 +11872,7 @@
       "basic": "exception only; normal calls omitted"
     },
     {
-      "function": "monitor.observed_identity",
+      "function": "monitor.calculation_record",
       "file": "cfd_bot/monitor.py",
       "line": 56,
       "events": [
@@ -11429,9 +11884,21 @@
       "basic": "exception only; normal calls omitted"
     },
     {
+      "function": "monitor.observed_identity",
+      "file": "cfd_bot/monitor.py",
+      "line": 74,
+      "events": [
+        "function.call",
+        "function.return",
+        "function.raise"
+      ],
+      "detailed": "all occurrences",
+      "basic": "exception only; normal calls omitted"
+    },
+    {
       "function": "monitor.new_execution",
       "file": "cfd_bot/monitor.py",
-      "line": 62,
+      "line": 80,
       "events": [
         "function.call",
         "function.return",
@@ -11443,7 +11910,7 @@
     {
       "function": "monitor.automatic_case",
       "file": "cfd_bot/monitor.py",
-      "line": 78,
+      "line": 96,
       "events": [
         "function.call",
         "function.return",
@@ -11455,7 +11922,7 @@
     {
       "function": "monitor.Monitor.__init__",
       "file": "cfd_bot/monitor.py",
-      "line": 132,
+      "line": 150,
       "events": [
         "function.call",
         "function.return",
@@ -11467,7 +11934,7 @@
     {
       "function": "monitor.Monitor.tick",
       "file": "cfd_bot/monitor.py",
-      "line": 138,
+      "line": 156,
       "events": [
         "function.call",
         "function.return",
@@ -11479,7 +11946,7 @@
     {
       "function": "monitor.Monitor.observe",
       "file": "cfd_bot/monitor.py",
-      "line": 178,
+      "line": 199,
       "events": [
         "function.call",
         "function.return",
@@ -11491,7 +11958,7 @@
     {
       "function": "monitor.Monitor.run_once",
       "file": "cfd_bot/monitor.py",
-      "line": 245,
+      "line": 267,
       "events": [
         "function.call",
         "function.return",
@@ -11501,9 +11968,31 @@
       "basic": "call/return/raise"
     },
     {
+      "step": "monitor.calculation_record:M57:then",
+      "file": "cfd_bot/monitor.py",
+      "line": 59,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "monitor.calculation_record:M62:then",
+      "file": "cfd_bot/monitor.py",
+      "line": 66,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
       "step": "monitor.new_execution:L56:then",
       "file": "cfd_bot/monitor.py",
-      "line": 64,
+      "line": 82,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11514,7 +12003,7 @@
     {
       "step": "monitor.new_execution:L59:then",
       "file": "cfd_bot/monitor.py",
-      "line": 68,
+      "line": 86,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11525,7 +12014,7 @@
     {
       "step": "monitor.new_execution:L61:then",
       "file": "cfd_bot/monitor.py",
-      "line": 71,
+      "line": 89,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11536,7 +12025,7 @@
     {
       "step": "monitor.automatic_case:L82:then",
       "file": "cfd_bot/monitor.py",
-      "line": 98,
+      "line": 116,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11547,7 +12036,7 @@
     {
       "step": "monitor.automatic_case:L84:then",
       "file": "cfd_bot/monitor.py",
-      "line": 101,
+      "line": 119,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11569,7 +12058,7 @@
     {
       "step": "monitor.automatic_case:L73:loop",
       "file": "cfd_bot/monitor.py",
-      "line": 85,
+      "line": 103,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11580,7 +12069,7 @@
     {
       "step": "monitor.automatic_case:L79:except",
       "file": "cfd_bot/monitor.py",
-      "line": 94,
+      "line": 112,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11591,7 +12080,7 @@
     {
       "step": "monitor.Monitor.tick:L130:loop",
       "file": "cfd_bot/monitor.py",
-      "line": 150,
+      "line": 171,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11602,7 +12091,7 @@
     {
       "step": "monitor.Monitor.tick:L139:loop",
       "file": "cfd_bot/monitor.py",
-      "line": 161,
+      "line": 182,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11613,7 +12102,7 @@
     {
       "step": "monitor.Monitor.observe:L156:then",
       "file": "cfd_bot/monitor.py",
-      "line": 182,
+      "line": 204,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11624,7 +12113,7 @@
     {
       "step": "monitor.Monitor.observe:L159:then",
       "file": "cfd_bot/monitor.py",
-      "line": 186,
+      "line": 208,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11635,7 +12124,7 @@
     {
       "step": "monitor.Monitor.observe:L161:then",
       "file": "cfd_bot/monitor.py",
-      "line": 189,
+      "line": 211,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11646,7 +12135,7 @@
     {
       "step": "monitor.Monitor.observe:L188:then",
       "file": "cfd_bot/monitor.py",
-      "line": 220,
+      "line": 242,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11657,7 +12146,7 @@
     {
       "step": "monitor.Monitor.observe:L191:then",
       "file": "cfd_bot/monitor.py",
-      "line": 224,
+      "line": 246,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11668,7 +12157,7 @@
     {
       "step": "monitor.Monitor.observe:L196:then",
       "file": "cfd_bot/monitor.py",
-      "line": 231,
+      "line": 253,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11679,7 +12168,7 @@
     {
       "step": "monitor.Monitor.run_once:L225:loop",
       "file": "cfd_bot/monitor.py",
-      "line": 262,
+      "line": 284,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11690,7 +12179,7 @@
     {
       "step": "monitor.Monitor.tick:L132:then",
       "file": "cfd_bot/monitor.py",
-      "line": 153,
+      "line": 174,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11701,7 +12190,7 @@
     {
       "step": "monitor.Monitor.tick:L141:then",
       "file": "cfd_bot/monitor.py",
-      "line": 164,
+      "line": 185,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11710,9 +12199,9 @@
       "basic": "omitted"
     },
     {
-      "step": "monitor.Monitor.tick:L146:then",
+      "step": "monitor.Monitor.tick:M186:then",
       "file": "cfd_bot/monitor.py",
-      "line": 170,
+      "line": 191,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11723,7 +12212,7 @@
     {
       "step": "monitor.Monitor.observe:L163:then",
       "file": "cfd_bot/monitor.py",
-      "line": 194,
+      "line": 216,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11734,7 +12223,7 @@
     {
       "step": "monitor.Monitor.observe:L170:then",
       "file": "cfd_bot/monitor.py",
-      "line": 200,
+      "line": 222,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11745,7 +12234,7 @@
     {
       "step": "monitor.Monitor.observe:L181:then",
       "file": "cfd_bot/monitor.py",
-      "line": 212,
+      "line": 234,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11756,7 +12245,7 @@
     {
       "step": "monitor.Monitor.run_once:L213:except",
       "file": "cfd_bot/monitor.py",
-      "line": 249,
+      "line": 271,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11767,7 +12256,7 @@
     {
       "step": "monitor.Monitor.run_once:L226:then",
       "file": "cfd_bot/monitor.py",
-      "line": 264,
+      "line": 286,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11778,7 +12267,7 @@
     {
       "step": "monitor.automatic_case:L75:then",
       "file": "cfd_bot/monitor.py",
-      "line": 88,
+      "line": 106,
       "events": [
         "sequence.step",
         "steps[]"
@@ -11789,7 +12278,7 @@
     {
       "step": "monitor.automatic_case:L77:except",
       "file": "cfd_bot/monitor.py",
-      "line": 91,
+      "line": 109,
       "events": [
         "sequence.step",
         "steps[]"
@@ -12723,7 +13212,43 @@
     {
       "function": "queue_control.cancel_queued_jobs",
       "file": "cfd_bot/queue_control.py",
-      "line": 8,
+      "line": 13,
+      "events": [
+        "function.call",
+        "function.return",
+        "function.raise"
+      ],
+      "detailed": "all occurrences",
+      "basic": "call/return/raise"
+    },
+    {
+      "function": "queue_control.interrupt_process_groups",
+      "file": "cfd_bot/queue_control.py",
+      "line": 27,
+      "events": [
+        "function.call",
+        "function.return",
+        "function.raise"
+      ],
+      "detailed": "all occurrences",
+      "basic": "call/return/raise"
+    },
+    {
+      "function": "queue_control.interrupt_running_job",
+      "file": "cfd_bot/queue_control.py",
+      "line": 55,
+      "events": [
+        "function.call",
+        "function.return",
+        "function.raise"
+      ],
+      "detailed": "all occurrences",
+      "basic": "call/return/raise"
+    },
+    {
+      "function": "queue_control.interrupt_running_jobs",
+      "file": "cfd_bot/queue_control.py",
+      "line": 80,
       "events": [
         "function.call",
         "function.return",
@@ -12735,7 +13260,7 @@
     {
       "step": "queue_control.cancel_queued_jobs:L8:then",
       "file": "cfd_bot/queue_control.py",
-      "line": 11,
+      "line": 16,
       "events": [
         "sequence.step",
         "steps[]"
@@ -12746,13 +13271,112 @@
     {
       "step": "queue_control.cancel_queued_jobs:L11:then",
       "file": "cfd_bot/queue_control.py",
-      "line": 15,
+      "line": 20,
       "events": [
         "sequence.step",
         "steps[]"
       ],
       "detailed": "all occurrences",
       "basic": "omitted"
+    },
+    {
+      "step": "queue_control.interrupt_process_groups:M30:loop",
+      "file": "cfd_bot/queue_control.py",
+      "line": 32,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "queue_control.interrupt_running_job:M53:then",
+      "file": "cfd_bot/queue_control.py",
+      "line": 61,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "queue_control.interrupt_running_job:M62:then",
+      "file": "cfd_bot/queue_control.py",
+      "line": 71,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "queue_control.interrupt_running_jobs:M74:then",
+      "file": "cfd_bot/queue_control.py",
+      "line": 85,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "queue_control.interrupt_running_jobs:M77:loop",
+      "file": "cfd_bot/queue_control.py",
+      "line": 89,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "queue_control.interrupt_process_groups:M33:then",
+      "file": "cfd_bot/queue_control.py",
+      "line": 36,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "queue_control.interrupt_process_groups:M36:then",
+      "file": "cfd_bot/queue_control.py",
+      "line": 40,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "queue_control.interrupt_process_groups:M39:then",
+      "file": "cfd_bot/queue_control.py",
+      "line": 44,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "queue_control.interrupt_process_groups:M43:except",
+      "file": "cfd_bot/queue_control.py",
+      "line": 49,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "handled exception"
     },
     {
       "function": "queueing.queue_profile",
@@ -13301,7 +13925,7 @@
       "basic": "omitted"
     },
     {
-      "step": "report.compact_status:L115:then",
+      "step": "report.compact_status:M136:then",
       "file": "cfd_bot/report.py",
       "line": 137,
       "events": [
@@ -13534,7 +14158,7 @@
     {
       "function": "run_views.case_id_for_root",
       "file": "cfd_bot/run_views.py",
-      "line": 16,
+      "line": 14,
       "events": [
         "function.call",
         "function.return",
@@ -13546,7 +14170,7 @@
     {
       "function": "run_views.tracking_registry",
       "file": "cfd_bot/run_views.py",
-      "line": 21,
+      "line": 19,
       "events": [
         "function.call",
         "function.return",
@@ -13558,7 +14182,7 @@
     {
       "function": "run_views.job_view",
       "file": "cfd_bot/run_views.py",
-      "line": 36,
+      "line": 34,
       "events": [
         "function.call",
         "function.return",
@@ -13570,7 +14194,7 @@
     {
       "function": "run_views._remaining",
       "file": "cfd_bot/run_views.py",
-      "line": 50,
+      "line": 48,
       "events": [
         "function.call",
         "function.return",
@@ -13582,7 +14206,7 @@
     {
       "function": "run_views.running_macro_views",
       "file": "cfd_bot/run_views.py",
-      "line": 74,
+      "line": 72,
       "events": [
         "function.call",
         "function.return",
@@ -13594,7 +14218,7 @@
     {
       "step": "run_views.tracking_registry:L21:loop",
       "file": "cfd_bot/run_views.py",
-      "line": 25,
+      "line": 23,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13605,7 +14229,7 @@
     {
       "step": "run_views._remaining:L46:then",
       "file": "cfd_bot/run_views.py",
-      "line": 54,
+      "line": 52,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13616,7 +14240,7 @@
     {
       "step": "run_views._remaining:L53:then",
       "file": "cfd_bot/run_views.py",
-      "line": 63,
+      "line": 61,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13627,7 +14251,7 @@
     {
       "step": "run_views._remaining:L57:then",
       "file": "cfd_bot/run_views.py",
-      "line": 68,
+      "line": 66,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13638,7 +14262,7 @@
     {
       "step": "run_views.running_macro_views:L68:loop",
       "file": "cfd_bot/run_views.py",
-      "line": 81,
+      "line": 79,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13649,7 +14273,7 @@
     {
       "step": "run_views.tracking_registry:L23:then",
       "file": "cfd_bot/run_views.py",
-      "line": 28,
+      "line": 26,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13660,7 +14284,7 @@
     {
       "step": "run_views.running_macro_views:L69:then",
       "file": "cfd_bot/run_views.py",
-      "line": 83,
+      "line": 81,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13671,7 +14295,7 @@
     {
       "step": "run_views.running_macro_views:L73:then",
       "file": "cfd_bot/run_views.py",
-      "line": 88,
+      "line": 86,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13682,7 +14306,7 @@
     {
       "step": "run_views.running_macro_views:L80:loop",
       "file": "cfd_bot/run_views.py",
-      "line": 96,
+      "line": 94,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13693,7 +14317,7 @@
     {
       "step": "run_views.running_macro_views:L93:loop",
       "file": "cfd_bot/run_views.py",
-      "line": 112,
+      "line": 110,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13704,7 +14328,7 @@
     {
       "step": "run_views._remaining:L49:except",
       "file": "cfd_bot/run_views.py",
-      "line": 58,
+      "line": 56,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13715,7 +14339,7 @@
     {
       "step": "run_views.running_macro_views:L82:then",
       "file": "cfd_bot/run_views.py",
-      "line": 99,
+      "line": 97,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13726,7 +14350,7 @@
     {
       "step": "run_views.running_macro_views:L86:then",
       "file": "cfd_bot/run_views.py",
-      "line": 105,
+      "line": 103,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13737,7 +14361,7 @@
     {
       "step": "run_views.running_macro_views:L95:then",
       "file": "cfd_bot/run_views.py",
-      "line": 115,
+      "line": 113,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13748,7 +14372,7 @@
     {
       "step": "run_views.running_macro_views:L97:then",
       "file": "cfd_bot/run_views.py",
-      "line": 118,
+      "line": 116,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13759,7 +14383,7 @@
     {
       "step": "run_views.running_macro_views:L101:then",
       "file": "cfd_bot/run_views.py",
-      "line": 123,
+      "line": 121,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13770,7 +14394,7 @@
     {
       "step": "run_views.running_macro_views:L104:then",
       "file": "cfd_bot/run_views.py",
-      "line": 127,
+      "line": 125,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13779,9 +14403,9 @@
       "basic": "omitted"
     },
     {
-      "step": "run_views.running_macro_views:L107:then",
+      "step": "run_views.running_macro_views:M128:then",
       "file": "cfd_bot/run_views.py",
-      "line": 131,
+      "line": 129,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13792,7 +14416,7 @@
     {
       "step": "run_views.running_macro_views:L112:then",
       "file": "cfd_bot/run_views.py",
-      "line": 138,
+      "line": 136,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13803,7 +14427,7 @@
     {
       "step": "run_views.running_macro_views:L115:then",
       "file": "cfd_bot/run_views.py",
-      "line": 142,
+      "line": 140,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13814,7 +14438,7 @@
     {
       "step": "run_views.running_macro_views:L115:else",
       "file": "cfd_bot/run_views.py",
-      "line": 145,
+      "line": 143,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13825,7 +14449,7 @@
     {
       "step": "run_views.running_macro_views:L110:then",
       "file": "cfd_bot/run_views.py",
-      "line": 135,
+      "line": 133,
       "events": [
         "sequence.step",
         "steps[]"
@@ -13836,7 +14460,7 @@
     {
       "function": "storage.runtime_profile",
       "file": "cfd_bot/storage.py",
-      "line": 20,
+      "line": 21,
       "events": [
         "function.call",
         "function.return",
@@ -13848,7 +14472,7 @@
     {
       "function": "storage.runtime_sample",
       "file": "cfd_bot/storage.py",
-      "line": 27,
+      "line": 28,
       "events": [
         "function.call",
         "function.return",
@@ -13860,7 +14484,7 @@
     {
       "function": "storage.Store.__init__",
       "file": "cfd_bot/storage.py",
-      "line": 43,
+      "line": 44,
       "events": [
         "function.call",
         "function.return",
@@ -13872,7 +14496,7 @@
     {
       "function": "storage.Store.connect",
       "file": "cfd_bot/storage.py",
-      "line": 105,
+      "line": 116,
       "events": [
         "function.call",
         "function.return",
@@ -13884,7 +14508,7 @@
     {
       "function": "storage.Store.get",
       "file": "cfd_bot/storage.py",
-      "line": 115,
+      "line": 126,
       "events": [
         "function.call",
         "function.return",
@@ -13896,7 +14520,7 @@
     {
       "function": "storage.Store.get_many",
       "file": "cfd_bot/storage.py",
-      "line": 121,
+      "line": 132,
       "events": [
         "function.call",
         "function.return",
@@ -13908,7 +14532,7 @@
     {
       "function": "storage.Store.put",
       "file": "cfd_bot/storage.py",
-      "line": 140,
+      "line": 151,
       "events": [
         "function.call",
         "function.return",
@@ -13920,7 +14544,7 @@
     {
       "function": "storage.Store.job",
       "file": "cfd_bot/storage.py",
-      "line": 145,
+      "line": 156,
       "events": [
         "function.call",
         "function.return",
@@ -13932,7 +14556,7 @@
     {
       "function": "storage.Store.jobs",
       "file": "cfd_bot/storage.py",
-      "line": 154,
+      "line": 165,
       "events": [
         "function.call",
         "function.return",
@@ -13944,7 +14568,7 @@
     {
       "function": "storage.Store.unpublished_terminal_jobs",
       "file": "cfd_bot/storage.py",
-      "line": 166,
+      "line": 177,
       "events": [
         "function.call",
         "function.return",
@@ -13956,7 +14580,7 @@
     {
       "function": "storage.Store.mark_terminal_published",
       "file": "cfd_bot/storage.py",
-      "line": 182,
+      "line": 193,
       "events": [
         "function.call",
         "function.return",
@@ -13968,7 +14592,7 @@
     {
       "function": "storage.Store.jobs_for_roots",
       "file": "cfd_bot/storage.py",
-      "line": 199,
+      "line": 210,
       "events": [
         "function.call",
         "function.return",
@@ -13980,7 +14604,7 @@
     {
       "function": "storage.Store.ticket_changes",
       "file": "cfd_bot/storage.py",
-      "line": 212,
+      "line": 223,
       "events": [
         "function.call",
         "function.return",
@@ -13992,7 +14616,7 @@
     {
       "function": "storage.Store.acknowledge_ticket_changes",
       "file": "cfd_bot/storage.py",
-      "line": 217,
+      "line": 228,
       "events": [
         "function.call",
         "function.return",
@@ -14004,7 +14628,7 @@
     {
       "function": "storage.Store.tracked_observations",
       "file": "cfd_bot/storage.py",
-      "line": 222,
+      "line": 233,
       "events": [
         "function.call",
         "function.return",
@@ -14016,7 +14640,7 @@
     {
       "function": "storage.Store.finish_observation",
       "file": "cfd_bot/storage.py",
-      "line": 229,
+      "line": 240,
       "events": [
         "function.call",
         "function.return",
@@ -14028,7 +14652,7 @@
     {
       "function": "storage.Store.enqueue",
       "file": "cfd_bot/storage.py",
-      "line": 236,
+      "line": 247,
       "events": [
         "function.call",
         "function.return",
@@ -14040,7 +14664,7 @@
     {
       "function": "storage.Store.enqueue_batch",
       "file": "cfd_bot/storage.py",
-      "line": 277,
+      "line": 288,
       "events": [
         "function.call",
         "function.return",
@@ -14052,7 +14676,7 @@
     {
       "function": "storage.Store.remember_run",
       "file": "cfd_bot/storage.py",
-      "line": 326,
+      "line": 337,
       "events": [
         "function.call",
         "function.return",
@@ -14064,7 +14688,7 @@
     {
       "function": "storage.Store.runtime_history",
       "file": "cfd_bot/storage.py",
-      "line": 342,
+      "line": 353,
       "events": [
         "function.call",
         "function.return",
@@ -14076,7 +14700,7 @@
     {
       "function": "storage.Store.update_job",
       "file": "cfd_bot/storage.py",
-      "line": 364,
+      "line": 375,
       "events": [
         "function.call",
         "function.return",
@@ -14088,7 +14712,19 @@
     {
       "function": "storage.Store.cancel_queued",
       "file": "cfd_bot/storage.py",
-      "line": 384,
+      "line": 395,
+      "events": [
+        "function.call",
+        "function.return",
+        "function.raise"
+      ],
+      "detailed": "all occurrences",
+      "basic": "call/return/raise"
+    },
+    {
+      "function": "storage.Store.request_interruption",
+      "file": "cfd_bot/storage.py",
+      "line": 422,
       "events": [
         "function.call",
         "function.return",
@@ -14100,7 +14736,7 @@
     {
       "function": "storage.Store.event",
       "file": "cfd_bot/storage.py",
-      "line": 411,
+      "line": 445,
       "events": [
         "function.call",
         "function.return",
@@ -14112,7 +14748,7 @@
     {
       "function": "storage.Store.pending",
       "file": "cfd_bot/storage.py",
-      "line": 439,
+      "line": 473,
       "events": [
         "function.call",
         "function.return",
@@ -14124,7 +14760,7 @@
     {
       "function": "storage.Store.delivered",
       "file": "cfd_bot/storage.py",
-      "line": 446,
+      "line": 480,
       "events": [
         "function.call",
         "function.return",
@@ -14136,7 +14772,7 @@
     {
       "function": "storage.Store.retry",
       "file": "cfd_bot/storage.py",
-      "line": 451,
+      "line": 485,
       "events": [
         "function.call",
         "function.return",
@@ -14148,7 +14784,7 @@
     {
       "function": "storage.Store.save_delivery",
       "file": "cfd_bot/storage.py",
-      "line": 457,
+      "line": 491,
       "events": [
         "function.call",
         "function.return",
@@ -14160,7 +14796,7 @@
     {
       "function": "storage.Store.remember_message",
       "file": "cfd_bot/storage.py",
-      "line": 462,
+      "line": 496,
       "events": [
         "function.call",
         "function.return",
@@ -14172,7 +14808,7 @@
     {
       "function": "storage.Store.chat_messages",
       "file": "cfd_bot/storage.py",
-      "line": 477,
+      "line": 511,
       "events": [
         "function.call",
         "function.return",
@@ -14184,7 +14820,7 @@
     {
       "function": "storage.Store.clear_messages",
       "file": "cfd_bot/storage.py",
-      "line": 491,
+      "line": 525,
       "events": [
         "function.call",
         "function.return",
@@ -14196,7 +14832,7 @@
     {
       "step": "storage.runtime_sample:L25:then",
       "file": "cfd_bot/storage.py",
-      "line": 29,
+      "line": 30,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14207,7 +14843,7 @@
     {
       "step": "storage.runtime_sample:L29:then",
       "file": "cfd_bot/storage.py",
-      "line": 35,
+      "line": 36,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14218,7 +14854,7 @@
     {
       "step": "storage.Store.get_many:L114:then",
       "file": "cfd_bot/storage.py",
-      "line": 125,
+      "line": 136,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14229,7 +14865,7 @@
     {
       "step": "storage.Store.job:L134:then",
       "file": "cfd_bot/storage.py",
-      "line": 149,
+      "line": 160,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14240,7 +14876,7 @@
     {
       "step": "storage.Store.enqueue:L209:then",
       "file": "cfd_bot/storage.py",
-      "line": 239,
+      "line": 250,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14251,7 +14887,7 @@
     {
       "step": "storage.Store.enqueue:L218:then",
       "file": "cfd_bot/storage.py",
-      "line": 249,
+      "line": 260,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14262,7 +14898,7 @@
     {
       "step": "storage.Store.remember_run:L282:then",
       "file": "cfd_bot/storage.py",
-      "line": 330,
+      "line": 341,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14273,7 +14909,7 @@
     {
       "step": "storage.Store.runtime_history:L302:loop",
       "file": "cfd_bot/storage.py",
-      "line": 352,
+      "line": 363,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14284,7 +14920,7 @@
     {
       "step": "storage.Store.event:L350:then",
       "file": "cfd_bot/storage.py",
-      "line": 414,
+      "line": 448,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14295,7 +14931,7 @@
     {
       "step": "storage.Store.event:L358:then",
       "file": "cfd_bot/storage.py",
-      "line": 423,
+      "line": 457,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14306,7 +14942,18 @@
     {
       "step": "storage.Store.remember_message:L391:then",
       "file": "cfd_bot/storage.py",
-      "line": 464,
+      "line": 498,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "storage.Store.__init__:M96:then",
+      "file": "cfd_bot/storage.py",
+      "line": 97,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14317,7 +14964,7 @@
     {
       "step": "storage.Store.__init__:L88:then",
       "file": "cfd_bot/storage.py",
-      "line": 95,
+      "line": 106,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14328,7 +14975,7 @@
     {
       "step": "storage.Store.get_many:L119:loop",
       "file": "cfd_bot/storage.py",
-      "line": 131,
+      "line": 142,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14339,7 +14986,7 @@
     {
       "step": "storage.Store.jobs:L140:then",
       "file": "cfd_bot/storage.py",
-      "line": 157,
+      "line": 168,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14350,7 +14997,7 @@
     {
       "step": "storage.Store.jobs:L140:else",
       "file": "cfd_bot/storage.py",
-      "line": 161,
+      "line": 172,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14361,7 +15008,7 @@
     {
       "step": "storage.Store.mark_terminal_published:L167:then",
       "file": "cfd_bot/storage.py",
-      "line": 188,
+      "line": 199,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14372,7 +15019,7 @@
     {
       "step": "storage.Store.mark_terminal_published:L170:then",
       "file": "cfd_bot/storage.py",
-      "line": 192,
+      "line": 203,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14383,7 +15030,7 @@
     {
       "step": "storage.Store.jobs_for_roots:L180:loop",
       "file": "cfd_bot/storage.py",
-      "line": 204,
+      "line": 215,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14394,7 +15041,7 @@
     {
       "step": "storage.Store.enqueue:L220:then",
       "file": "cfd_bot/storage.py",
-      "line": 252,
+      "line": 263,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14405,7 +15052,7 @@
     {
       "step": "storage.Store.enqueue:L234:except",
       "file": "cfd_bot/storage.py",
-      "line": 270,
+      "line": 281,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14416,7 +15063,7 @@
     {
       "step": "storage.Store.enqueue_batch:L274:except",
       "file": "cfd_bot/storage.py",
-      "line": 319,
+      "line": 330,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14427,7 +15074,7 @@
     {
       "step": "storage.Store.runtime_history:L304:then",
       "file": "cfd_bot/storage.py",
-      "line": 355,
+      "line": 366,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14438,7 +15085,7 @@
     {
       "step": "storage.Store.update_job:L316:then",
       "file": "cfd_bot/storage.py",
-      "line": 369,
+      "line": 380,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14449,7 +15096,7 @@
     {
       "step": "storage.Store.update_job:L319:then",
       "file": "cfd_bot/storage.py",
-      "line": 373,
+      "line": 384,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14460,7 +15107,40 @@
     {
       "step": "storage.Store.cancel_queued:L333:loop",
       "file": "cfd_bot/storage.py",
-      "line": 392,
+      "line": 403,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "storage.Store.request_interruption:M426:then",
+      "file": "cfd_bot/storage.py",
+      "line": 429,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "storage.Store.request_interruption:M429:then",
+      "file": "cfd_bot/storage.py",
+      "line": 433,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "storage.Store.request_interruption:M431:then",
+      "file": "cfd_bot/storage.py",
+      "line": 436,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14471,7 +15151,7 @@
     {
       "step": "storage.Store.event:L365:loop",
       "file": "cfd_bot/storage.py",
-      "line": 431,
+      "line": 465,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14482,7 +15162,7 @@
     {
       "step": "storage.Store.chat_messages:L405:then",
       "file": "cfd_bot/storage.py",
-      "line": 480,
+      "line": 514,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14493,7 +15173,7 @@
     {
       "step": "storage.Store.chat_messages:L405:else",
       "file": "cfd_bot/storage.py",
-      "line": 484,
+      "line": 518,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14504,7 +15184,7 @@
     {
       "step": "storage.Store.enqueue:L225:then",
       "file": "cfd_bot/storage.py",
-      "line": 258,
+      "line": 269,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14515,7 +15195,7 @@
     {
       "step": "storage.Store.enqueue:L232:then",
       "file": "cfd_bot/storage.py",
-      "line": 267,
+      "line": 278,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14526,7 +15206,7 @@
     {
       "step": "storage.Store.enqueue_batch:L246:loop",
       "file": "cfd_bot/storage.py",
-      "line": 285,
+      "line": 296,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14537,7 +15217,7 @@
     {
       "step": "storage.Store.cancel_queued:L335:then",
       "file": "cfd_bot/storage.py",
-      "line": 395,
+      "line": 406,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14548,7 +15228,7 @@
     {
       "step": "storage.Store.cancel_queued:L339:then",
       "file": "cfd_bot/storage.py",
-      "line": 400,
+      "line": 411,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14559,7 +15239,7 @@
     {
       "step": "storage.Store.event:L366:then",
       "file": "cfd_bot/storage.py",
-      "line": 434,
+      "line": 468,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14570,7 +15250,7 @@
     {
       "step": "storage.Store.enqueue:L227:then",
       "file": "cfd_bot/storage.py",
-      "line": 261,
+      "line": 272,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14581,7 +15261,7 @@
     {
       "step": "storage.Store.enqueue_batch:L249:then",
       "file": "cfd_bot/storage.py",
-      "line": 289,
+      "line": 300,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14592,7 +15272,7 @@
     {
       "step": "storage.Store.enqueue_batch:L254:then",
       "file": "cfd_bot/storage.py",
-      "line": 295,
+      "line": 306,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14603,7 +15283,7 @@
     {
       "step": "storage.Store.enqueue_batch:L266:then",
       "file": "cfd_bot/storage.py",
-      "line": 308,
+      "line": 319,
       "events": [
         "sequence.step",
         "steps[]"
@@ -14614,7 +15294,7 @@
     {
       "step": "storage.Store.enqueue_batch:L268:then",
       "file": "cfd_bot/storage.py",
-      "line": 311,
+      "line": 322,
       "events": [
         "sequence.step",
         "steps[]"
@@ -20395,7 +21075,7 @@
     {
       "function": "web.WebServer.__init__",
       "file": "cfd_bot/web.py",
-      "line": 384,
+      "line": 394,
       "events": [
         "function.call",
         "function.return",
@@ -20407,7 +21087,7 @@
     {
       "function": "web.Handler.setup",
       "file": "cfd_bot/web.py",
-      "line": 393,
+      "line": 403,
       "events": [
         "function.call",
         "function.return",
@@ -20419,7 +21099,7 @@
     {
       "function": "web.Handler.log_message",
       "file": "cfd_bot/web.py",
-      "line": 398,
+      "line": 408,
       "events": [
         "function.call",
         "function.return",
@@ -20431,7 +21111,7 @@
     {
       "function": "web.Handler.trusted",
       "file": "cfd_bot/web.py",
-      "line": 404,
+      "line": 414,
       "events": [
         "function.call",
         "function.return",
@@ -20443,7 +21123,7 @@
     {
       "function": "web.Handler.send_headers",
       "file": "cfd_bot/web.py",
-      "line": 417,
+      "line": 427,
       "events": [
         "function.call",
         "function.return",
@@ -20455,7 +21135,7 @@
     {
       "function": "web.Handler.respond",
       "file": "cfd_bot/web.py",
-      "line": 437,
+      "line": 447,
       "events": [
         "function.call",
         "function.return",
@@ -20467,7 +21147,7 @@
     {
       "function": "web.Handler.handle_request",
       "file": "cfd_bot/web.py",
-      "line": 443,
+      "line": 453,
       "events": [
         "function.call",
         "function.return",
@@ -20479,7 +21159,7 @@
     {
       "function": "web.Handler.do_GET",
       "file": "cfd_bot/web.py",
-      "line": 522,
+      "line": 532,
       "events": [
         "function.call",
         "function.return",
@@ -20491,7 +21171,7 @@
     {
       "function": "web.Handler.do_POST",
       "file": "cfd_bot/web.py",
-      "line": 526,
+      "line": 536,
       "events": [
         "function.call",
         "function.return",
@@ -20503,7 +21183,7 @@
     {
       "function": "web.serve",
       "file": "cfd_bot/web.py",
-      "line": 531,
+      "line": 541,
       "events": [
         "function.call",
         "function.return",
@@ -20515,7 +21195,7 @@
     {
       "function": "web.main",
       "file": "cfd_bot/web.py",
-      "line": 550,
+      "line": 560,
       "events": [
         "function.call",
         "function.return",
@@ -20527,7 +21207,7 @@
     {
       "step": "web.serve:L438:loop",
       "file": "cfd_bot/web.py",
-      "line": 538,
+      "line": 548,
       "events": [
         "sequence.step",
         "steps[]"
@@ -20879,7 +21559,7 @@
     {
       "step": "web.Handler.trusted:L339:then",
       "file": "cfd_bot/web.py",
-      "line": 410,
+      "line": 420,
       "events": [
         "sequence.step",
         "steps[]"
@@ -20890,7 +21570,7 @@
     {
       "step": "web.Handler.send_headers:L355:loop",
       "file": "cfd_bot/web.py",
-      "line": 432,
+      "line": 442,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21053,9 +21733,31 @@
       "basic": "omitted"
     },
     {
+      "step": "web.WebApp.post:M375:then",
+      "file": "cfd_bot/web.py",
+      "line": 376,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
+      "step": "web.WebApp.post:M377:then",
+      "file": "cfd_bot/web.py",
+      "line": 379,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
       "step": "web.Handler.handle_request:L366:then",
       "file": "cfd_bot/web.py",
-      "line": 446,
+      "line": 456,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21066,7 +21768,7 @@
     {
       "step": "web.Handler.handle_request:L371:then",
       "file": "cfd_bot/web.py",
-      "line": 452,
+      "line": 462,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21077,7 +21779,7 @@
     {
       "step": "web.Handler.handle_request:L382:then",
       "file": "cfd_bot/web.py",
-      "line": 467,
+      "line": 477,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21088,7 +21790,7 @@
     {
       "step": "web.Handler.handle_request:L398:then",
       "file": "cfd_bot/web.py",
-      "line": 486,
+      "line": 496,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21099,7 +21801,7 @@
     {
       "step": "web.Handler.handle_request:L401:loop",
       "file": "cfd_bot/web.py",
-      "line": 491,
+      "line": 501,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21110,7 +21812,7 @@
     {
       "step": "web.Handler.handle_request:L405:then",
       "file": "cfd_bot/web.py",
-      "line": 496,
+      "line": 506,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21121,7 +21823,7 @@
     {
       "step": "web.Handler.handle_request:L412:except",
       "file": "cfd_bot/web.py",
-      "line": 504,
+      "line": 514,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21132,7 +21834,7 @@
     {
       "step": "web.Handler.handle_request:L414:except",
       "file": "cfd_bot/web.py",
-      "line": 507,
+      "line": 517,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21143,7 +21845,7 @@
     {
       "step": "web.Handler.handle_request:L417:except",
       "file": "cfd_bot/web.py",
-      "line": 511,
+      "line": 521,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21154,7 +21856,7 @@
     {
       "step": "web.Handler.handle_request:L419:except",
       "file": "cfd_bot/web.py",
-      "line": 514,
+      "line": 524,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21165,7 +21867,7 @@
     {
       "step": "web.Handler.handle_request:L421:except",
       "file": "cfd_bot/web.py",
-      "line": 517,
+      "line": 527,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21229,9 +21931,20 @@
       "basic": "omitted"
     },
     {
+      "step": "web.WebApp.post:M379:then",
+      "file": "cfd_bot/web.py",
+      "line": 382,
+      "events": [
+        "sequence.step",
+        "steps[]"
+      ],
+      "detailed": "all occurrences",
+      "basic": "omitted"
+    },
+    {
       "step": "web.Handler.handle_request:L372:then",
       "file": "cfd_bot/web.py",
-      "line": 455,
+      "line": 465,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21242,7 +21955,7 @@
     {
       "step": "web.Handler.handle_request:L376:then",
       "file": "cfd_bot/web.py",
-      "line": 459,
+      "line": 469,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21253,7 +21966,7 @@
     {
       "step": "web.Handler.handle_request:L379:then",
       "file": "cfd_bot/web.py",
-      "line": 463,
+      "line": 473,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21264,7 +21977,7 @@
     {
       "step": "web.Handler.handle_request:L391:loop",
       "file": "cfd_bot/web.py",
-      "line": 477,
+      "line": 487,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21275,7 +21988,7 @@
     {
       "step": "web.Handler.handle_request:L393:then",
       "file": "cfd_bot/web.py",
-      "line": 480,
+      "line": 490,
       "events": [
         "sequence.step",
         "steps[]"
@@ -21340,82 +22053,94 @@
     "web.ui.callback:L108:C1037",
     "web.ui.callback:L109:C249",
     "web.ui.overview:L105:C0",
-    "web.ui.callback:L111:C103",
-    "web.ui.callback:L111:C149",
-    "web.ui.callback:L111:C201",
-    "web.ui.callback:L111:C306",
-    "web.ui.callback:L111:C275",
-    "web.ui.queuePage:L111:C0",
-    "web.ui.callback:L112:C66",
-    "web.ui.callback:L112:C169",
-    "web.ui.ticketList:L112:C0",
-    "web.ui.inputField:L113:C0",
-    "web.ui.textareaField:L114:C0",
-    "web.ui.executionForm:L115:C0",
-    "web.ui.callback:L125:C45",
-    "web.ui.callback:L127:C16",
-    "web.ui.callback:L129:C1679",
-    "web.ui.callback:L130:C234",
-    "web.ui.callback:L134:C614",
-    "web.ui.callback:L137:C399",
-    "web.ui.editor:L123:C0",
-    "web.ui.callback:L139:C56",
-    "web.ui.exportRows:L139:C0",
-    "web.ui.ticketPage:L140:C0",
-    "web.ui.callback:L141:C272",
-    "web.ui.dataPage:L141:C0",
-    "web.ui.callback:L142:C125",
-    "web.ui.render:L142:C0",
-    "web.ui.renderEditor:L143:C0",
-    "web.ui.dirty:L144:C0",
-    "web.ui.controlHint:L145:C0",
-    "web.ui.callback:L146:C336",
-    "web.ui.callback:L146:C364",
-    "web.ui.callback:L146:C411",
-    "web.ui.callback:L146:C479",
-    "web.ui.callback:L146:C544",
-    "web.ui.refresh:L146:C0",
-    "web.ui.openTicket:L147:C0",
-    "web.ui.newTicket:L148:C0",
-    "web.ui.validateExports:L149:C0",
-    "web.ui.saveNow:L150:C0",
-    "web.ui.callback:L151:C57",
-    "web.ui.save:L151:C0",
-    "web.ui.callback:L152:C652",
-    "web.ui.requestRun:L152:C0",
-    "web.ui.callback:L153:C340",
-    "web.ui.callback:L153:C1654",
-    "web.ui.callback:L153:C1270",
-    "web.ui.loadData:L153:C0",
-    "web.ui.browse:L154:C0",
-    "web.ui.callback:L155:C549",
-    "web.ui.callback:L155:C947",
-    "web.ui.showBrowser:L155:C0",
-    "web.ui.pickPath:L156:C0",
-    "web.ui.callback:L161:C44",
-    "web.ui.callback:L162:C43",
-    "web.ui.callback:L163:C45",
-    "web.ui.callback:L164:C50",
-    "web.ui.callback:L170:C79",
-    "web.ui.callback:L172:C316",
-    "web.ui.callback:L176:C330",
-    "web.ui.callback:L176:C191",
-    "web.ui.callback:L177:C283",
-    "web.ui.search:L177:C94",
-    "web.ui.callback:L187:C83",
-    "web.ui.callback:L187:C111",
-    "web.ui.callback:L189:C205",
-    "web.ui.callback:L190:C98",
-    "web.ui.callback:L191:C55",
-    "web.ui.action:L157:C0",
-    "web.ui.callback:L197:C457",
-    "web.ui.callback:L197:C34",
-    "web.ui.callback:L198:C738",
-    "web.ui.callback:L198:C34",
-    "web.ui.callback:L199:C35",
-    "web.ui.callback:L201:C39",
-    "web.ui.callback:L202:C219",
-    "web.ui.start:L202:C0"
+    "web.ui.callback:L111:C74",
+    "web.ui.selectedQueueJobs:L111:C0",
+    "web.ui.callback:L112:C103",
+    "web.ui.callback:L112:C149",
+    "web.ui.callback:L112:C201",
+    "web.ui.callback:L112:C306",
+    "web.ui.callback:L112:C378",
+    "web.ui.callback:L112:C275",
+    "web.ui.queuePage:L112:C0",
+    "web.ui.callback:L113:C66",
+    "web.ui.callback:L113:C169",
+    "web.ui.ticketList:L113:C0",
+    "web.ui.inputField:L114:C0",
+    "web.ui.textareaField:L115:C0",
+    "web.ui.executionForm:L116:C0",
+    "web.ui.callback:L126:C45",
+    "web.ui.callback:L128:C16",
+    "web.ui.callback:L130:C1679",
+    "web.ui.callback:L131:C234",
+    "web.ui.callback:L135:C614",
+    "web.ui.callback:L138:C399",
+    "web.ui.editor:L124:C0",
+    "web.ui.callback:L140:C56",
+    "web.ui.exportRows:L140:C0",
+    "web.ui.ticketPage:L141:C0",
+    "web.ui.callback:L142:C272",
+    "web.ui.dataPage:L142:C0",
+    "web.ui.callback:L143:C125",
+    "web.ui.render:L143:C0",
+    "web.ui.renderEditor:L144:C0",
+    "web.ui.dirty:L145:C0",
+    "web.ui.controlHint:L146:C0",
+    "web.ui.callback:L147:C336",
+    "web.ui.callback:L147:C364",
+    "web.ui.callback:L147:C411",
+    "web.ui.callback:L147:C479",
+    "web.ui.callback:L147:C544",
+    "web.ui.callback:L147:C611",
+    "web.ui.callback:L147:C675",
+    "web.ui.callback:L147:C741",
+    "web.ui.refresh:L147:C0",
+    "web.ui.openTicket:L148:C0",
+    "web.ui.newTicket:L149:C0",
+    "web.ui.validateExports:L150:C0",
+    "web.ui.saveNow:L151:C0",
+    "web.ui.callback:L152:C57",
+    "web.ui.save:L152:C0",
+    "web.ui.callback:L153:C652",
+    "web.ui.requestRun:L153:C0",
+    "web.ui.callback:L154:C340",
+    "web.ui.callback:L154:C1654",
+    "web.ui.callback:L154:C1270",
+    "web.ui.loadData:L154:C0",
+    "web.ui.browse:L155:C0",
+    "web.ui.callback:L156:C549",
+    "web.ui.callback:L156:C947",
+    "web.ui.showBrowser:L156:C0",
+    "web.ui.pickPath:L157:C0",
+    "web.ui.callback:L162:C44",
+    "web.ui.callback:L163:C43",
+    "web.ui.callback:L164:C45",
+    "web.ui.callback:L165:C50",
+    "web.ui.callback:L171:C79",
+    "web.ui.callback:L173:C316",
+    "web.ui.callback:L177:C330",
+    "web.ui.callback:L177:C191",
+    "web.ui.callback:L178:C283",
+    "web.ui.search:L178:C94",
+    "web.ui.callback:L190:C108",
+    "web.ui.callback:L190:C142",
+    "web.ui.callback:L190:C310",
+    "web.ui.callback:L191:C98",
+    "web.ui.callback:L192:C85",
+    "web.ui.callback:L192:C152",
+    "web.ui.callback:L194:C161",
+    "web.ui.callback:L194:C278",
+    "web.ui.callback:L194:C332",
+    "web.ui.callback:L195:C140",
+    "web.ui.callback:L196:C55",
+    "web.ui.action:L158:C0",
+    "web.ui.callback:L202:C457",
+    "web.ui.callback:L202:C34",
+    "web.ui.callback:L203:C738",
+    "web.ui.callback:L203:C34",
+    "web.ui.callback:L204:C35",
+    "web.ui.callback:L206:C39",
+    "web.ui.callback:L207:C219",
+    "web.ui.start:L207:C0"
   ],
   "shell_functions": [
     "basilisk_case_from_process",
@@ -22196,7 +22921,7 @@
         {
           "node": "web_static.app.js:start",
           "functions": [
-            "web.ui.start:L202:C0"
+            "web.ui.start:L207:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -22388,7 +23113,7 @@
         {
           "node": "web_static.app.js:refresh",
           "functions": [
-            "web.ui.refresh:L146:C0"
+            "web.ui.refresh:L147:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -22813,7 +23538,7 @@
         {
           "node": "web_static.app.js:loadData",
           "functions": [
-            "web.ui.loadData:L153:C0"
+            "web.ui.loadData:L154:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -23450,7 +24175,7 @@
         {
           "node": "web_static.app.js:newTicket",
           "functions": [
-            "web.ui.newTicket:L148:C0"
+            "web.ui.newTicket:L149:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -23619,7 +24344,7 @@
         {
           "node": "web_static.app.js:openTicket",
           "functions": [
-            "web.ui.openTicket:L147:C0"
+            "web.ui.openTicket:L148:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -23794,7 +24519,7 @@
         {
           "node": "web_static.app.js:action(duplicate-ticket)",
           "functions": [
-            "web.ui.action:L157:C0"
+            "web.ui.action:L158:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -23963,7 +24688,7 @@
         {
           "node": "web_static.app.js:controlHint",
           "functions": [
-            "web.ui.controlHint:L145:C0"
+            "web.ui.controlHint:L146:C0"
           ],
           "basic": "UI event / exception; helper normal calls omitted",
           "detailed": "full mapped boundary"
@@ -24102,7 +24827,7 @@
         {
           "node": "web_static.app.js:action(validate)",
           "functions": [
-            "web.ui.action:L157:C0"
+            "web.ui.action:L158:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -24313,7 +25038,7 @@
         {
           "node": "web_static.app.js:saveNow",
           "functions": [
-            "web.ui.saveNow:L150:C0"
+            "web.ui.saveNow:L151:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -24590,7 +25315,7 @@
         {
           "node": "web_static.app.js:action(delete-selected)",
           "functions": [
-            "web.ui.action:L157:C0"
+            "web.ui.action:L158:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -24969,7 +25694,7 @@
         {
           "node": "web_static.app.js:action(discover)",
           "functions": [
-            "web.ui.action:L157:C0"
+            "web.ui.action:L158:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -25180,7 +25905,7 @@
         {
           "node": "web_static.app.js:action",
           "functions": [
-            "web.ui.action:L157:C0"
+            "web.ui.action:L158:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -25188,7 +25913,7 @@
         {
           "node": "web_static.app.js:dirty",
           "functions": [
-            "web.ui.dirty:L144:C0"
+            "web.ui.dirty:L145:C0"
           ],
           "basic": "UI event / exception; helper normal calls omitted",
           "detailed": "full mapped boundary"
@@ -25196,7 +25921,7 @@
         {
           "node": "web_static.app.js:renderEditor",
           "functions": [
-            "web.ui.renderEditor:L143:C0"
+            "web.ui.renderEditor:L144:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -25297,7 +26022,7 @@
         {
           "node": "web_static.app.js:renderEditor",
           "functions": [
-            "web.ui.renderEditor:L143:C0"
+            "web.ui.renderEditor:L144:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -25305,7 +26030,7 @@
         {
           "node": "web_static.app.js:editor",
           "functions": [
-            "web.ui.editor:L123:C0"
+            "web.ui.editor:L124:C0"
           ],
           "basic": "UI event / exception; helper normal calls omitted",
           "detailed": "full mapped boundary"
@@ -25313,7 +26038,7 @@
         {
           "node": "web_static.app.js:executionForm",
           "functions": [
-            "web.ui.executionForm:L115:C0"
+            "web.ui.executionForm:L116:C0"
           ],
           "basic": "UI event / exception; helper normal calls omitted",
           "detailed": "full mapped boundary"
@@ -25756,7 +26481,7 @@
         {
           "node": "web_static.app.js:requestRun(mode)",
           "functions": [
-            "web.ui.requestRun:L152:C0"
+            "web.ui.requestRun:L153:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -26135,7 +26860,7 @@
         {
           "node": "web_static.app.js:refresh",
           "functions": [
-            "web.ui.refresh:L146:C0"
+            "web.ui.refresh:L147:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -26273,7 +26998,7 @@
         {
           "node": "web_static.app.js:action(pause/resume)",
           "functions": [
-            "web.ui.action:L157:C0"
+            "web.ui.action:L158:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -26358,7 +27083,7 @@
     {
       "id": "UC-21-tg",
       "title": "대기 작업 선택·취소",
-      "trigger": "qselect/qall/qnone/qcancel/qcancelyes/cancel:id",
+      "trigger": "qselect/qgroup:id/qall/qnone/qcancel/qcancelyes",
       "nodes": [
         {
           "node": "bot.Bot.handle",
@@ -26442,11 +27167,11 @@
     },
     {
       "id": "UC-21-gui",
-      "title": "대기 작업 선택·취소",
-      "trigger": "Tk event → cancel_queue_selection",
+      "title": "대기열별 선택·취소",
+      "trigger": "Tk event → cancel_queue_selection(queue_id)",
       "nodes": [
         {
-          "node": "gui.TicketEditor.cancel_queue_selection",
+          "node": "gui.TicketEditor.cancel_queue_selection(queue_id)",
           "function": "gui.TicketEditor.cancel_queue_selection",
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -26467,13 +27192,13 @@
     },
     {
       "id": "UC-21-web",
-      "title": "대기 작업 선택·취소",
+      "title": "대기열 카드별 선택·취소",
       "trigger": "action(cancel-selected-jobs / cancel-job) → /api/queue",
       "nodes": [
         {
           "node": "web_static.app.js:action(cancel-selected-jobs / cancel-job)",
           "functions": [
-            "web.ui.action:L157:C0"
+            "web.ui.action:L158:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -26630,7 +27355,7 @@
         {
           "node": "web_static.app.js:action(save-preset)",
           "functions": [
-            "web.ui.action:L157:C0"
+            "web.ui.action:L158:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -26781,7 +27506,7 @@
         {
           "node": "web_static.app.js:showBrowser",
           "functions": [
-            "web.ui.showBrowser:L155:C0"
+            "web.ui.showBrowser:L156:C0"
           ],
           "basic": "UI event / exception; helper normal calls omitted",
           "detailed": "full mapped boundary"
@@ -27101,6 +27826,145 @@
       ]
     },
     {
+      "id": "UC-28-tg",
+      "title": "실행 중 managed 작업 중단",
+      "trigger": "queue → rselect/rall/rcancel/rcancelyes 또는 stop:id",
+      "nodes": [
+        {
+          "node": "bot.Bot.handle",
+          "function": "bot.Bot.handle",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "bot.Bot.dispatch",
+          "function": "bot.Bot.dispatch",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "storage.Store.job",
+          "function": "storage.Store.job",
+          "basic": "exception only; normal calls omitted",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "queue_control.interrupt_running_jobs",
+          "function": "queue_control.interrupt_running_jobs",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "bot.Bot.send",
+          "function": "bot.Bot.send",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "telegram.Telegram.send",
+          "function": "telegram.Telegram.send",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "telegram.Telegram.call",
+          "function": "telegram.Telegram.call",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "urllib.request.urlopen",
+          "boundary": "telegram.Telegram.call → function.return/raise",
+          "basic": "existing boundary events; shell normal helpers detailed only",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "bot.Bot._remember",
+          "function": "bot.Bot._remember",
+          "basic": "exception only; normal calls omitted",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "storage.Store.remember_message",
+          "function": "storage.Store.remember_message",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        }
+      ]
+    },
+    {
+      "id": "UC-28-gui",
+      "title": "실행 중 managed 작업 중단",
+      "trigger": "Tk event → interrupt_active_job",
+      "nodes": [
+        {
+          "node": "gui.TicketEditor.interrupt_active_job",
+          "function": "gui.TicketEditor.interrupt_active_job",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "tkinter.messagebox.askyesno",
+          "boundary": "gui.TicketEditor.interrupt_active_job / cancel_queue_selection → request/result/exception",
+          "basic": "existing boundary events; shell normal helpers detailed only",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "queue_control.interrupt_running_jobs",
+          "function": "queue_control.interrupt_running_jobs",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "gui.TicketEditor.refresh_queue_manager",
+          "function": "gui.TicketEditor.refresh_queue_manager",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        }
+      ]
+    },
+    {
+      "id": "UC-28-web",
+      "title": "실행 중 managed 작업 중단",
+      "trigger": "action(stop-selected-jobs / stop-job) → /api/queue",
+      "nodes": [
+        {
+          "node": "web_static.app.js:action(stop-selected-jobs / stop-job)",
+          "functions": [
+            "web.ui.action:L158:C0"
+          ],
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "web_static.app.js:api",
+          "functions": [
+            "web.ui.api:L18:C0"
+          ],
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "web.Handler.handle_request",
+          "function": "web.Handler.handle_request",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "web.WebApp.post",
+          "function": "web.WebApp.post",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "queue_control.interrupt_running_jobs",
+          "function": "queue_control.interrupt_running_jobs",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        }
+      ]
+    },
+    {
       "id": "BG-01",
       "title": "solver·monitor CPU를 합치는 scanner",
       "trigger": "bin/ofps options",
@@ -27193,6 +28057,12 @@
         {
           "node": "catalog.ticket_index",
           "function": "catalog.ticket_index",
+          "basic": "exception only; normal calls omitted",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "storage.Store.jobs",
+          "function": "storage.Store.jobs",
           "basic": "exception only; normal calls omitted",
           "detailed": "full mapped boundary"
         },
@@ -27290,6 +28160,12 @@
           "node": "monitor.Monitor.observe",
           "function": "monitor.Monitor.observe",
           "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "monitor.calculation_record",
+          "function": "monitor.calculation_record",
+          "basic": "exception only; normal calls omitted",
           "detailed": "full mapped boundary"
         },
         {
@@ -27489,6 +28365,61 @@
         {
           "node": "catalog.TicketIndex.acknowledge",
           "function": "catalog.TicketIndex.acknowledge",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        }
+      ]
+    },
+    {
+      "id": "D-16",
+      "title": "실행 중 managed 작업 안전 중단",
+      "trigger": "interrupt_running_jobs(store, selected ids)",
+      "nodes": [
+        {
+          "node": "queue_control.interrupt_running_jobs",
+          "function": "queue_control.interrupt_running_jobs",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "queue_control.interrupt_running_job",
+          "function": "queue_control.interrupt_running_job",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "storage.Store.request_interruption",
+          "function": "storage.Store.request_interruption",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "queue_control.interrupt_process_groups",
+          "function": "queue_control.interrupt_process_groups",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "processes.identity",
+          "function": "processes.identity",
+          "basic": "exception only; normal calls omitted",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "os.getpgid",
+          "boundary": "queue_control.interrupt_process_groups result/exception; detailed branch",
+          "basic": "existing boundary events; shell normal helpers detailed only",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "os.killpg",
+          "boundary": "process.signal.request → existing signal call; exception propagation",
+          "basic": "existing boundary events; shell normal helpers detailed only",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "storage.Store.update_job",
+          "function": "storage.Store.update_job",
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
         }
@@ -27699,6 +28630,12 @@
           "detailed": "full mapped boundary"
         },
         {
+          "node": "jobs._stop_child",
+          "function": "jobs._stop_child",
+          "basic": "call/return/raise",
+          "detailed": "full mapped boundary"
+        },
+        {
           "node": "logs.finish_log",
           "function": "logs.finish_log",
           "basic": "call/return/raise",
@@ -27824,6 +28761,12 @@
           "node": "processes.identity",
           "function": "processes.identity",
           "basic": "exception only; normal calls omitted",
+          "detailed": "full mapped boundary"
+        },
+        {
+          "node": "queue_control.interrupt_process_groups",
+          "function": "queue_control.interrupt_process_groups",
+          "basic": "call/return/raise",
           "detailed": "full mapped boundary"
         },
         {
@@ -28061,7 +29004,7 @@
         {
           "node": "web_static.app.js:validateExports",
           "functions": [
-            "web.ui.validateExports:L149:C0"
+            "web.ui.validateExports:L150:C0"
           ],
           "basic": "call/return/raise",
           "detailed": "full mapped boundary"
@@ -28137,44 +29080,44 @@
     "cfd_bot/__init__.py": "96f1d836a3e7744b2fb9f4d705c2d2df588bb0805fd55206312d99e82189855a",
     "cfd_bot/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
     "cfd_bot/artifacts.py": "9f135a837e1d513e6aa0485b0ac03e5045a982b91b4611b35c24fc24d089e1b9",
-    "cfd_bot/bot.py": "f2d738318bb4c1ae08090fae9c373dbe95306e8f82b10fce0b3baeb6a6dfb835",
+    "cfd_bot/bot.py": "c0795facaed4cfda86fb90cc78a422bcca1e0ce0d9373ec17413c46e4f4e1d19",
     "cfd_bot/catalog.py": "aff93b7e6309ea59978c4a0753deb617bb3aae8e833a5049457d38d5aa9db46d",
     "cfd_bot/cli.py": "36c05caf44c00b35769c7584f6c28db607a741d2a11b18e4845765a0a7386a8d",
     "cfd_bot/config.py": "a3bb9c8b7d7dfe30e6dc7fbed047121b43e50af3835f2abb06524d101fd0a5ca",
     "cfd_bot/control.py": "73a0ea8e6719acb8792d53395885a22d0a639871150d07c542f0453c34ba68fc",
     "cfd_bot/cpu_allocation.py": "929a5665d2fce58fbc4e8ec12f8b8c9fd93e38f0dfab38b9f756623f13f792d6",
     "cfd_bot/diagnostic_codec.py": "3bb0374af15187442b95eda05e654258ec168058ffed1cef2332cecdaa1dc53d",
-    "cfd_bot/diagnostic_policy.py": "7bcac853ae83baca3e404ba131e38a249da00c02d24f51098730049863990edb",
+    "cfd_bot/diagnostic_policy.py": "2f7f3561af19062bd5ad46cb84885ee2f286fef8cad0d5ae9c5e3ff4ba1385f2",
     "cfd_bot/diagnostics.py": "4a9b6378ea54fbf322d90fadba65c235a3f280b2e6f4496a7eecd4ebfafb270f",
     "cfd_bot/editor.py": "fddc6b7eb16d5c6c1eb26d9b74814db787743b9045a87c1afc3f0e84e6fbe32a",
     "cfd_bot/execution.py": "43c4ba3a93139c609007ee678b534ce5d3ba0412739788945b206876dda144dc",
-    "cfd_bot/gui.py": "3a33047734f1af7ca6e54f3b4d5d863b11db3b936d2a22e9fb035363f8c3068a",
-    "cfd_bot/jobs.py": "c0faecbd11ba52bb39c6c8de68b1b3bbdc5ef00a040fc19a3e66b5ffefcdbf94",
+    "cfd_bot/gui.py": "e2a5978caa1eb98ee4e75d261d9145f00134343a3688e919fd7520c3541983f1",
+    "cfd_bot/jobs.py": "db1a12ea510226db8396e8bb1724607c287d7a40f6d50ac6acdd259413e61c18",
     "cfd_bot/logs.py": "bd789276878c864a875e3bd9805bc8f40894abccf8be47c8edcc15e0e53de4cf",
-    "cfd_bot/monitor.py": "3c33cd6d39741764bb8fdb7e6b68d38c6b14bad388592cb7af6496a669a943a1",
+    "cfd_bot/monitor.py": "10b9d215165084a55f1b9dd014233cb97fdca71f0782a0c472866756efa8d728",
     "cfd_bot/outcomes.py": "dad9e9d3cff01a429226160ff7eea973f415d570c1ada3898893bbc9a8a8f839",
     "cfd_bot/patterns.py": "6b89c659df29b6ef541f62d4705dfa917a4addda9f484339795eea0850d307ce",
     "cfd_bot/processes.py": "704358a576842908cab3a66c41e82146577e9cf46e9154baddbe067c401e03b4",
-    "cfd_bot/queue_control.py": "a5bb1912d17612e44c6621c96ebd7fbd23fc1b73356df8ef63a8c8a3d3463007",
+    "cfd_bot/queue_control.py": "53779efeca9ba4d241a89be17ae6bdfe809f7d2b2b7ab232b03f4320dafbfaf8",
     "cfd_bot/queueing.py": "443f3744f00013594fbf1ee2df3aa473fbb1f03599dc247e4efb3936e359c179",
-    "cfd_bot/report.py": "fc3a5e43acf304d0ba13bea820be402f6448555150a74aff4dffbca06e6a4754",
-    "cfd_bot/run_views.py": "a1b7bf7bd285f6ec3c646644a808a2928c94c59e339eedc00518f54711b5c945",
-    "cfd_bot/storage.py": "953f7cfc940c033760917e1ee2559b9a435857ad295ecbaf420ca2d518eb5d20",
+    "cfd_bot/report.py": "6cb505ab4ca9ec97434c02ff811cae44d34e4d974c606f5759cf5f92db04c1e9",
+    "cfd_bot/run_views.py": "0359bdf15b59f12a92923b4418532d53c0dd9425b5e1a21462c6f1a2643965dc",
+    "cfd_bot/storage.py": "bee96a1b649525bac4c6f6a7ca6c95df16c250d5b70f56624c329600183b5cbf",
     "cfd_bot/telegram.py": "522488960ef19f6bae49d6b308365f08907dfba7dc82bae12c7a6567c0a83f27",
     "cfd_bot/texts.py": "00cc6415a52f6b88b3169b8ab3687b52ddd3a207d0510a6e54e8a4143fdac1ee",
     "cfd_bot/ticket_chat.py": "b78b00498e577af8ff7314d5a28954003d3b58d84e848d942478514816e106a7",
     "cfd_bot/ticket_run.py": "f18ed1abefe1db0350abae9adb8a9c4484a5f1a7ddf03e1f195e4fa6e96a8ddf",
     "cfd_bot/tickets.py": "7d7313df10556fbe1b6d219f04800a2db517f039a58b5947f4a599af5daf761a",
     "cfd_bot/ui.py": "f66ed2f2326e457ce8530796cecf5e23e693a9f0d9afccb3c5fbdeb4a372afe4",
-    "cfd_bot/web.py": "8f8eb1787b3d15ca9fa1254168c72beb23a6aa95ee5dc563a3ed66f8a622b7c4",
-    "cfd_bot/web_static/app.js": "2080d1df48b2c47c14400cb0c3b55af4324ff6e719f4b11a5935ec3bd8c291c8",
-    "cfd_bot/web_static/diagnostic_codes.js": "e1809905a3c2a8eaf166bdf363ee6e5b5e28793a021653f324eb4179a5b91c0e",
+    "cfd_bot/web.py": "3703296da39677cb1db8edc2c431dc1af50168d682a9fcf1388eb0c3c73e6e37",
+    "cfd_bot/web_static/app.js": "dfbc08f0bd9af58f700ea2b290505361c44582b36229b2a3dd363d9f76e3865b",
+    "cfd_bot/web_static/diagnostic_codes.js": "420113463c33dcade02553c50a015369317648eba7150e648228eb67cd40892c",
     "cfd_bot/web_static/diagnostics.js": "878801082c381d8aa43e8ff08a1b98699d95f72d6fa4c1f452b92ae1286ed0b8",
     "bin/cfd-ticket-gui": "2450d5875d69211fbcb3692c7009febddfd4729063a887f0adebb92985235aca",
     "bin/cfd-ticket-web": "7ba906cca0030680aaea9abb587b0aea83999e1196f78b8afd102cb09ca42638",
     "bin/cfd-web-tunnel": "04db8999b8e4a4d4525c902f3121adba3018888e0654ae80019bea53a11ac690",
     "bin/ofps": "fde11c3adbf6c70e906662a0dc3ee530921ae7a2fc8a0a7779816b910c2607dc",
-    "bin/ofps-diagnostic-codes.sh": "bb032f26ad9e10a8698df60f8abda60659de2b2c5eb490a5ad144007cd4d4240",
+    "bin/ofps-diagnostic-codes.sh": "22841c2efef7cd8741df35328709744649498ad48f61f913d6cdc8b9a34fda17",
     "bin/ofps-diagnostics.sh": "5ca388c20957344c16be42a0aec6751744bae788bdeac03689da5a093ee4de86",
     "bin/set-telegram-token": "ecc45233ede59d0add1318d026186908bbf00e3569ff5ddb41d7ce4d1ed9e531",
     "clients/macos/CFDControlRoom": "ac0f4a45e69c68127ec54e1e6739f63a7a8b8246815d2daadf1e343993dfc09d",

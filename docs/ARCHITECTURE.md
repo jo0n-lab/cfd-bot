@@ -6,7 +6,7 @@
 
 > #18 사후 원인 분석 로그: [설정·기록·읽기](DIAGNOSTICS.md) · [모든 시퀀스 대응표](analysis/diagnostic-flow-coverage.md) · [ON/OFF 실측](analysis/diagnostic-performance.md). 업무 정책 변경 없이 기록만 추가하며 기본 OFF다.
 
-> #20 공용 티켓 색인·증분 감시, #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota와 현재 head admission, #25 `ofps` monitor CPU 관측, #26 SQLite lock 격리를 반영한다. [#25 설계](history/2026-10-07-ofps-monitor-cpu-observation.md) · [#26 설계](history/2026-10-07-terminal-event-db-lock.md).
+> #20 공용 티켓 색인·증분 감시, #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota와 현재 head admission, #25 `ofps` monitor CPU 관측, #26 SQLite lock 격리, #27 실행 중단을 반영한다. [#27 설계](history/2026-10-07-running-job-interruption.md).
 
 ## 1. 문서 탐색
 
@@ -53,13 +53,14 @@
 | UC-18 즉시 실행·이름 있는 대기열 등록 | runstate/runreview/runyes | 즉시 실행·queue 등록 | requestRun(mode) → /api/run | enqueue: 직접 DB 등록 | 동적 macro는 첫 child로 즉시 실행 판정, 최대 child는 전체 한도만 검사 · [실행](LLD.md#run) |
 | UC-19 큐·이력·매크로 진행 조회 | `/queue`, queue; 결과 버튼 | 큐 창·새로고침·결과 목록 | queue/history·live_macros | queue, status --json | [큐](LLD.md#queue) |
 | UC-20 자동 시작 pause/resume | pause/resume | **N/A: 버튼 없음** | pause-queue/resume-queue | pause/resume | [큐](LLD.md#queue) |
-| UC-21 대기 작업 선택·취소 | cancel, qselect/qall/qnone/qcancel | 전체 선택/해제·선택 취소 | 개별·선택 취소 | cancel JOB… | [큐](LLD.md#queue) |
+| UC-21 대기열별 작업 선택·취소 | qgroup으로 대기열 선택 후 전체 선택/해제·취소 | 대기열별 탭에서 전체 선택/해제·취소 | 대기열 카드마다 전체 선택/해제·취소 | cancel JOB… | [큐](LLD.md#queue) |
 | UC-22 실패 패턴 템플릿 적용·저장 | templates/template/savetemplate | apply_pattern/save_pattern | apply-preset/save-preset | N/A | [필드](LLD.md#fields) |
 | UC-23 폴더·로그·Residual·export 경로 입력 | browser(폴더/로그/Residual); export는 텍스트 | filedialog 및 export 편집 dialog | browse modal; 매크로는 child 검색 후 첫 child 기준 | N/A | [필드](LLD.md#fields) |
 | UC-24 입력 취소·초안 폐기·뒤로가기 | `/cancel`, backinput, discard, bcancel, stopscan | dialog 취소·confirm_switch·close | modal 취소·confirmDiscard·beforeunload | Ctrl-C는 프로세스 종료 | [취소](LLD.md#cancel) |
 | UC-25 대화 메시지 정리 | `/clean` | N/A: Telegram 전용 | N/A: Telegram 전용 | N/A | [T](lld/telegram.md#uc-25) |
 | UC-26 외부 PC 접속·배포 파일 받기 | N/A | SSH X11은 배포 환경 기능 | client-downloads ZIP·SSH 전달 후 웹 | Windows CMD/PS, macOS app, cfd-web-tunnel | [R](lld/runtime.md#launcher) |
 | UC-27 운영·검증·감시/서비스 기동 | 사용자 명령 N/A | CLI gui로 기동 | health endpoint·CLI web 기동 | check/identify/monitor/serve/_worker | [R](lld/runtime.md#cli) |
+| UC-28 실행 중 managed 작업 중단 | `/queue` 개별/전체 선택 → 중단 확인 | 실행 목록 다중/전체 선택 → 중단 확인 | 실행 중 표 다중/전체 선택 → 중단 확인 | N/A | [D-16](lld/domain.md#d-16) |
 
 세 UI의 공용 티켓 필드에는 이름, case_dir, task_type/role, end_time, watcher 로그·실패 정규식·오류 파일, 알림 events, Residual, exports, 전/후처리, 실행 출처·CPU·monitoring, `execution_queue.id`, `dynamic_cores`, 매크로 필터·자식별 cores가 포함된다. quota는 입력 필드가 아니라 일반 head의 실제 NP 또는 동적 child NP에서 산정된다. 각 필드의 코드 변환은 [LLD 필드 계약](LLD.md#fields)에 정리했다.
 
@@ -68,10 +69,10 @@
 | ID | 트리거 | 호출 경로 | 사용자가 보는 결과 | 명세 |
 |---|---|---|---|---|
 | BG-01 프로세스 snapshot | `/stat`, Monitor, web fresh, 실행 전 검사, ofps | `processes.snapshot → bin/ofps → parse_snapshot`; 같은 CASE의 solver·표식 monitor affinity 병합 | 현재 CASE·소유자·실제 전체 CPU | [scan](lld/runtime.md#bg-01) |
-| BG-02 외부 계산 감시 | Monitor 주기 | `Monitor.run_once → tick → observe → decide → terminal_event` | 시작/종료 알림·저장된 상태 | [monitor](lld/runtime.md#bg-02) |
+| BG-02 외부 계산 감시 | Monitor 주기 | `Monitor.run_once → tick → observe → calculation_record → decide → terminal_event`; scan 전후 managed root 제외 | monitor-only 신규 실행 제외, 실제 계산 시작/종료 알림·저장된 상태 | [monitor](lld/runtime.md#bg-02), [#28](history/2026-10-07-monitor-tail-duplicate-notifications.md) |
 | BG-03 JSON 제출 접수·동기화 | Monitor tick | `accept_submissions → Store.enqueue_batch`; `sync_ticket_states` | 기다리는 티켓이 DB 큐에 반영 | [접수](lld/runtime.md#bg-03) |
 | BG-04 CPU 검사·병렬 시작 | Monitor 안의 Scheduler | `Scheduler.tick → unpublished terminal event → scheduling_candidates(batch별 현재 head) → queue_heads → borrowing_plan/drain/fair turn → allocate_cpus/check_cpus → Popen` | 종료 알림 1회 또는 queued 이유·서로 다른 queue의 복수 starting | [scheduler](lld/runtime.md#bg-04) |
-| BG-05 계산·후처리·판정 | detached worker | `worker → .process-core → Allrun(cpu-list:ordered, ODLS spawn 1) → hooks → lock 재시도 → decide → freeze_exports` | DB 경합 중 계산 유지·진행·최종 상태 | [worker](lld/runtime.md#bg-05) |
+| BG-05 계산·후처리·판정 | detached worker | `worker → .process-core → Allrun → hooks → lock 재시도 → stopping 확인/child 정리 → decide → freeze_exports` | DB 경합 중 계산 유지·진행·최종 상태 또는 사용자 중단 | [worker](lld/runtime.md#bg-05) |
 | BG-06 알림 전달·재시도 | delivery loop | `deliver → Store.pending → Telegram.send/file → save_delivery` | 요약·첨부 | [delivery](lld/runtime.md#bg-06) |
 | BG-07 복구 | Monitor/Scheduler tick·서비스 재시작 | `Scheduler.recover`, 저장된 session/offset/outbox 복원 | 중복 제출 억제·작업 추적 지속 | [recovery](lld/runtime.md#bg-07) |
 

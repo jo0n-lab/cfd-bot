@@ -22,7 +22,7 @@ from .control import control_times
 from .editor import TicketService, case_browser_start, lines, validate_export
 from .logs import estimate, recent_case_log
 from .patterns import PatternLibrary
-from .queue_control import cancel_queued_jobs
+from .queue_control import cancel_queued_jobs, interrupt_running_job, interrupt_running_jobs
 from .run_views import job_view, running_macro_views, tracking_registry
 from .storage import Store
 from .ticket_run import TicketRunner
@@ -108,9 +108,9 @@ class WebApp:
         return dict(at=snap.get('at'), error=error, live=live, tickets=tickets,
                     live_macros=running_macro_views(macro_documents, cases, jobs, self.store),
                     queue=[job_view(j, registry) for j in jobs if j['status'] in
-                           ('queued', 'starting', 'running', 'postprocessing')],
+                           ('queued', 'starting', 'running', 'postprocessing', 'stopping')],
                     history=[job_view(j, registry) for j in reversed(jobs) if j['status'] not in
-                             ('queued', 'starting', 'running', 'postprocessing')][:100],
+                             ('queued', 'starting', 'running', 'postprocessing', 'stopping')][:100],
                     paused=self.store.get('queue_paused', False),
                     scheduler_enabled=self.config['scheduler']['enabled'],
                     monitor_error=self.store.get('monitor_error'))
@@ -372,6 +372,16 @@ class WebApp:
                     if _diagnostics.detailed: _diagnostics.step('web.WebApp.post:L306:then')
                     raise ValueError('대기 중인 작업만 취소할 수 있습니다. 상태를 새로고침하세요.')
                 return result
+            if action == 'interrupt_many':
+                if _diagnostics.detailed: _diagnostics.step('web.WebApp.post:M375:then')
+                return interrupt_running_jobs(self.store, data.get('ids', []), ui=self.bot.ui)
+            if action == 'interrupt':
+                if _diagnostics.detailed: _diagnostics.step('web.WebApp.post:M377:then')
+                job = interrupt_running_job(self.store, data.get('id'), ui=self.bot.ui)
+                if job is None:
+                    if _diagnostics.detailed: _diagnostics.step('web.WebApp.post:M379:then')
+                    raise ValueError('이미 종료되었거나 중단할 수 없는 작업입니다. 상태를 새로고침하세요.')
+                return job_view(job, tracking_registry(list(self.bot.cases().values())))
             raise ValueError('알 수 없는 큐 동작입니다.')
         raise LookupError('없는 API입니다.')
 

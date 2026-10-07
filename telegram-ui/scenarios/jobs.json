@@ -23,5 +23,7 @@
   "postprocess": "후처리",
   "monitor": "모니터링",
   "monitor_ended_early": "모니터링 스크립트가 계산 종료 전에 끝났습니다. (종료 코드 {code})",
-  "worker_error": "실행기 오류: {error}"
+  "worker_error": "실행기 오류: {error}",
+  "user_interrupt_requested": "사용자가 계산 중단을 요청했습니다.",
+  "user_interrupted": "사용자 요청으로 계산을 중단했습니다."
 }
