@@ -1,0 +1,56 @@
+[
+  {
+    "mode": "baseline",
+    "count": 40,
+    "p50_ms": 0.10000038146972656,
+    "p95_ms": 0.3000001907348633,
+    "retained": 0,
+    "overwritten": 0,
+    "bytes": 0
+  },
+  {
+    "mode": "baseline",
+    "count": 1000,
+    "p50_ms": 1.6999998092651367,
+    "p95_ms": 2,
+    "retained": 0,
+    "overwritten": 0,
+    "bytes": 0
+  },
+  {
+    "mode": "off",
+    "count": 40,
+    "p50_ms": 0.19999980926513672,
+    "p95_ms": 0.3000001907348633,
+    "retained": 252,
+    "overwritten": 0,
+    "bytes": 269076
+  },
+  {
+    "mode": "off",
+    "count": 1000,
+    "p50_ms": 2.6999998092651367,
+    "p95_ms": 3.5,
+    "retained": 252,
+    "overwritten": 0,
+    "bytes": 269076
+  },
+  {
+    "mode": "on",
+    "count": 40,
+    "p50_ms": 5,
+    "p95_ms": 7.5,
+    "retained": 8021,
+    "overwritten": 10677,
+    "bytes": 8388436
+  },
+  {
+    "mode": "on",
+    "count": 1000,
+    "p50_ms": 100,
+    "p95_ms": 138.10000038146973,
+    "retained": 9653,
+    "overwritten": 469091,
+    "bytes": 8388508
+  }
+]

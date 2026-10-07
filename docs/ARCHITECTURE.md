@@ -1,5 +1,7 @@
 # CFD bot 아키텍처 — 유즈케이스와 플랫폼 지도
 
+> #18 사후 원인 분석 로그: [설정·기록·읽기](DIAGNOSTICS.md) · [모든 시퀀스 대응표](analysis/diagnostic-flow-coverage.md) · [ON/OFF 실측](analysis/diagnostic-performance.md). 업무 정책 변경 없이 기록만 추가하며 기본 OFF다.
+
 > #20 공용 티켓 색인·증분 감시, #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota와 현재 head admission, #25 `ofps` monitor CPU 관측, #26 SQLite lock 격리를 반영한다. [#25 설계](history/2026-10-07-ofps-monitor-cpu-observation.md) · [#26 설계](history/2026-10-07-terminal-event-db-lock.md).
 
 ## 1. 문서 탐색

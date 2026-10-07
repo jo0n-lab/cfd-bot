@@ -29,6 +29,9 @@ worker의 .process-core 반영 → 전처리 → 로그 cursor 수집 → solver
 Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message_index/file_index를 각 성공 뒤 저장하고 실패는 retry_after+backoff로 재시도한다. API 성공 직후 checkpoint 전 crash는 재전송될 수 있다. API 응답 소요가 느리면 같은 batch 뒤 recipient도 기다린다.
 
 
+#18 진단 로그는 아래 모든 시퀀스의 실제 함수·분기에 적용한다. [공통 로그 계약](../DIAGNOSTICS.md)과 [시퀀스별 이벤트 대응표](../analysis/diagnostic-flow-coverage.md)를 함께 읽는다.
+
+
 내부 반복·파일 접근·잠금 범위는 [catalog LLD](../LLD.md#catalog), 현재 921행 매크로의 함수별 시간과 큐 응답량은 [운영 데이터 분석](../analysis/live-bottlenecks.md)에 있다. 그림의 보라색 loop는 함수 내부 반복이며 추가 함수가 아니다.
 
 
@@ -73,7 +76,7 @@ Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message
 **정상 결과:** check는 검증/stdout만; identify는 Telegram 조회; gui는 config 분기 전에 launch.
 **실패/취소:** OSError/ValueError/RuntimeError → stderr, exit 2; _worker는 별도 worker 반환.
 
-**코드 연결:** [cli.main](../../cfd_bot/cli.py#L47), [config.load_bot](../../cfd_bot/config.py#L362), [config.cases_for](../../cfd_bot/config.py#L420), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [storage.Store.enqueue](../../cfd_bot/storage.py#L207), [monitor.Monitor.run_once](../../cfd_bot/monitor.py#L210), [bot.serve](../../cfd_bot/bot.py#L530), [web.serve](../../cfd_bot/web.py#L432).
+**코드 연결:** [cli.main](../../cfd_bot/cli.py#L50), [config.load_bot](../../cfd_bot/config.py#L476), [config.cases_for](../../cfd_bot/config.py#L554), [processes.snapshot](../../cfd_bot/processes.py#L229), [processes.parse_snapshot](../../cfd_bot/processes.py#L177), [processes.identity](../../cfd_bot/processes.py#L25), [processes.owner_label](../../cfd_bot/processes.py#L87), [processes.cpu_layout](../../cfd_bot/processes.py#L140), [storage.Store.enqueue](../../cfd_bot/storage.py#L236), [monitor.Monitor.run_once](../../cfd_bot/monitor.py#L245), [bot.serve](../../cfd_bot/bot.py#L656), [web.serve](../../cfd_bot/web.py#L530).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py), [test_web.py](../../tests/test_web.py).
 
@@ -90,7 +93,7 @@ Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message
 **정상 결과:** managed는 stdout만; --check는 monitor CPU overlap도 거절; --watch는 반복.
 **실패/취소:** 유효 case root 또는 지원하는 monitor 표식이 없는 후보 제외; standalone sync 실패가 CPU 검사 exit를 덮어쓰지 않음.
 
-**코드 연결:** [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [storage.Store.put](../../cfd_bot/storage.py#L127), [tickets.sync_ticket_states](../../cfd_bot/tickets.py#L345).
+**코드 연결:** [processes.parse_snapshot](../../cfd_bot/processes.py#L177), [storage.Store.put](../../cfd_bot/storage.py#L140), [tickets.sync_ticket_states](../../cfd_bot/tickets.py#L425).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -109,7 +112,7 @@ Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message
 
 **내부 로직·비용:** 감시 대상은 현재 CASE와 이전 실행·종료 확인 중 CASE다. DB 변화는 ticket_changes journal을 통해 대상 티켓과 부모만 반영한다. run_once가 끝난 뒤 5초 대기하므로 5초 고정 주기가 아니다. [호출별 반복 표](../LLD.md#catalog).
 
-**코드 연결:** [monitor.Monitor.run_once](../../cfd_bot/monitor.py#L210), [monitor.Monitor.tick](../../cfd_bot/monitor.py#L119), [catalog.ticket_index](../../cfd_bot/catalog.py#L280), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [storage.Store.put](../../cfd_bot/storage.py#L127), [tickets.accept_submissions](../../cfd_bot/tickets.py#L445), [jobs.Scheduler.recover](../../cfd_bot/jobs.py#L167), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [storage.Store.tracked_observations](../../cfd_bot/storage.py#L195), [catalog.TicketIndex.lookup](../../cfd_bot/catalog.py#L253), [monitor.automatic_case](../../cfd_bot/monitor.py#L67), [monitor.Monitor.observe](../../cfd_bot/monitor.py#L153), [monitor.observed_identity](../../cfd_bot/monitor.py#L50), [monitor.new_execution](../../cfd_bot/monitor.py#L55), [logs.recent_case_log](../../cfd_bot/logs.py#L216), [outcomes.decide](../../cfd_bot/outcomes.py#L23), [jobs.terminal_event](../../cfd_bot/jobs.py#L26), [storage.Store.finish_observation](../../cfd_bot/storage.py#L201), [jobs.Scheduler.tick](../../cfd_bot/jobs.py#L218), [tickets.sync_ticket_states](../../cfd_bot/tickets.py#L345).
+**코드 연결:** [monitor.Monitor.run_once](../../cfd_bot/monitor.py#L245), [monitor.Monitor.tick](../../cfd_bot/monitor.py#L138), [catalog.ticket_index](../../cfd_bot/catalog.py#L349), [processes.snapshot](../../cfd_bot/processes.py#L229), [processes.parse_snapshot](../../cfd_bot/processes.py#L177), [processes.identity](../../cfd_bot/processes.py#L25), [processes.owner_label](../../cfd_bot/processes.py#L87), [processes.cpu_layout](../../cfd_bot/processes.py#L140), [storage.Store.put](../../cfd_bot/storage.py#L140), [tickets.accept_submissions](../../cfd_bot/tickets.py#L547), [jobs.Scheduler.recover](../../cfd_bot/jobs.py#L199), [storage.Store.jobs](../../cfd_bot/storage.py#L154), [storage.Store.tracked_observations](../../cfd_bot/storage.py#L222), [catalog.TicketIndex.lookup](../../cfd_bot/catalog.py#L314), [monitor.automatic_case](../../cfd_bot/monitor.py#L78), [monitor.Monitor.observe](../../cfd_bot/monitor.py#L178), [monitor.observed_identity](../../cfd_bot/monitor.py#L56), [monitor.new_execution](../../cfd_bot/monitor.py#L62), [logs.recent_case_log](../../cfd_bot/logs.py#L262), [outcomes.decide](../../cfd_bot/outcomes.py#L28), [jobs.terminal_event](../../cfd_bot/jobs.py#L28), [storage.Store.finish_observation](../../cfd_bot/storage.py#L229), [jobs.Scheduler.tick](../../cfd_bot/jobs.py#L260), [tickets.sync_ticket_states](../../cfd_bot/tickets.py#L425).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -126,7 +129,7 @@ Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message
 **정상 결과:** DB 큐 순서·request 멱등성 유지; 이후 D-15에서 대상 상태 반영.
 **실패/취소:** batch 충돌: reason/outbox; 실제 solver 시작은 Scheduler가 결정.
 
-**코드 연결:** [tickets.accept_submissions](../../cfd_bot/tickets.py#L445), [catalog.ticket_index](../../cfd_bot/catalog.py#L280), [catalog.TicketIndex.tickets](../../cfd_bot/catalog.py#L228), [catalog.TicketIndex.cases](../../cfd_bot/catalog.py#L239), [storage.Store.enqueue_batch](../../cfd_bot/storage.py#L239), [tickets.atomic_json](../../cfd_bot/tickets.py#L47), [storage.Store.event](../../cfd_bot/storage.py#L348).
+**코드 연결:** [tickets.accept_submissions](../../cfd_bot/tickets.py#L547), [catalog.ticket_index](../../cfd_bot/catalog.py#L349), [catalog.TicketIndex.tickets](../../cfd_bot/catalog.py#L283), [catalog.TicketIndex.cases](../../cfd_bot/catalog.py#L296), [storage.Store.enqueue_batch](../../cfd_bot/storage.py#L277), [tickets.atomic_json](../../cfd_bot/tickets.py#L52), [storage.Store.event](../../cfd_bot/storage.py#L411).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -145,7 +148,7 @@ Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message
 
 **내부 로직·비용:** `scheduling_candidates(jobs,active)`가 active child가 없는 즉시 실행 batch마다 첫 queued child 하나만 고르고, active job이 없는 queue id만 `queue_heads`에 넘긴다. `_assign_queue_profiles`는 일반 head NP에서 quota와 CPU 위치를 정한다. `borrowing_plan`은 `priority=run|queue` 동적 현재 child의 NP와 donor를 계산한다. drain claim은 하나이며 동적 작업 뒤 donor별 다음 head에 1회 우선권을 준다.
 
-**코드 연결:** [jobs.Scheduler.tick](../../cfd_bot/jobs.py#L218), [jobs.Scheduler.recover](../../cfd_bot/jobs.py#L167), [storage.Store.unpublished_terminal_jobs](../../cfd_bot/storage.py#L147), [jobs.terminal_event](../../cfd_bot/jobs.py#L26), [catalog.TicketIndex.queue_profiles](../../cfd_bot/catalog.py#L233), [jobs.scheduling_candidates](../../cfd_bot/jobs.py#L45), [queueing.queue_heads](../../cfd_bot/queueing.py#L51), [jobs.Scheduler._assign_queue_profiles](../../cfd_bot/jobs.py#L110), [queueing.borrowing_plan](../../cfd_bot/queueing.py#L59), [jobs.Scheduler._borrow_state](../../cfd_bot/jobs.py#L71), [execution.execution_case](../../cfd_bot/execution.py#L163), [execution.openfoam_environment](../../cfd_bot/execution.py#L95), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [cpu_allocation.allocate_cpus](../../cfd_bot/cpu_allocation.py#L147), [processes.check_cpus](../../cfd_bot/processes.py#L197), [storage.Store.update_job](../../cfd_bot/storage.py#L312).
+**코드 연결:** [jobs.Scheduler.tick](../../cfd_bot/jobs.py#L260), [jobs.Scheduler.recover](../../cfd_bot/jobs.py#L199), [storage.Store.unpublished_terminal_jobs](../../cfd_bot/storage.py#L166), [jobs.terminal_event](../../cfd_bot/jobs.py#L28), [catalog.TicketIndex.queue_profiles](../../cfd_bot/catalog.py#L289), [jobs.scheduling_candidates](../../cfd_bot/jobs.py#L51), [queueing.queue_heads](../../cfd_bot/queueing.py#L66), [jobs.Scheduler._assign_queue_profiles](../../cfd_bot/jobs.py#L133), [queueing.borrowing_plan](../../cfd_bot/queueing.py#L76), [jobs.Scheduler._borrow_state](../../cfd_bot/jobs.py#L82), [execution.execution_case](../../cfd_bot/execution.py#L195), [execution.openfoam_environment](../../cfd_bot/execution.py#L113), [processes.snapshot](../../cfd_bot/processes.py#L229), [processes.parse_snapshot](../../cfd_bot/processes.py#L177), [processes.identity](../../cfd_bot/processes.py#L25), [processes.owner_label](../../cfd_bot/processes.py#L87), [processes.cpu_layout](../../cfd_bot/processes.py#L140), [cpu_allocation.allocate_cpus](../../cfd_bot/cpu_allocation.py#L187), [processes.check_cpus](../../cfd_bot/processes.py#L255), [storage.Store.update_job](../../cfd_bot/storage.py#L364).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -162,7 +165,7 @@ Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message
 **정상 결과:** 다음 Scheduler.tick이 미발행 terminal만 outbox 접수; worker는 직접 Telegram 전송 안 함.
 **실패/취소:** preprocess 실패 solver 시작 안 함; DB locked/busy는 child 유지+재시도; 그 밖의 except는 child cleanup+failed.
 
-**코드 연결:** [jobs.worker](../../cfd_bot/jobs.py#L505), [storage.Store.update_job](../../cfd_bot/storage.py#L312), [execution.apply_execution_settings](../../cfd_bot/execution.py#L211), [jobs.run_case_hooks](../../cfd_bot/jobs.py#L450), [logs.read_log](../../cfd_bot/logs.py#L120), [jobs._retry_locked](../../cfd_bot/jobs.py#L412), [logs.finish_log](../../cfd_bot/logs.py#L155), [outcomes.decide](../../cfd_bot/outcomes.py#L23), [artifacts.freeze_exports](../../cfd_bot/artifacts.py#L28), [storage.Store.put](../../cfd_bot/storage.py#L127).
+**코드 연결:** [jobs.worker](../../cfd_bot/jobs.py#L611), [storage.Store.update_job](../../cfd_bot/storage.py#L364), [execution.apply_execution_settings](../../cfd_bot/execution.py#L256), [jobs.run_case_hooks](../../cfd_bot/jobs.py#L543), [logs.read_log](../../cfd_bot/logs.py#L147), [jobs._retry_locked](../../cfd_bot/jobs.py#L493), [logs.finish_log](../../cfd_bot/logs.py#L190), [outcomes.decide](../../cfd_bot/outcomes.py#L28), [artifacts.freeze_exports](../../cfd_bot/artifacts.py#L34), [storage.Store.put](../../cfd_bot/storage.py#L140).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -179,7 +182,7 @@ Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message
 **정상 결과:** recipient별 pending/완료; API 성공 후 offset 저장 사이 crash는 중복 전송 가능.
 **실패/취소:** TelegramError → retry_after+backoff; 첨부 파일 유실 → skip 안내; 기타 오류도 retry.
 
-**코드 연결:** [bot.deliver](../../cfd_bot/bot.py#L486), [storage.Store.pending](../../cfd_bot/storage.py#L371), [report.render_run](../../cfd_bot/report.py#L98), [storage.Store.save_delivery](../../cfd_bot/storage.py#L386), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.file](../../cfd_bot/telegram.py#L94), [storage.Store.delivered](../../cfd_bot/storage.py#L377), [storage.Store.retry](../../cfd_bot/storage.py#L381).
+**코드 연결:** [bot.deliver](../../cfd_bot/bot.py#L601), [storage.Store.pending](../../cfd_bot/storage.py#L439), [report.render_run](../../cfd_bot/report.py#L116), [storage.Store.save_delivery](../../cfd_bot/storage.py#L457), [telegram.Telegram.send](../../cfd_bot/telegram.py#L102), [telegram.Telegram.file](../../cfd_bot/telegram.py#L115), [storage.Store.delivered](../../cfd_bot/storage.py#L446), [storage.Store.retry](../../cfd_bot/storage.py#L451).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -196,6 +199,6 @@ Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message
 **정상 결과:** starting 60초 grace; hook/solver 살아 있으면 예약 유지; 죽은 실행은 로그로 판정.
 **실패/취소:** preprocess/startup 소실은 failed; PID 재사용은 boot/starttick identity로 구분.
 
-**코드 연결:** [jobs.Scheduler.recover](../../cfd_bot/jobs.py#L167), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [processes.identity](../../cfd_bot/processes.py#L22), [logs.recent_case_log](../../cfd_bot/logs.py#L216), [outcomes.decide](../../cfd_bot/outcomes.py#L23), [storage.Store.update_job](../../cfd_bot/storage.py#L312), [storage.Store.event](../../cfd_bot/storage.py#L348).
+**코드 연결:** [jobs.Scheduler.recover](../../cfd_bot/jobs.py#L199), [storage.Store.jobs](../../cfd_bot/storage.py#L154), [processes.identity](../../cfd_bot/processes.py#L25), [logs.recent_case_log](../../cfd_bot/logs.py#L262), [outcomes.decide](../../cfd_bot/outcomes.py#L28), [storage.Store.update_job](../../cfd_bot/storage.py#L364), [storage.Store.event](../../cfd_bot/storage.py#L411).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).

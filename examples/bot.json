@@ -1,6 +1,11 @@
 {
   "version": 1,
   "state_dir": "state",
+  "diagnostic_logging": {
+    "enabled": false,
+    "max_bytes": 20971520,
+    "backups": 3
+  },
   "ui_dir": "telegram-ui",
   "ofps_command": ["/home/joon/.local/bin/ofps"],
   "cases": [],

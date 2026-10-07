@@ -80,3 +80,7 @@ systemctl --user enable --now cfd-bot-web.service
 웹 주소는 [http://localhost:8766](http://localhost:8766)입니다. 외부 PC 연결과 Windows/macOS 실행 방법은 [clients/README.md](clients/README.md)를 참고하세요.
 
 상세 설계는 [HLD](docs/HLD.md), [LLD](docs/LLD.md), [아키텍처](docs/ARCHITECTURE.md)에서 확인할 수 있습니다.
+
+## 사후 원인 분석 로그
+
+[#18 진단 로그](docs/DIAGNOSTICS.md)는 Telegram·GUI·web·ofps·worker의 함수 호출/응답, UI 이벤트, 티켓/작업 변경과 Python/shell 예외를 연결한다. 기본 OFF이며 `diagnostic_logging.enabled` 또는 `CFD_BOT_DIAGNOSTICS=1/0`으로 제어한다. [전체 시퀀스 대응](docs/analysis/diagnostic-flow-coverage.md)과 [대량 데이터 ON/OFF 성능 결과](docs/analysis/diagnostic-performance.md)를 확인한 뒤 활성화한다.

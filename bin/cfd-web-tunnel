@@ -1,6 +1,15 @@
 #!/bin/sh
 # Run this on the computer where the browser is open, not on the CFD server.
 set -eu
+
+# Launcher diagnostics use the same ON/OFF environment variable as the server.
+client_log() {
+    case ${CFD_BOT_DIAGNOSTICS:-0} in 0|off|false) return 0;; esac
+    client_log_dir=${CFD_BOT_DIAGNOSTICS_DIR:-${TMPDIR:-/tmp}/cfd-client-logs}
+    (umask 077; mkdir -p "$client_log_dir" &&
+        printf '{"event":"%s","pid":%s,"detail":"%s"}\n' "$1" "$$" "${2:-}" >> "$client_log_dir/launcher-$$.jsonl") 2>/dev/null || :
+}
+client_log launcher.start
 if [ "$#" -lt 1 ]; then
     printf 'Usage: %s user@server [local-port=8766] [server-port=8766] [ssh-options...]\n' "$0" >&2
     exit 2
@@ -20,5 +29,6 @@ for tunnel_port in "$tunnel_local_port" "$tunnel_server_port"; do
     fi
 done
 printf 'Open http://127.0.0.1:%s after SSH connects. Keep this terminal open; Ctrl-C closes the tunnel.\n' "$tunnel_local_port"
+client_log ssh.exec "local_port=$tunnel_local_port remote_port=$tunnel_server_port"
 exec ssh -N -T -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 \
     -L "127.0.0.1:$tunnel_local_port:127.0.0.1:$tunnel_server_port" "$@" "$tunnel_target"

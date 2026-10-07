@@ -171,6 +171,8 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     await page.locator('[data-action="pick-file"]').filter({hasText:'shape.png'}).click();
     assert.equal(await page.locator('#ex-path-0').inputValue(),'monitoring/shape.png');
     await page.locator('[data-action="save"]').click();
+    await page.waitForFunction(()=>document.querySelector('#draft-state').textContent.includes('저장된'));
+    await page.locator('[data-action="queue-ticket"]').click();
     await page.locator('[data-action="confirm-modal"]').click();
     await page.waitForFunction(()=>document.querySelector('#draft-state').textContent.includes('저장된'));
     const macro = await page.evaluate(async()=>{
