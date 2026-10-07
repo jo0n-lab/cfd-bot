@@ -65,4 +65,6 @@ python3 -m cfd_bot.diagnostics state/diagnostics/serve-*.jsonl \
 
 ## 성능 판정
 
+후속 [#30 원인·중복 분석](analysis/diagnostic-overhead-review.md)과 [숫자 signal 코드 사전 제안](analysis/diagnostic-codebook-proposal.md)을 별도로 제공한다. 제안 형식은 아직 runtime에 적용하지 않았다.
+
 전체 호출 기록 ON은 무료가 아니다. 921개 티켓과 40개 활성 CASE, 긴 계산 로그, 1,000행 브라우저 렌더링을 포함해 baseline/OFF/ON을 비교한다. 총 기록량·보관량·CPU·RSS도 결과에 포함한다. 시나리오 누락이나 샘플링으로 지연을 낮추지 않는다. **대량 ON의 지연이 확인되어 상시 ON 운영의 성능 검증 완료로 판단하지 않는다.** 수치는 [측정 보고서](analysis/diagnostic-performance.md)에 공개한다.

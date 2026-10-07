@@ -1,0 +1,456 @@
+{
+  "revision": "0306c0d",
+  "samples_per_mode": 3,
+  "members": 921,
+  "active": 40,
+  "valid_cpu_settings": true,
+  "ablation": {
+    "web_overview": {
+      "off": {
+        "samples": [
+          {
+            "wall_ms": 1126.4545861631632,
+            "cpu_ms": 1101.967932
+          },
+          {
+            "wall_ms": 758.8460873812437,
+            "cpu_ms": 744.5559400000014
+          },
+          {
+            "wall_ms": 922.4195023998618,
+            "cpu_ms": 904.6240339999976
+          }
+        ],
+        "median_ms": 922.4195023998618
+      },
+      "full": {
+        "samples": [
+          {
+            "wall_ms": 8112.562307156622,
+            "cpu_ms": 8029.971360000001
+          },
+          {
+            "wall_ms": 6413.909563794732,
+            "cpu_ms": 6358.145716000001
+          },
+          {
+            "wall_ms": 7206.021348014474,
+            "cpu_ms": 7148.094268000002
+          }
+        ],
+        "median_ms": 7206.021348014474
+      }
+    }
+  },
+  "web_overview": {
+    "physical_lines": 2099,
+    "file_bytes": 79824300,
+    "events": {
+      "log.file": 1,
+      "service.start": 1,
+      "function.definition": 65,
+      "function.call": 133009,
+      "db.statement.start": 132,
+      "db.transaction.acquired": 2,
+      "db.statement.end": 132,
+      "db.transaction.commit": 91,
+      "function.return": 133009,
+      "sequence.step": 3,
+      "sequence.steps": 939,
+      "log.closed": 1
+    },
+    "top_calls": [
+      [
+        "ui.UiCatalog.text",
+        38043
+      ],
+      [
+        "ui.UiCatalog.value",
+        38043
+      ],
+      [
+        "config.cpu_set",
+        37002
+      ],
+      [
+        "execution._literal_setting",
+        4405
+      ],
+      [
+        "run_views.case_id_for_root",
+        1882
+      ],
+      [
+        "ui.load_ui",
+        1763
+      ],
+      [
+        "bot.case_id",
+        961
+      ],
+      [
+        "ticket_run.TicketRunner._state",
+        921
+      ],
+      [
+        "editor.TicketService.path",
+        921
+      ],
+      [
+        "catalog.TicketIndex.document",
+        921
+      ],
+      [
+        "editor.TicketService.revision",
+        921
+      ],
+      [
+        "ticket_run.TicketRunner._capacity",
+        881
+      ],
+      [
+        "execution.execution_case",
+        881
+      ],
+      [
+        "execution._process_core",
+        881
+      ],
+      [
+        "cpu_allocation.capacity_status",
+        881
+      ],
+      [
+        "cpu_allocation.managed_cpus",
+        881
+      ]
+    ],
+    "steps": 130857,
+    "top_steps": [
+      [
+        "290",
+        37002
+      ],
+      [
+        "433",
+        35240
+      ],
+      [
+        "444",
+        35240
+      ],
+      [
+        "623",
+        4405
+      ],
+      [
+        "592",
+        2643
+      ],
+      [
+        "607",
+        1762
+      ],
+      [
+        "627",
+        1762
+      ],
+      [
+        "1212",
+        921
+      ],
+      [
+        "1631",
+        921
+      ],
+      [
+        "1649",
+        921
+      ],
+      [
+        "1831",
+        921
+      ],
+      [
+        "610",
+        881
+      ]
+    ],
+    "expanded_field_bytes": {
+      "function": 5193769,
+      "input": 7429189,
+      "caller": 8671373,
+      "result": 5191191,
+      "exception": 762
+    },
+    "repeated_payload_occurrences": 386470,
+    "repeated_payload_bytes_upper_bound": 17945728,
+    "top_repeated_payloads": [
+      {
+        "field": "input",
+        "count": 70480,
+        "bytes_each": 36
+      },
+      {
+        "field": "result",
+        "count": 70480,
+        "bytes_each": 25
+      },
+      {
+        "field": "caller",
+        "count": 38043,
+        "bytes_each": 52
+      },
+      {
+        "field": "result",
+        "count": 37883,
+        "bytes_each": 41
+      },
+      {
+        "field": "input",
+        "count": 37002,
+        "bytes_each": 35
+      },
+      {
+        "field": "caller",
+        "count": 35240,
+        "bytes_each": 72
+      },
+      {
+        "field": "caller",
+        "count": 35240,
+        "bytes_each": 72
+      },
+      {
+        "field": "caller",
+        "count": 4405,
+        "bytes_each": 69
+      }
+    ],
+    "codecs": {
+      "current": {
+        "data_bytes": 79824301,
+        "dictionary_bytes": 2,
+        "total_bytes": 79824303,
+        "gzip1_bytes": 9220075,
+        "serialize_cpu_ms": 2090.8342330000023,
+        "transform_and_roundtrip_cpu_ms": 0.0028779999965422576,
+        "gzip_cpu_ms": 707.9968530000044,
+        "roundtrip": true
+      },
+      "numeric_dictionary": {
+        "data_bytes": 48911994,
+        "dictionary_bytes": 887780,
+        "total_bytes": 49799774,
+        "gzip1_bytes": 8253815,
+        "serialize_cpu_ms": 2337.2013510000043,
+        "transform_and_roundtrip_cpu_ms": 12818.499225999993,
+        "gzip_cpu_ms": 497.82660099999987,
+        "roundtrip": true
+      },
+      "sha256_payload_dictionary": {
+        "data_bytes": 76841877,
+        "dictionary_bytes": 3329796,
+        "total_bytes": 80171673,
+        "gzip1_bytes": 9459630,
+        "serialize_cpu_ms": 1650.9633470000012,
+        "transform_and_roundtrip_cpu_ms": 9316.03552,
+        "gzip_cpu_ms": 719.9331399999949,
+        "roundtrip": true
+      },
+      "integer_payload_dictionary": {
+        "data_bytes": 76298257,
+        "dictionary_bytes": 2978466,
+        "total_bytes": 79276723,
+        "gzip1_bytes": 8777702,
+        "serialize_cpu_ms": 1479.8514319999895,
+        "transform_and_roundtrip_cpu_ms": 10216.185507999995,
+        "gzip_cpu_ms": 700.3246149999995,
+        "roundtrip": true
+      }
+    },
+    "profile_top_self": [
+      {
+        "file": "encoder.py",
+        "line": 204,
+        "function": "iterencode",
+        "primitive_calls": 3022,
+        "calls": 3022,
+        "self_seconds": 2.034317621,
+        "cumulative_seconds": 2.034317621
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 121,
+        "function": "summary",
+        "primitive_calls": 405101,
+        "calls": 818101,
+        "self_seconds": 1.3240358890000001,
+        "cumulative_seconds": 2.562390435
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 555,
+        "function": "__init__",
+        "primitive_calls": 133009,
+        "calls": 133009,
+        "self_seconds": 0.982885106,
+        "cumulative_seconds": 1.410858098
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 210,
+        "function": "write",
+        "primitive_calls": 267382,
+        "calls": 267382,
+        "self_seconds": 0.5874841590000001,
+        "cumulative_seconds": 3.341096294
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 362,
+        "function": "_write",
+        "primitive_calls": 267382,
+        "calls": 267382,
+        "self_seconds": 0.548938086,
+        "cumulative_seconds": 4.094058179
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 394,
+        "function": "step",
+        "primitive_calls": 130860,
+        "calls": 130860,
+        "self_seconds": 0.436151606,
+        "cumulative_seconds": 2.190848398
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 648,
+        "function": "wrapped",
+        "primitive_calls": 1,
+        "calls": 132918,
+        "self_seconds": 0.418805945,
+        "cumulative_seconds": 12.968206541
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 146,
+        "function": "<dictcomp>",
+        "primitive_calls": 48076,
+        "calls": 48076,
+        "self_seconds": 0.37347361100000004,
+        "cumulative_seconds": 1.413721707
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'search' of 're.Pattern' objects>",
+        "primitive_calls": 229871,
+        "calls": 229871,
+        "self_seconds": 0.352854481,
+        "cumulative_seconds": 0.352854481
+      },
+      {
+        "file": "copy.py",
+        "line": 128,
+        "function": "deepcopy",
+        "primitive_calls": 40770,
+        "calls": 292202,
+        "self_seconds": 0.33363748600000004,
+        "cumulative_seconds": 0.646184592
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 229,
+        "function": "_drain",
+        "primitive_calls": 2100,
+        "calls": 2100,
+        "self_seconds": 0.291175045,
+        "cumulative_seconds": 2.577570816
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 621,
+        "function": "finish",
+        "primitive_calls": 133009,
+        "calls": 133009,
+        "self_seconds": 0.284591661,
+        "cumulative_seconds": 3.0770875500000003
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 600,
+        "function": "begin",
+        "primitive_calls": 133009,
+        "calls": 133009,
+        "self_seconds": 0.28039815900000004,
+        "cumulative_seconds": 3.1077444350000003
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<built-in method builtins.len>",
+        "primitive_calls": 1838664,
+        "calls": 1838664,
+        "self_seconds": 0.23237931,
+        "cumulative_seconds": 0.23237931
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 157,
+        "function": "call_value",
+        "primitive_calls": 282270,
+        "calls": 282270,
+        "self_seconds": 0.21147311300000002,
+        "cumulative_seconds": 1.3814299540000001
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 90,
+        "function": "redact",
+        "primitive_calls": 363829,
+        "calls": 363829,
+        "self_seconds": 0.20626464,
+        "cumulative_seconds": 0.24695281000000002
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'get' of 'dict' objects>",
+        "primitive_calls": 1219376,
+        "calls": 1219376,
+        "self_seconds": 0.184558467,
+        "cumulative_seconds": 0.184558467
+      },
+      {
+        "file": "cpu_allocation.py",
+        "line": 45,
+        "function": "occupied_cpus",
+        "primitive_calls": 881,
+        "calls": 881,
+        "self_seconds": 0.174049099,
+        "cumulative_seconds": 8.626855997
+      },
+      {
+        "file": "config.py",
+        "line": 128,
+        "function": "cpu_set",
+        "primitive_calls": 37002,
+        "calls": 37002,
+        "self_seconds": 0.171769271,
+        "cumulative_seconds": 0.599477198
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<built-in method builtins.isinstance>",
+        "primitive_calls": 828194,
+        "calls": 828194,
+        "self_seconds": 0.15084364,
+        "cumulative_seconds": 0.15084364
+      }
+    ],
+    "profile_total_seconds": 12.968207220000009
+  }
+}

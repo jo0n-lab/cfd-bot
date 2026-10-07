@@ -1,0 +1,130 @@
+{
+  "rows": 1000,
+  "records": 20002,
+  "bytes": 10472259,
+  "events": {
+    "function.call": 10001,
+    "function.return": 10001
+  },
+  "top_calls": [
+    [
+      "web.ui.esc:L3:C12",
+      7000
+    ],
+    [
+      "web.ui.callback:L112:C66",
+      1000
+    ],
+    [
+      "web.ui.callback:L112:C169",
+      1000
+    ],
+    [
+      "web.ui.badge:L10:C14",
+      1000
+    ],
+    [
+      "web.ui.ticketList:L112:C0",
+      1
+    ]
+  ],
+  "profile_total_samples": 541,
+  "profile_top": [
+    {
+      "function": "append",
+      "file": "diagnostics.js",
+      "line": 18,
+      "samples": 83
+    },
+    {
+      "function": "append",
+      "file": "diagnostics.js",
+      "line": 18,
+      "samples": 66
+    },
+    {
+      "function": "(garbage collector)",
+      "file": "",
+      "line": 0,
+      "samples": 65
+    },
+    {
+      "function": "summary",
+      "file": "diagnostics.js",
+      "line": 9,
+      "samples": 52
+    },
+    {
+      "function": "summary",
+      "file": "diagnostics.js",
+      "line": 9,
+      "samples": 50
+    },
+    {
+      "function": "append",
+      "file": "diagnostics.js",
+      "line": 18,
+      "samples": 38
+    },
+    {
+      "function": "append",
+      "file": "diagnostics.js",
+      "line": 18,
+      "samples": 25
+    },
+    {
+      "function": "append",
+      "file": "diagnostics.js",
+      "line": 18,
+      "samples": 25
+    },
+    {
+      "function": "append",
+      "file": "diagnostics.js",
+      "line": 18,
+      "samples": 20
+    },
+    {
+      "function": "summary",
+      "file": "diagnostics.js",
+      "line": 9,
+      "samples": 17
+    },
+    {
+      "function": "",
+      "file": "diagnostics.js",
+      "line": 28,
+      "samples": 14
+    },
+    {
+      "function": "finish",
+      "file": "diagnostics.js",
+      "line": 32,
+      "samples": 12
+    },
+    {
+      "function": "ticketList",
+      "file": "app.js",
+      "line": 140,
+      "samples": 9
+    },
+    {
+      "function": "summary",
+      "file": "diagnostics.js",
+      "line": 9,
+      "samples": 9
+    },
+    {
+      "function": "",
+      "file": "app.js",
+      "line": 140,
+      "samples": 7
+    },
+    {
+      "function": "",
+      "file": "diagnostics.js",
+      "line": 28,
+      "samples": 6
+    }
+  ]
+}
