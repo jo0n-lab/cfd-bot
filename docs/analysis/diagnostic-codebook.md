@@ -1,6 +1,6 @@
 # 진단 코드 사전 — schema 2
 
-사전 SHA-256: `07fcb52329e948fa9362a3ca7d2a79967b83201fc22c5c09a8aa67903a980ac4`.
+사전 SHA-256: `435fb0db4e3978352d9a3dd40549951909b659975e452132c612028e0d9bfe8a`.
 
 [기계 사전](../../cfd_bot/diagnostic_codes.json) · [형식/복원](../DIAGNOSTICS.md) · [#30](https://github.com/jo0n-lab/cfd-bot/issues/30).
 
@@ -59,23 +59,25 @@ Browser row: `[event_code, delta_mono_ms, seq, call, parent, ...]`. call tail은
 | 713 | `browser.console.warn` |
 | 714 | `browser.console.error` |
 | 1000 | `config.loaded` |
-| 1001 | `hook.exit_observed` |
-| 1002 | `job.batch.committed` |
-| 1003 | `job.cancelled.pending_commit` |
-| 1004 | `job.inserted` |
-| 1005 | `job.persisted` |
-| 1006 | `job.update.request` |
-| 1007 | `ofps.lock.acquired` |
-| 1008 | `ofps.lock.released` |
-| 1009 | `ofps.lock.wait` |
-| 1010 | `ofps.process.observed` |
-| 1011 | `process.signal.request` |
-| 1012 | `shell.process.observed` |
-| 1013 | `solver.exit_observed` |
-| 1014 | `solver.output.warning` |
-| 1015 | `subprocess.stderr` |
-| 1016 | `thread.exception` |
-| 1017 | `ticket.file.replaced` |
+| 1001 | `function.error` |
+| 1002 | `hook.exit_observed` |
+| 1003 | `job.batch.committed` |
+| 1004 | `job.cancelled.pending_commit` |
+| 1005 | `job.inserted` |
+| 1006 | `job.persisted` |
+| 1007 | `job.update.request` |
+| 1008 | `ofps.lock.acquired` |
+| 1009 | `ofps.lock.released` |
+| 1010 | `ofps.lock.wait` |
+| 1011 | `ofps.process.observed` |
+| 1012 | `process.signal.request` |
+| 1013 | `shell.process.observed` |
+| 1014 | `solver.exit_observed` |
+| 1015 | `solver.output.error` |
+| 1016 | `solver.output.warning` |
+| 1017 | `subprocess.stderr` |
+| 1018 | `thread.exception` |
+| 1019 | `ticket.file.replaced` |
 
 ## Python 함수
 

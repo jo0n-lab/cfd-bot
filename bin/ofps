@@ -13,7 +13,7 @@ source "$script_dir/ofps-diagnostics.sh"
 run_bot_command()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[run_bot_command]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:run_bot_command"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" run_bot_command
@@ -37,7 +37,7 @@ esac
 usage()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[usage]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:usage"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" usage
@@ -116,7 +116,7 @@ fi
 cpu_count()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[cpu_count]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:cpu_count"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" cpu_count
@@ -139,7 +139,7 @@ cpu_count()
 expand_cpu_list()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[expand_cpu_list]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:expand_cpu_list"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" expand_cpu_list
@@ -167,7 +167,7 @@ expand_cpu_list()
 cpu_set_contains()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[cpu_set_contains]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:cpu_set_contains"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" cpu_set_contains
@@ -182,7 +182,7 @@ cpu_set_contains()
 cpu_sets_overlap()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[cpu_sets_overlap]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:cpu_sets_overlap"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" cpu_sets_overlap
@@ -197,7 +197,7 @@ cpu_sets_overlap()
 topology_ids()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[topology_ids]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:topology_ids"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" topology_ids
@@ -243,7 +243,7 @@ topology_ids()
 is_openfoam_application()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[is_openfoam_application]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:is_openfoam_application"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" is_openfoam_application
@@ -263,7 +263,7 @@ is_openfoam_application()
 is_basilisk_application()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[is_basilisk_application]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:is_basilisk_application"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" is_basilisk_application
@@ -275,7 +275,7 @@ is_basilisk_application()
 openfoam_case_from_process()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[openfoam_case_from_process]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:openfoam_case_from_process"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" openfoam_case_from_process
@@ -328,7 +328,7 @@ openfoam_case_from_process()
 basilisk_case_from_process()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[basilisk_case_from_process]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:basilisk_case_from_process"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" basilisk_case_from_process
@@ -352,7 +352,7 @@ basilisk_case_from_process()
 monitor_case_from_process()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[monitor_case_from_process]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:monitor_case_from_process"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" monitor_case_from_process
@@ -398,7 +398,7 @@ monitor_case_from_process()
 supervisor_identity()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[supervisor_identity]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:supervisor_identity"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" supervisor_identity
@@ -451,7 +451,7 @@ supervisor_identity()
 scan_supervisors()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[scan_supervisors]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:scan_supervisors"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" scan_supervisors
@@ -487,7 +487,7 @@ scan_supervisors()
 thread_affinity_union()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[thread_affinity_union]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:thread_affinity_union"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" thread_affinity_union
@@ -530,7 +530,7 @@ thread_affinity_union()
 scan_once()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[scan_once]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:scan_once"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" scan_once
@@ -709,7 +709,7 @@ scan_once()
 check_cpu_set()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[check_cpu_set]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:check_cpu_set"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" check_cpu_set
@@ -772,7 +772,7 @@ check_cpu_set()
 sync_ticket_state()
 {
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[sync_ticket_state]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:sync_ticket_state"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" sync_ticket_state
@@ -809,7 +809,7 @@ scan_and_sync()
 {
     if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then _cfd_diag_rotate; fi
     local _cfd_diag_result=""
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[scan_and_sync]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:scan_and_sync"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" scan_and_sync
@@ -828,7 +828,7 @@ readonly scratch_dir=$(mktemp -d -t tcb-processes.XXXXXX)
 readonly records_file="$scratch_dir/records.tsv"
 readonly supervisors_file="$scratch_dir/supervisors.tsv"
 cleanup() {
-    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[cleanup]:-0} == 1 ) ]]; then
         local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}} _cfd_diag_result=""
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:cleanup"
         _cfd_diag_write shell.call 0 'argc=0' cleanup

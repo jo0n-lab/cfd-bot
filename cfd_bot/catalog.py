@@ -29,14 +29,14 @@ class FolderWatch:
             libc = ctypes.CDLL(None, use_errno=True)
             self.fd = libc.inotify_init1(os.O_NONBLOCK | os.O_CLOEXEC)
             if self.fd < 0:
-                if _diagnostics.enabled: _diagnostics.step('catalog.FolderWatch.__init__:L29:then')
+                if _diagnostics.detailed: _diagnostics.step('catalog.FolderWatch.__init__:L29:then')
                 raise OSError(ctypes.get_errno(), 'inotify_init1')
             for folder in folders:
                 # MODIFY/CLOSE_WRITE/ATTRIB/CREATE/DELETE/MOVE, including self.
-                if _diagnostics.enabled: _diagnostics.step('catalog.FolderWatch.__init__:L31:loop', folder=folder)
+                if _diagnostics.detailed: _diagnostics.step('catalog.FolderWatch.__init__:L31:loop', folder=folder)
                 wd = libc.inotify_add_watch(self.fd, os.fsencode(folder), 0x00000fce)
                 if wd < 0:
-                    if _diagnostics.enabled: _diagnostics.step('catalog.FolderWatch.__init__:L34:then')
+                    if _diagnostics.detailed: _diagnostics.step('catalog.FolderWatch.__init__:L34:then')
                     raise OSError(ctypes.get_errno(), 'inotify_add_watch')
                 self.paths[wd] = folder
                 stat = os.stat(folder)
@@ -48,7 +48,7 @@ class FolderWatch:
     @_diagnostics.trace
     def close(self):
         if self.fd >= 0:
-            if _diagnostics.enabled: _diagnostics.step('catalog.FolderWatch.close:L43:then')
+            if _diagnostics.detailed: _diagnostics.step('catalog.FolderWatch.close:L43:then')
             os.close(self.fd)
             self.fd = -1
 
@@ -60,17 +60,17 @@ class FolderWatch:
     def drain(self):
         changed = set()
         if self.fd < 0:
-            if _diagnostics.enabled: _diagnostics.step('catalog.FolderWatch.drain:L52:then')
+            if _diagnostics.detailed: _diagnostics.step('catalog.FolderWatch.drain:L52:then')
             return changed, True
         try:
             for folder, stamp in self.stamps.items():
-                if _diagnostics.enabled: _diagnostics.step('catalog.FolderWatch.drain:L55:loop', folder=folder, stamp=stamp)
+                if _diagnostics.detailed: _diagnostics.step('catalog.FolderWatch.drain:L55:loop', folder=folder, stamp=stamp)
                 stat = os.stat(folder)
                 if (stat.st_dev, stat.st_ino) != stamp:
-                    if _diagnostics.enabled: _diagnostics.step('catalog.FolderWatch.drain:L57:then')
+                    if _diagnostics.detailed: _diagnostics.step('catalog.FolderWatch.drain:L57:then')
                     return changed, True
             while True:
-                if _diagnostics.enabled: _diagnostics.step('catalog.FolderWatch.drain:L59:loop')
+                if _diagnostics.detailed: _diagnostics.step('catalog.FolderWatch.drain:L59:loop')
                 try:
                     data = os.read(self.fd, 65536)
                 except BlockingIOError:
@@ -78,15 +78,15 @@ class FolderWatch:
                     return changed, False
                 offset = 0
                 while offset < len(data):
-                    if _diagnostics.enabled: _diagnostics.step('catalog.FolderWatch.drain:L65:loop')
+                    if _diagnostics.detailed: _diagnostics.step('catalog.FolderWatch.drain:L65:loop')
                     wd, mask, _, size = struct.unpack_from('iIII', data, offset)
                     name = os.fsdecode(data[offset + 16:offset + 16 + size].split(b'\0', 1)[0])
                     offset += 16 + size
                     if mask & 0x0000ec00:  # overflow, ignored, unmount, delete/move self
-                        if _diagnostics.enabled: _diagnostics.step('catalog.FolderWatch.drain:L69:then')
+                        if _diagnostics.detailed: _diagnostics.step('catalog.FolderWatch.drain:L69:then')
                         return changed, True
                     if wd in self.paths and name:
-                        if _diagnostics.enabled: _diagnostics.step('catalog.FolderWatch.drain:L71:then')
+                        if _diagnostics.detailed: _diagnostics.step('catalog.FolderWatch.drain:L71:then')
                         changed.add(str(Path(self.paths[wd]) / name))
         except OSError:
             if _diagnostics.enabled: _diagnostics.step('catalog.FolderWatch.drain:L73:except')
@@ -101,23 +101,23 @@ def active_cases(tickets, ui_dir=None, *, check_duplicates=True):
                       for row in macro['cases']} for path, macro in macros.items()}
     result = []
     for case in tickets:
-        if _diagnostics.enabled: _diagnostics.step('catalog.active_cases:L83:loop', case=case)
+        if _diagnostics.detailed: _diagnostics.step('catalog.active_cases:L83:loop', case=case)
         if ui_dir:
-            if _diagnostics.enabled: _diagnostics.step('catalog.active_cases:L84:then')
+            if _diagnostics.detailed: _diagnostics.step('catalog.active_cases:L84:then')
             case['_ui_dir'] = ui_dir
         if case['task_type'] == 'macro':
-            if _diagnostics.enabled: _diagnostics.step('catalog.active_cases:L86:then')
+            if _diagnostics.detailed: _diagnostics.step('catalog.active_cases:L86:then')
             continue
         if case['role'] == 'child':
-            if _diagnostics.enabled: _diagnostics.step('catalog.active_cases:L88:then')
+            if _diagnostics.detailed: _diagnostics.step('catalog.active_cases:L88:then')
             parent = str((Path(case['_config']).parent / case['macro_ticket']).resolve())
             if (case['_config'], case['_root']) not in members.get(parent, ()):
-                if _diagnostics.enabled: _diagnostics.step('catalog.active_cases:L90:then')
+                if _diagnostics.detailed: _diagnostics.step('catalog.active_cases:L90:then')
                 continue
         result.append(case)
     roots = [case['_root'] for case in result]
     if check_duplicates and len(roots) != len(set(roots)):
-        if _diagnostics.enabled: _diagnostics.step('catalog.active_cases:L94:then')
+        if _diagnostics.detailed: _diagnostics.step('catalog.active_cases:L94:then')
         raise ConfigError(_message('duplicate_case'))
     return result
 
@@ -144,7 +144,7 @@ class TicketIndex:
     def _discover(self):
         paths = set(self.paths)
         for pattern in self.patterns:
-            if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex._discover:L118:loop', pattern=pattern)
+            if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex._discover:L118:loop', pattern=pattern)
             paths.update(glob.glob(pattern, recursive=True))
         return paths
 
@@ -169,77 +169,77 @@ class TicketIndex:
                    if not glob.has_magic(str(Path(p).parent))}
         discovered = self._discover() if dynamic else None
         if discovered is not None:
-            if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L139:then')
+            if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L139:then')
             folders.update(str(Path(p).parent) for p in discovered)
         with ExitStack() as locks:
             for folder in sorted(folders):
-                if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L142:loop', folder=folder)
+                if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L142:loop', folder=folder)
                 locks.enter_context(ticket_lock(folder))
             with self.mutex:
                 try:
                     full = force or self.invalid
                     if self.watch is None or self.watch.folders != folders:
-                        if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L147:then')
+                        if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L147:then')
                         if self.watch:
-                            if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L148:then')
+                            if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L148:then')
                             self.watch.close()
                         self.watch = FolderWatch(sorted(folders))
                         full = True
                     changed, lost = self.watch.drain()
                     if lost and self.watch.fd >= 0:
-                        if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L153:then')
+                        if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L153:then')
                         self.watch.close()
                         self.watch = FolderWatch(sorted(folders))
                         full = True
                     fallback = dynamic or self.watch.fd < 0
                     stamps = self.stamps.copy()
                     if full or fallback:
-                        if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L159:then')
+                        if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L159:then')
                         paths = self._discover()
                         stamps = {path: self._stamp(path) for path in paths}
                         changed = (paths | set(self.documents)) if full else {
                             p for p in paths | set(self.documents) if stamps.get(p) != self.stamps.get(p)}
                     else:
-                        if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L159:else')
+                        if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L159:else')
                         changed = {p for p in changed if self._matches(p)}
                         paths = (set(self.documents) | changed)
                         for p in changed:
-                            if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L167:loop', p=p)
+                            if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L167:loop', p=p)
                             if os.path.lexists(p):
-                                if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L168:then')
+                                if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L168:then')
                                 stamps[p] = self._stamp(p)
                             else:
-                                if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L168:else')
+                                if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L168:else')
                                 paths.discard(p)
                                 stamps.pop(p, None)
                     if not changed and not full:
-                        if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L173:then')
+                        if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L173:then')
                         return self
                     documents = self.documents.copy()
                     raw = self.raw.copy()
                     errors = self.errors.copy()
                     for path in sorted(changed):
-                        if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L178:loop', path=path)
+                        if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L178:loop', path=path)
                         errors.pop(path, None)
                         if path not in paths:
-                            if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L180:then')
+                            if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L180:then')
                             documents.pop(path, None)
                             raw.pop(path, None)
                             continue
                         try:
                             if Path(path).is_symlink():
-                                if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L185:then')
+                                if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L185:then')
                                 raise ConfigError(_message('path_escape', path=path))
                             case = load_case(path)
                             raw[path] = read_json(path)
                             if self.ui_dir:
-                                if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L189:then')
+                                if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L189:then')
                                 case['_ui_dir'] = self.ui_dir
                             documents[path] = case
                         except (OSError, ValueError) as exc:
                             if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L192:except')
                             if self.strict:
-                                if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L193:then')
+                                if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L193:then')
                                 raise
                             errors[path] = str(exc)
                             documents.pop(path, None)
@@ -252,10 +252,10 @@ class TicketIndex:
                     affected.update(r for r in self.roots.keys() | roots.keys()
                                     if self.roots.get(r) != roots.get(r))
                     for path in changed:
-                        if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L205:loop', path=path)
+                        if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L205:loop', path=path)
                         before, after = self.documents.get(path, {}), documents.get(path, {})
                         if before.get('task_type') == 'macro' or after.get('task_type') == 'macro':
-                            if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L207:then')
+                            if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L207:then')
                             affected.update(c['_root'] for c in (before, after) if c)
                             old_rows = {r['case_dir']: r for r in before.get('cases', [])}
                             new_rows = {r['case_dir']: r for r in after.get('cases', [])}
@@ -267,9 +267,9 @@ class TicketIndex:
                     self.macros = {c['_root']: c for c in ordered if c['task_type'] == 'macro'}
                     self.parents = {}
                     for macro in self.macros.values():
-                        if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L218:loop', macro=macro)
+                        if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L218:loop', macro=macro)
                         for row in macro['cases']:
-                            if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.refresh:L219:loop', row=row)
+                            if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.refresh:L219:loop', row=row)
                             self.parents.setdefault(row['case_dir'], set()).add(macro['_root'])
                     self.invalid = False
                     return self
@@ -302,11 +302,11 @@ class TicketIndex:
     def document(self, path, *, raw=False):
         with self.mutex:
             if str(path) in self.errors:
-                if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.document:L246:then')
+                if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.document:L246:then')
                 raise ValueError(self.errors[str(path)])
             value = (self.raw if raw else self.documents).get(str(path))
             if value is None:
-                if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.document:L249:then')
+                if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.document:L249:then')
                 raise FileNotFoundError(str(path))
             return deepcopy(value)
 
@@ -320,7 +320,7 @@ class TicketIndex:
         with self.mutex:
             selected = set(roots) & self.macros.keys()
             for root in roots:
-                if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.related_macros:L260:loop', root=root)
+                if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.related_macros:L260:loop', root=root)
                 selected.update(self.parents.get(root, ()))
             return deepcopy([self.macros[r] for r in sorted(selected)])
 
@@ -333,9 +333,9 @@ class TicketIndex:
     def acknowledge(self, changes):
         with self.mutex:
             for root, version in changes.items():
-                if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.acknowledge:L270:loop', root=root, version=version)
+                if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.acknowledge:L270:loop', root=root, version=version)
                 if self.dirty.get(root) == version:
-                    if _diagnostics.enabled: _diagnostics.step('catalog.TicketIndex.acknowledge:L271:then')
+                    if _diagnostics.detailed: _diagnostics.step('catalog.TicketIndex.acknowledge:L271:then')
                     self.dirty.pop(root)
 
 

@@ -28,17 +28,17 @@ from .ui import load_ui
 def terminal_event(store, job, chats, ui=None):
     ui = ui or load_ui(job.get('case', {}).get('_ui_dir'))
     if job['status'] not in ('succeeded', 'failed', 'interrupted'):
-        if _diagnostics.enabled: _diagnostics.step('jobs.terminal_event:L28:then')
+        if _diagnostics.detailed: _diagnostics.step('jobs.terminal_event:L28:then')
         return
     store.remember_run(job)
     if not wants_event(job['case'], job['status']):
-        if _diagnostics.enabled: _diagnostics.step('jobs.terminal_event:L31:then')
+        if _diagnostics.detailed: _diagnostics.step('jobs.terminal_event:L31:then')
         store.mark_terminal_published(job['id'])
         return
     # Attachment snapshots are taken before the next FIFO job is admitted.
     payload = store.get('event:' + job['id'])
     if payload is None:
-        if _diagnostics.enabled: _diagnostics.step('jobs.terminal_event:L36:then')
+        if _diagnostics.detailed: _diagnostics.step('jobs.terminal_event:L36:then')
         files, notes = freeze_exports(job['case'], store.root / 'events' / job['id'],
                                      job.get('started', job['created']), job['status'])
         payload = dict(kind='terminal', run=job, files=files, notes=notes)
@@ -57,13 +57,13 @@ def scheduling_candidates(jobs, active=()):
     batches = set()
     for job in sorted((job for job in jobs if job.get('priority') == 'run'),
                       key=lambda item: item['created']):
-        if _diagnostics.enabled: _diagnostics.step('jobs.scheduling_candidates:L52:loop', job=job)
+        if _diagnostics.detailed: _diagnostics.step('jobs.scheduling_candidates:L52:loop', job=job)
         batch = job.get('batch')
         if batch and batch in batches:
-            if _diagnostics.enabled: _diagnostics.step('jobs.scheduling_candidates:L55:then')
+            if _diagnostics.detailed: _diagnostics.step('jobs.scheduling_candidates:L55:then')
             continue
         if batch:
-            if _diagnostics.enabled: _diagnostics.step('jobs.scheduling_candidates:L57:then')
+            if _diagnostics.detailed: _diagnostics.step('jobs.scheduling_candidates:L57:then')
             batches.add(batch)
         immediate.append(job)
     queued = [job for job in jobs if (job.get('priority') != 'run'
@@ -85,15 +85,15 @@ class Scheduler:
         queued_ids = {job_queue_id(job) for job in queued}
         fairness = {qid: jid for qid, jid in fairness.items() if qid in queued_ids}
         for job in self.store.jobs(TERMINAL):
-            if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._borrow_state:L76:loop', job=job)
+            if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._borrow_state:L76:loop', job=job)
             donors = job.get('borrowed_queues', [])
             if not donors or job.get('borrow_released'):
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._borrow_state:L78:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._borrow_state:L78:then')
                 continue
             for qid in donors:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._borrow_state:L80:loop', qid=qid)
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._borrow_state:L80:loop', qid=qid)
                 if qid in queued_ids:
-                    if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._borrow_state:L81:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._borrow_state:L81:then')
                     fairness[qid] = job['id']
             self.store.update_job(job['id'], expected=TERMINAL, borrow_released=True)
         self.store.put('queue_fair_turns', fairness)
@@ -101,7 +101,7 @@ class Scheduler:
         claim = self.store.get('queue_drain_claim')
         all_by_id = {job['id']: job for job in (*queued, *active)}
         if claim and claim.get('job_id') not in all_by_id:
-            if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._borrow_state:L88:then')
+            if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._borrow_state:L88:then')
             claim = None
             self.store.put('queue_drain_claim', None)
         return claim, fairness
@@ -109,19 +109,19 @@ class Scheduler:
     @_diagnostics.trace
     def _claim_dynamic(self, candidates, profiles, pool, claim, fairness):
         if claim:
-            if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._claim_dynamic:L94:then')
+            if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._claim_dynamic:L94:then')
             return claim
         for job in sorted(candidates, key=lambda item: item['created']):
-            if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._claim_dynamic:L96:loop', job=job)
+            if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._claim_dynamic:L96:loop', job=job)
             if not job.get('dynamic_cores'):
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._claim_dynamic:L97:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._claim_dynamic:L97:then')
                 continue
             plan = borrowing_plan(job, profiles, pool)
             if not plan or not plan['oversized']:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._claim_dynamic:L100:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._claim_dynamic:L100:then')
                 continue
             if any(qid in fairness for qid in plan['donors']):
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._claim_dynamic:L102:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._claim_dynamic:L102:then')
                 continue
             claim = {'job_id': job['id'], 'queue_id': job_queue_id(job),
                      'donors': plan['donors'], 'allowed': format_cpus(plan['allowed'])}
@@ -139,11 +139,11 @@ class Scheduler:
         """
         blocked = set()
         for job in sorted(candidates, key=lambda item: item['created']):
-            if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._assign_queue_profiles:L118:loop', job=job)
+            if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._assign_queue_profiles:L118:loop', job=job)
             if (job.get('priority') == 'run' or not job.get('queue_id')
                     or job.get('dynamic_cores')
                     or job.get('queue_cpu_set')):
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._assign_queue_profiles:L119:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._assign_queue_profiles:L119:then')
                 continue
             qid = job_queue_id(job)
             try:
@@ -161,11 +161,11 @@ class Scheduler:
                 # Do not copy the previous head's profile into the next job.
                 # Once the active head finishes, this job derives a fresh
                 # profile whose size matches its own NP.
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._assign_queue_profiles:L133:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._assign_queue_profiles:L133:then')
                 blocked.add(job['id'])
                 continue
             if assigned is not None and required > len(assigned):
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._assign_queue_profiles:L140:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._assign_queue_profiles:L140:then')
                 blocked.add(job['id'])
                 self.store.update_job(
                     job['id'], expected=('queued',),
@@ -173,7 +173,7 @@ class Scheduler:
                                         cores=required, current=len(assigned)))
                 continue
             if assigned is None:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._assign_queue_profiles:L147:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._assign_queue_profiles:L147:then')
                 reserved = set().union(*profiles.values()) if profiles else set()
                 try:
                     allocation = allocate_cpus(required, observed, active,
@@ -189,7 +189,7 @@ class Scheduler:
             updated = self.store.update_job(job['id'], expected=('queued',),
                                             queue_cpu_set=value, reason='')
             if updated is None:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler._assign_queue_profiles:L161:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler._assign_queue_profiles:L161:then')
                 blocked.add(job['id'])
                 continue
             job['queue_cpu_set'] = value
@@ -199,24 +199,24 @@ class Scheduler:
     def recover(self):
         self.children = [p for p in self.children if p.poll() is None]
         for job in self.store.jobs(LIVE):
-            if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.recover:L169:loop', job=job)
+            if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.recover:L169:loop', job=job)
             now = time.time()
             if job['status'] == 'starting' and now - job.get('claimed', now) < 60:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.recover:L171:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.recover:L171:then')
                 continue
             alive = job.get('worker_identity') and identity(job.get('worker_pid')) == job['worker_identity']
             if alive:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.recover:L174:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.recover:L174:then')
                 continue
             hook_alive = job.get('hook_identity') and identity(job.get('hook_pid')) == job['hook_identity']
             if hook_alive:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.recover:L177:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.recover:L177:then')
                 self.store.update_job(job['id'], expected=LIVE,
                                       reason=self.ui.text('scenarios.jobs.hook_alive'))
                 continue
             solver_alive = job.get('solver_identity') and identity(job.get('solver_pid')) == job['solver_identity']
             if solver_alive:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.recover:L182:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.recover:L182:then')
                 self.store.update_job(job['id'], expected=LIVE,
                                       reason=self.ui.text('scenarios.jobs.solver_alive'))
                 self.store.event(job['id'] + ':worker_lost', self.config['telegram']['chat_ids'],
@@ -227,14 +227,14 @@ class Scheduler:
             monitor_alive = (job.get('monitor_identity') and
                              identity(job.get('monitor_pid')) == job['monitor_identity'])
             if monitor_alive:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.recover:L192:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.recover:L192:then')
                 try:
                     _diagnostics.signal_process(job['monitor_pid'], signal.SIGTERM)
                 except ProcessLookupError:
                     if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.recover:L195:except')
                     pass
             if not job.get('started') or job.get('phase') == 'preprocess':
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.recover:L197:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.recover:L197:then')
                 self.store.update_job(
                     job['id'], expected=LIVE, status='failed', finished=now,
                     reason=self.ui.text('scenarios.jobs.preprocess_lost' if job.get('phase') == 'preprocess'
@@ -260,11 +260,11 @@ class Scheduler:
     def tick(self, observed):
         self.recover()
         for job in self.store.unpublished_terminal_jobs():
-            if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L220:loop', job=job)
+            if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L220:loop', job=job)
             terminal_event(self.store, job, self.config['telegram']['chat_ids'], self.ui)
         active = self.store.jobs(LIVE)
         if not self.config['scheduler']['enabled'] or self.store.get('queue_paused', False):
-            if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L223:then')
+            if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L223:then')
             return
         all_queued = self.store.jobs(('queued',))
         queued = scheduling_candidates(all_queued, active)
@@ -278,41 +278,41 @@ class Scheduler:
         claim, fairness = self._borrow_state(all_queued, active)
         claim = self._claim_dynamic(queued, profiles, pool, claim, fairness)
         for job in queued:
-            if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L236:loop', job=job)
+            if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L236:loop', job=job)
             if len(active) >= self.config['scheduler']['max_parallel']:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L237:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L237:then')
                 return
             case = job['case']
             qid = job_queue_id(job)
             if job['id'] in profile_waiting:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L241:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L241:then')
                 continue
             if (job.get('priority') != 'run'
                     and any(active_job.get('priority') != 'run'
                             and job_queue_id(active_job) == qid for active_job in active)):
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L243:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L243:then')
                 continue
             if (claim and qid in claim.get('donors', [])
                     and job['id'] != claim.get('job_id')):
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L247:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L247:then')
                 continue
             if job.get('batch') and any(j.get('batch') == job['batch'] for j in active):
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L250:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L250:then')
                 continue
             if case['_root'] in observed:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L252:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L252:then')
                 self.store.update_job(job['id'], expected=('queued',),
                                       reason=self.ui.text('scenarios.jobs.external_running'))
                 continue
             external = self.store.get('observed:' + case['_root'])
             if external and external['status'] in LIVE:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L257:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L257:then')
                 self.store.update_job(job['id'], expected=('queued',),
                                       reason=self.ui.text('scenarios.jobs.external_finishing'))
                 continue
             if (case.get('role') == 'child' and external and external['status'] == 'succeeded'
                     and external.get('finished', 0) >= job['created']):
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L261:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L261:then')
                 self.store.update_job(job['id'], expected=('queued',), status='cancelled',
                                       finished=time.time(), reason=self.ui.text('scenarios.jobs.external_duplicate'))
                 self.store.event(job['id'] + ':external_complete', self.config['telegram']['chat_ids'],
@@ -321,10 +321,10 @@ class Scheduler:
                 continue
             try:
                 if case.get('_config') and not Path(case['_config']).is_file():
-                    if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L270:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L270:then')
                     renamed = ticket_index(self.config).lookup(case['_root'])
                     if renamed is None:
-                        if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L272:then')
+                        if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L272:then')
                         self.store.update_job(job['id'], expected=('queued',), status='cancelled',
                                               finished=time.time(), reason=self.ui.text('scenarios.jobs.ticket_deleted'))
                         self.store.event(job['id'] + ':missing_ticket', self.config['telegram']['chat_ids'],
@@ -333,18 +333,18 @@ class Scheduler:
                         continue
                     case = renamed
                 if case.get('_config') and Path(case['_config']).is_file():
-                    if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L280:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L280:then')
                     latest = load_case(case['_config'])
                     latest['_ui_dir'] = self.config['_ui_dir']
                     if latest['_root'] != case['_root']:
-                        if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L283:then')
+                        if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L283:then')
                         raise ValueError(self.ui.text('scenarios.jobs.case_path_changed'))
                     case = latest
                 if case.get('role') == 'child':
-                    if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L286:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L286:then')
                     parent = Path(case['_config']).parent / case['macro_ticket']
                     if not parent.is_file():
-                        if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L288:then')
+                        if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L288:then')
                         raise ValueError(self.ui.text('scenarios.jobs.macro_missing'))
                 case = execution_case(case)
             except (OSError, ValueError) as exc:
@@ -364,22 +364,22 @@ class Scheduler:
                     or (job.get('priority') != 'run' and job.get('queue_cpu_set'))):
                 # The ticket may derive NP from the live case at dispatch
                 # time, so plan with the resolved execution contract.
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L303:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L303:then')
                 plan = borrowing_plan(dict(job, case=case), profiles, pool)
                 if plan is None:
-                    if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L308:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L308:then')
                     self.store.update_job(job['id'], expected=('queued',),
                                           reason=self.ui.text('scenarios.jobs.queue_quota_insufficient'))
                     continue
                 claimed_dynamic = bool(claim and claim.get('job_id') == job['id'])
                 if plan['oversized'] or claimed_dynamic:
-                    if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L313:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L313:then')
                     if not claim or claim.get('job_id') != job['id']:
-                        if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L314:then')
+                        if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L314:then')
                         continue
                     borrowed = list(claim.get('donors', plan['donors']))
                     if any(job_queue_id(active_job) in borrowed for active_job in active):
-                        if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L317:then')
+                        if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L317:then')
                         self.store.update_job(job['id'], expected=('queued',),
                                               reason=self.ui.text('scenarios.jobs.queue_draining',
                                                                   queues=', '.join(borrowed)))
@@ -388,17 +388,17 @@ class Scheduler:
                 automatic = True
                 case['cpu_policy'] = 'auto'
             if not automatic:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L325:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L325:then')
                 requested = cpu_set(case['cpu_set'])
                 unavailable = requested - pool
                 if unavailable:
-                    if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L328:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L328:then')
                     self.store.update_job(job['id'], expected=('queued',),
                                           reason=self.ui.text('scenarios.jobs.cpu_unavailable',
                                                               cpus=','.join(map(str, sorted(unavailable)))))
                     continue
                 if requested & occupied_cpus({}, active):
-                    if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L333:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L333:then')
                     self.store.update_job(job['id'], expected=('queued',),
                                           reason=self.ui.text('scenarios.jobs.cpu_reserved'))
                     continue
@@ -420,27 +420,27 @@ class Scheduler:
             try:
                 live = {}
                 if automatic or monitor_requested:
-                    if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L353:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L353:then')
                     live = snapshot(self.config['ofps_command'])['cases']
                     if case['_root'] in live:
-                        if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L355:then')
+                        if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L355:then')
                         raise ValueError(self.ui.text('scenarios.jobs.external_running'))
                 if automatic:
-                    if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L357:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L357:then')
                     allocation = allocate_cpus(case['cores'] + int(monitor_requested), live, active,
                                                allowed=allowed)
                     selected = sorted(cpu_set(allocation['cpu_set']))
                     case['cpu_set'] = format_cpus(selected[:case['cores']])
                     if monitor_requested:
-                        if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L362:then')
+                        if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L362:then')
                         case['monitor_cpu'] = str(selected[case['cores']])
                 elif monitor_requested:
-                    if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L364:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L364:then')
                     allocation = allocate_cpus(1, live, active + [{'case': case}], allowed=pool)
                     case['monitor_cpu'] = allocation['cpu_set']
                 safe, report = check_cpus(self.config['ofps_command'], case)
                 if safe and monitor_requested:
-                    if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L368:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L368:then')
                     safe, report = check_cpus(
                         self.config['ofps_command'],
                         dict(case, cpu_set=case['monitor_cpu'], allow_cross_socket=True))
@@ -448,7 +448,7 @@ class Scheduler:
                 if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L372:except')
                 safe, report = False, str(exc)
             if not safe:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L374:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L374:then')
                 self.store.update_job(job['id'], expected=('queued',), reason=report)
                 self.store.event(job['id'] + ':cpu_wait', self.config['telegram']['chat_ids'],
                                  dict(kind='text', text=self.ui.text(
@@ -461,10 +461,10 @@ class Scheduler:
                                             openfoam_bashrc=self.config['scheduler'].get('openfoam_bashrc'),
                                             notification_chats=self.config['telegram']['chat_ids'])
             if claimed is None:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L386:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L386:then')
                 continue
             if qid in fairness and not borrowed:
-                if _diagnostics.enabled: _diagnostics.step('jobs.Scheduler.tick:L388:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.Scheduler.tick:L388:then')
                 fairness.pop(qid, None)
                 self.store.put('queue_fair_turns', fairness)
             folder = self.store.root / 'jobs' / job['id']
@@ -493,14 +493,14 @@ class Scheduler:
 def _retry_locked(operation, *args, **kwargs):
     """Keep a live child running while a transient SQLite writer lock clears."""
     while True:
-        if _diagnostics.enabled: _diagnostics.step('jobs._retry_locked:L414:loop')
+        if _diagnostics.detailed: _diagnostics.step('jobs._retry_locked:L414:loop')
         try:
             return operation(*args, **kwargs)
         except sqlite3.OperationalError as exc:
             if _diagnostics.enabled: _diagnostics.step('jobs._retry_locked:L417:except')
             message = str(exc).lower()
             if 'locked' not in message and 'busy' not in message:
-                if _diagnostics.enabled: _diagnostics.step('jobs._retry_locked:L419:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs._retry_locked:L419:then')
                 raise
             time.sleep(0.5)
 
@@ -517,7 +517,7 @@ def run_hook(command, root, timeout, output, *, env=None, label=None, on_start=N
         raise RuntimeError(ui.text('scenarios.jobs.hook_failed', label=label, error=exc)) from exc
     try:
         if on_start:
-            if _diagnostics.enabled: _diagnostics.step('jobs.run_hook:L433:then')
+            if _diagnostics.detailed: _diagnostics.step('jobs.run_hook:L433:then')
             on_start(child)
         code = child.wait(timeout=timeout)
         if _diagnostics.enabled: _diagnostics.event('hook.exit_observed', pid=child.pid, returncode=code, label=label)
@@ -529,12 +529,12 @@ def run_hook(command, root, timeout, output, *, env=None, label=None, on_start=N
     except BaseException:
         if _diagnostics.enabled: _diagnostics.step('jobs.run_hook:L440:except')
         if child.poll() is None:
-            if _diagnostics.enabled: _diagnostics.step('jobs.run_hook:L441:then')
+            if _diagnostics.detailed: _diagnostics.step('jobs.run_hook:L441:then')
             _diagnostics.signal_process(child.pid, signal.SIGKILL)
             child.wait()
         raise
     if code:
-        if _diagnostics.enabled: _diagnostics.step('jobs.run_hook:L445:then')
+        if _diagnostics.detailed: _diagnostics.step('jobs.run_hook:L445:then')
         raise RuntimeError(ui.text('scenarios.jobs.hook_exit', label=label, code=code,
                                    command=shlex.join(command)))
 
@@ -544,16 +544,16 @@ def run_case_hooks(case, stage, store, jid, folder, env):
     ui = load_ui(case.get('_ui_dir'))
     errors = []
     if not case.get(stage):
-        if _diagnostics.enabled: _diagnostics.step('jobs.run_case_hooks:L453:then')
+        if _diagnostics.detailed: _diagnostics.step('jobs.run_case_hooks:L453:then')
         return errors
     label = ui.text('scenarios.jobs.preprocess' if stage == 'preprocess' else 'scenarios.jobs.postprocess')
     with (folder / f'{stage}.log').open('ab') as output:
         for hook in case[stage]:
-            if _diagnostics.enabled: _diagnostics.step('jobs.run_case_hooks:L457:loop', hook=hook)
+            if _diagnostics.detailed: _diagnostics.step('jobs.run_case_hooks:L457:loop', hook=hook)
             command = list(hook['command'])
             # A bare Allclean/Allpost (or another case-owned script) runs from the case.
             if '/' not in command[0] and (Path(case['_root']) / command[0]).is_file():
-                if _diagnostics.enabled: _diagnostics.step('jobs.run_case_hooks:L460:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.run_case_hooks:L460:then')
                 command[0] = './' + command[0]
             output.write((f'[{label}] {shlex.join(command)}\n').encode())
             output.flush()
@@ -567,7 +567,7 @@ def run_case_hooks(case, stage, store, jid, folder, env):
             except (OSError, RuntimeError) as exc:
                 if _diagnostics.enabled: _diagnostics.step('jobs.run_case_hooks:L471:except')
                 if stage == 'preprocess':
-                    if _diagnostics.enabled: _diagnostics.step('jobs.run_case_hooks:L472:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.run_case_hooks:L472:then')
                     raise
                 errors.append(str(exc))
             finally:
@@ -580,7 +580,7 @@ def run_case_hooks(case, stage, store, jid, folder, env):
 def _case_command(case, command):
     command = list(command)
     if '/' not in command[0] and (Path(case['_root']) / command[0]).is_file():
-        if _diagnostics.enabled: _diagnostics.step('jobs._case_command:L483:then')
+        if _diagnostics.detailed: _diagnostics.step('jobs._case_command:L483:then')
         command[0] = './' + command[0]
     return command
 
@@ -588,7 +588,7 @@ def _case_command(case, command):
 @_diagnostics.trace
 def _stop_child(child, timeout=10):
     if child is None or child.poll() is not None:
-        if _diagnostics.enabled: _diagnostics.step('jobs._stop_child:L489:then')
+        if _diagnostics.detailed: _diagnostics.step('jobs._stop_child:L489:then')
         return
     try:
         _diagnostics.signal_process(child.pid, signal.SIGTERM)
@@ -620,7 +620,7 @@ def worker(state_dir, jid):
     job = store.update_job(jid, expected=('starting',), status='running', started=now,
                            worker_pid=os.getpid(), worker_identity=identity(os.getpid()), phase='preprocess')
     if job is None:
-        if _diagnostics.enabled: _diagnostics.step('jobs.worker:L516:then')
+        if _diagnostics.detailed: _diagnostics.step('jobs.worker:L516:then')
         return 1
     solver = monitor = None
     monitor_output = None
@@ -653,7 +653,7 @@ def worker(state_dir, jid):
             monitoring = case.get('monitoring')
             monitor_ended_early = False
             if monitoring:
-                if _diagnostics.enabled: _diagnostics.step('jobs.worker:L548:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.worker:L548:then')
                 monitor_env = dict(env, TCB_MONITORED_SOLVER_PID=str(solver.pid),
                                    CFD_BOT_MONITOR_CPU=case['monitor_cpu'])
                 monitor_command = (['taskset', '-c', case['monitor_cpu']] +
@@ -669,7 +669,7 @@ def worker(state_dir, jid):
                               monitor_pid=monitor.pid, monitor_identity=identity(monitor.pid),
                               monitor_cpu=case['monitor_cpu'])
             if wants_event(case, 'started'):
-                if _diagnostics.enabled: _diagnostics.step('jobs.worker:L563:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.worker:L563:then')
                 notice = ('scenarios.notifications.queue_started_monitor'
                           if monitoring else 'scenarios.notifications.queue_started')
                 _retry_locked(
@@ -679,7 +679,7 @@ def worker(state_dir, jid):
                         cpu_list=case['cpu_set'], monitor_cpu=case.get('monitor_cpu', ''),
                         job_id=jid)))
             while True:
-                if _diagnostics.enabled: _diagnostics.step('jobs.worker:L572:loop')
+                if _diagnostics.detailed: _diagnostics.step('jobs.worker:L572:loop')
                 rc = solver.poll()
                 if _diagnostics.enabled and rc is not None:
                     _diagnostics.event('solver.exit_observed', job_id=jid, pid=solver.pid, returncode=rc, log_path=runner_log)
@@ -689,7 +689,7 @@ def worker(state_dir, jid):
                                              watcher=watcher)
                 configured_log = select_case_log(case, changed_from=initial_mtimes)
                 if configured_log is not None:
-                    if _diagnostics.enabled: _diagnostics.step('jobs.worker:L578:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.worker:L578:then')
                     telemetry = read_log(configured_log, log_states[str(configured_log)],
                                          final=rc is not None,
                                          watcher=watcher)
@@ -697,21 +697,21 @@ def worker(state_dir, jid):
                     log_states[str(configured_log)] = telemetry
                     current, log_path = telemetry, str(configured_log)
                 else:
-                    if _diagnostics.enabled: _diagnostics.step('jobs.worker:L578:else')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.worker:L578:else')
                     current, log_path = wrapper_telemetry, str(runner_log)
                 _retry_locked(store.update_job, jid, expected=('running',),
                               telemetry=current, log_path=log_path)
                 if rc is not None:
-                    if _diagnostics.enabled: _diagnostics.step('jobs.worker:L589:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.worker:L589:then')
                     break
                 if monitor is not None and monitor.poll() is not None:
-                    if _diagnostics.enabled: _diagnostics.step('jobs.worker:L591:then')
+                    if _diagnostics.detailed: _diagnostics.step('jobs.worker:L591:then')
                     monitor_ended_early = True
                 time.sleep(0.5)
         monitor_errors = []
         monitor_rc = None
         if monitor is not None:
-            if _diagnostics.enabled: _diagnostics.step('jobs.worker:L596:then')
+            if _diagnostics.detailed: _diagnostics.step('jobs.worker:L596:then')
             try:
                 monitor_rc = monitor.wait(timeout=30)
             except subprocess.TimeoutExpired:
@@ -721,10 +721,10 @@ def worker(state_dir, jid):
                 monitor_errors.append(ui.text('scenarios.jobs.hook_timeout',
                                                label=ui.text('scenarios.jobs.monitor'), timeout=30))
             if monitor_ended_early:
-                if _diagnostics.enabled: _diagnostics.step('jobs.worker:L604:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.worker:L604:then')
                 monitor_errors.append(ui.text('scenarios.jobs.monitor_ended_early', code=monitor_rc))
             elif monitor_rc:
-                if _diagnostics.enabled: _diagnostics.step('jobs.worker:L606:then')
+                if _diagnostics.detailed: _diagnostics.step('jobs.worker:L606:then')
                 monitor_errors.append(ui.text(
                     'scenarios.jobs.hook_exit', label=ui.text('scenarios.jobs.monitor'),
                     code=monitor_rc, command=shlex.join(monitoring['command'])))
@@ -743,7 +743,7 @@ def worker(state_dir, jid):
                       returncode=rc, solver_finished=time.time())
         post_errors = []
         if status == 'succeeded' and case['postprocess']:
-            if _diagnostics.enabled: _diagnostics.step('jobs.worker:L624:then')
+            if _diagnostics.detailed: _diagnostics.step('jobs.worker:L624:then')
             _retry_locked(store.update_job, jid, expected=('running',),
                           status='postprocessing', phase='postprocess')
             post_errors = run_case_hooks(case, 'postprocess', store, jid, folder, env)
@@ -767,7 +767,7 @@ def worker(state_dir, jid):
         _stop_child(solver)
         _stop_child(monitor)
         if monitor_output is not None:
-            if _diagnostics.enabled: _diagnostics.step('jobs.worker:L646:then')
+            if _diagnostics.detailed: _diagnostics.step('jobs.worker:L646:then')
             monitor_output.close()
         _retry_locked(store.update_job, jid, expected=LIVE, status='failed',
                       finished=time.time(),

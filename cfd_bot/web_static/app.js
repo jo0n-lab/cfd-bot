@@ -19,7 +19,7 @@ toast=CFDLog.wrap(toast,"web.ui.toast:L17:C0");
 
 async function api(path, data) {const __diagnosticCaller=CFDLog.currentCall();
   const response=await fetch(path,{method:data?'POST':'GET',headers:data?{'Content-Type':'application/json','X-CSRF-Token':S.csrf}:{},body:data?JSON.stringify(data):undefined});
-  const logging=response.headers.get('X-CFD-Diagnostics');if(logging!==null)CFDLog.configure(logging==='1');
+  const logging=response.headers.get('X-CFD-Diagnostics');if(logging!==null)CFDLog.configure(logging==='1',response.headers.get('X-CFD-Diagnostics-Level')||'basic');
   if(CFDLog.enabled)CFDLog.event('http.response',{request_call_id:__diagnosticCaller,path,method:data?'POST':'GET',status:response.status,server_trace:response.headers.get('X-CFD-Trace')});
   const result=await response.json(); if(!response.ok) throw new Error(result.error || '요청 실패'); return result;
 }

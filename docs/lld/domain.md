@@ -3,7 +3,7 @@
 [유즈케이스 그림](flows.md)에서 연결되는 공용 내부 시퀀스다. 각 함수의 타입·예외·저장 효과는 [LLD 계약](../LLD.md)에 정리했다. 실제 외부 ofps 실행과 Telegram API 호출은 플랫폼 그림에서도 생략하지 않는다.
 
 
-#18 진단 로그는 아래 모든 시퀀스의 실제 함수·분기에 적용한다. [공통 로그 계약](../DIAGNOSTICS.md)과 [시퀀스별 이벤트 대응표](../analysis/diagnostic-flow-coverage.md)를 함께 읽는다.
+#18/#30 진단 로그는 basic에서 업무 경계·명시적 사건·예외를, detailed에서 내부 함수·분기까지 기록한다. [공통 로그 계약](../DIAGNOSTICS.md)과 [시퀀스별 이벤트 대응표](../analysis/diagnostic-flow-coverage.md)를 함께 읽는다.
 
 
 내부 반복·파일 접근·잠금 범위는 [catalog LLD](../LLD.md#catalog), 현재 921행 매크로의 함수별 시간과 큐 응답량은 [운영 데이터 분석](../analysis/live-bottlenecks.md)에 있다. 그림의 보라색 loop는 함수 내부 반복이며 추가 함수가 아니다.
@@ -143,7 +143,7 @@
 **정상 결과:** caller가 estimate(case, telemetry, elapsed, history)로 ETA 산출.
 **실패/취소:** missing/실제 backlog는 live rate 보류; 최종 판정은 D-12.
 
-**코드 연결:** [logs.recent_case_log](../../cfd_bot/logs.py#L262), [logs.select_case_log](../../cfd_bot/logs.py#L240), [logs.recent_log](../../cfd_bot/logs.py#L199), [logs.read_log](../../cfd_bot/logs.py#L147), [logs.feed](../../cfd_bot/logs.py#L45).
+**코드 연결:** [logs.recent_case_log](../../cfd_bot/logs.py#L264), [logs.select_case_log](../../cfd_bot/logs.py#L242), [logs.recent_log](../../cfd_bot/logs.py#L201), [logs.read_log](../../cfd_bot/logs.py#L149), [logs.feed](../../cfd_bot/logs.py#L45).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -247,7 +247,7 @@
 
 **내부 로직·비용:** queued 전체의 history/ETA를 준비하고 본문도 전부 생성한다. 취소 버튼 20개 제한은 본문 제한이 아니다. [연결 횟수와 35개 메시지 분할 근거](../analysis/live-bottlenecks.md).
 
-**코드 연결:** [report.queue_text](../../cfd_bot/report.py#L151), [storage.Store.jobs](../../cfd_bot/storage.py#L154), [storage.Store.runtime_history](../../cfd_bot/storage.py#L342), [logs.estimate](../../cfd_bot/logs.py#L274), [storage.Store.connect](../../cfd_bot/storage.py#L105), [storage.Store.get](../../cfd_bot/storage.py#L115).
+**코드 연결:** [report.queue_text](../../cfd_bot/report.py#L151), [storage.Store.jobs](../../cfd_bot/storage.py#L154), [storage.Store.runtime_history](../../cfd_bot/storage.py#L342), [logs.estimate](../../cfd_bot/logs.py#L276), [storage.Store.connect](../../cfd_bot/storage.py#L105), [storage.Store.get](../../cfd_bot/storage.py#L115).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 
@@ -264,7 +264,7 @@
 **정상 결과:** macro별 요약 list; 19:05 queue dispatcher 표본에서 이 함수 7.874초.
 **실패/취소:** 실행 중 로그의 OSError/ValueError는 _remaining이 무시; 나머지는 caller 오류 처리.
 
-**코드 연결:** [run_views.running_macro_views](../../cfd_bot/run_views.py#L74), [run_views._remaining](../../cfd_bot/run_views.py#L50), [logs.recent_case_log](../../cfd_bot/logs.py#L262), [logs.estimate](../../cfd_bot/logs.py#L274), [storage.Store.runtime_history](../../cfd_bot/storage.py#L342).
+**코드 연결:** [run_views.running_macro_views](../../cfd_bot/run_views.py#L74), [run_views._remaining](../../cfd_bot/run_views.py#L50), [logs.recent_case_log](../../cfd_bot/logs.py#L264), [logs.estimate](../../cfd_bot/logs.py#L276), [storage.Store.runtime_history](../../cfd_bot/storage.py#L342).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 

@@ -106,7 +106,7 @@ class TicketEditor:
         scripts = self.tab('전·후처리')
 
         for row, (stage, label) in enumerate((('preprocess', '전처리'), ('postprocess', '후처리'))):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.__init__:L106:loop', row=row, stage=stage, label=label)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.__init__:L106:loop', row=row, stage=stage, label=label)
             self.multiline(scripts, row, stage, label, height=2, columnspan=1,
                            hint=f'기본값: {DEFAULT_SCRIPTS[stage]} · 한 줄에 한 명령 · 빈칸이면 실행하지 않음')
             @_diagnostics.trace
@@ -255,7 +255,7 @@ class TicketEditor:
     @_diagnostics.trace
     def execution_runner(self):
         if self.runner is None:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.execution_runner:L252:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.execution_runner:L252:then')
             from .config import load_bot
             from .storage import Store
             from .ticket_run import TicketRunner
@@ -266,18 +266,18 @@ class TicketEditor:
     @_diagnostics.trace
     def update_execution_button(self):
         if self.run_busy:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_button:L261:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_button:L261:then')
             self.run_button.configure(text='실행 상태 확인 중…', state='disabled')
             self.queue_button.configure(state='disabled')
             return
         if len(self.listbox.curselection()) > 1:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_button:L265:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_button:L265:then')
             self.run_button.configure(text='즉시 실행', state='disabled')
             self.queue_button.configure(state='disabled')
             self.run_status.set('실행할 티켓 한 개를 선택하세요.')
             return
         if not self.current:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_button:L270:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_button:L270:then')
             self.run_button.configure(text='저장 후 즉시 실행', state='normal')
             self.queue_button.configure(text='저장 후 대기열 등록', state='normal')
             self.run_status.set('티켓을 저장한 뒤 즉시 실행하거나 대기열에 등록할 수 있습니다.')
@@ -307,7 +307,7 @@ class TicketEditor:
     @_diagnostics.trace
     def stop_execution_poll(self):
         if getattr(self, '_execution_poll', None):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.stop_execution_poll:L296:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.stop_execution_poll:L296:then')
             self.root.after_cancel(self._execution_poll)
             self._execution_poll = None
 
@@ -330,30 +330,30 @@ class TicketEditor:
         @_diagnostics.trace
         def reveal(event):
             if not str(event.widget).startswith(str(body) + '.'):
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.tab.reveal:L316:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.tab.reveal:L316:then')
                 return
             self.root.update_idletasks()
             y = event.widget.winfo_rooty() - body.winfo_rooty()
             top = canvas.canvasy(0)
             if y < top or y + event.widget.winfo_height() > top + canvas.winfo_height():
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.tab.reveal:L321:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.tab.reveal:L321:then')
                 canvas.yview_moveto(max(0, y - 20) / max(body.winfo_height(), 1))
         self.root.bind('<FocusIn>', reveal, add='+')
 
         @_diagnostics.trace
         def wheel(event):
             if not str(event.widget).startswith(str(page)):
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.tab.wheel:L326:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.tab.wheel:L326:then')
                 return
             if isinstance(event.widget, (self.tk.Text, self.ttk.Treeview, self.ttk.Combobox)):
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.tab.wheel:L328:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.tab.wheel:L328:then')
                 return
             if body.winfo_height() > canvas.winfo_height():
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.tab.wheel:L330:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.tab.wheel:L330:then')
                 direction = -1 if event.num == 4 or event.delta > 0 else 1
                 canvas.yview_scroll(direction * 3, 'units')
         for sequence in ('<MouseWheel>', '<Button-4>', '<Button-5>'):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.tab:L333:loop', sequence=sequence)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.tab:L333:loop', sequence=sequence)
             self.root.bind(sequence, wheel, add='+')
         return body
 
@@ -364,14 +364,14 @@ class TicketEditor:
         variable = self.tk.StringVar(parent)
         self.variables[key] = (variable, choices)
         if choices:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.field:L342:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.field:L342:then')
             widget = self.ttk.Combobox(parent, textvariable=variable, values=list(choices.values()), state='readonly')
         else:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.field:L342:else')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.field:L342:else')
             widget = self.ttk.Entry(parent, textvariable=variable)
         widget.grid(row=row, column=1, sticky='ew', pady=(8, 0))
         if hint:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.field:L347:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.field:L347:then')
             self.ttk.Label(parent, text=hint, wraplength=500).grid(row=row + 1, column=1, columnspan=2,
                                                                  sticky='w', pady=(3, 0))
         return widget
@@ -395,7 +395,7 @@ class TicketEditor:
         widget.bind('<Tab>', next_field)
         self.texts[key] = widget
         if hint:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.multiline:L368:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.multiline:L368:then')
             self.ttk.Label(parent, text=hint, wraplength=500).grid(row=row + 1, column=1, columnspan=2,
                                                                  sticky='w', pady=(3, 0))
 
@@ -411,7 +411,7 @@ class TicketEditor:
     def event_checks(self, parent, events):
         variables = {}
         for event in events:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.event_checks:L381:loop', event=event)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.event_checks:L381:loop', event=event)
             variable = self.tk.BooleanVar(parent)
             self.ttk.Checkbutton(parent, text=EVENTS[event], variable=variable).pack(side='left', padx=(0, 12))
             variables[event] = variable
@@ -424,7 +424,7 @@ class TicketEditor:
         frame.pack(fill='both', expand=True)
         table = self.ttk.Treeview(frame, columns=columns, show='headings', selectmode='browse', height=12)
         for column, heading in zip(columns, headings):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.table:L392:loop', column=column, heading=heading)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.table:L392:loop', column=column, heading=heading)
             table.heading(column, text=heading)
             table.column(column, width=200 if column in ('command', 'pattern') else 100, minwidth=60)
         table.grid(row=0, column=0, sticky='nsew')
@@ -441,7 +441,7 @@ class TicketEditor:
         for label, callback in [('추가', _diagnostics.callback(lambda: self.edit_item(kind, new=True), 'TicketEditor.callback:L441')),
                                 ('수정', _diagnostics.callback(lambda: self.edit_item(kind), 'TicketEditor.callback:L442')),
                                 ('삭제', _diagnostics.callback(lambda: self.remove_item(kind), 'TicketEditor.callback:L443'))]:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.table:L406:loop', label=label, callback=callback)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.table:L406:loop', label=label, callback=callback)
             self.ttk.Button(buttons, text=label, command=callback).pack(side='left', padx=(0, 6))
         return table
 
@@ -450,7 +450,7 @@ class TicketEditor:
         self.sync_case_cores()
         values = {}
         for key, (variable, choices) in self.variables.items():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.values:L415:loop', key=key, variable=variable, choices=choices)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.values:L415:loop', key=key, variable=variable, choices=choices)
             value = variable.get()
             values[key] = {v: k for k, v in choices.items()}[value] if choices else value
         values.update({key: widget.get('1.0', 'end-1c') for key, widget in self.texts.items()})
@@ -459,7 +459,7 @@ class TicketEditor:
         values['_source'] = deepcopy(self.source)
         values['cases'] = deepcopy(self.macro_cases)
         if values.get('end_time') == self.auto_end:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.values:L423:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.values:L423:then')
             values['end_time'] = ''
         return values
 
@@ -467,15 +467,15 @@ class TicketEditor:
     def set_form(self, data):
         values = form_values(data, self.tickets_dir)
         for key, (variable, choices) in self.variables.items():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.set_form:L429:loop', key=key, variable=variable, choices=choices)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.set_form:L429:loop', key=key, variable=variable, choices=choices)
             variable.set(choices[values[key]] if choices else values[key])
         for key, widget in self.texts.items():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.set_form:L431:loop', key=key, widget=widget)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.set_form:L431:loop', key=key, widget=widget)
             widget.delete('1.0', 'end')
             widget.insert('1.0', values[key])
             widget.edit_reset()
         for event, variable in self.event_vars.items():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.set_form:L435:loop', event=event, variable=variable)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.set_form:L435:loop', event=event, variable=variable)
             variable.set(event in values['events'])
         self.source = values['_source']
         self.case_core_vars = {}
@@ -519,9 +519,9 @@ class TicketEditor:
         @_diagnostics.trace
         def set_enabled(parent):
             for widget in parent.winfo_children():
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_visibility.set_enabled:L473:loop', widget=widget)
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_visibility.set_enabled:L473:loop', widget=widget)
                 if widget.winfo_class() in ('TEntry', 'TCombobox', 'TCheckbutton'):
-                    if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_visibility.set_enabled:L474:then')
+                    if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_visibility.set_enabled:L474:then')
                     widget.configure(state='disabled' if child else
                                      'readonly' if widget.winfo_class() == 'TCombobox' else 'normal')
                 set_enabled(widget)
@@ -529,28 +529,28 @@ class TicketEditor:
         set_enabled(self.queue_profile)
         set_enabled(self.monitoring_execution)
         if self.variables['macro_cpu_policy'][0].get() == '고급: CPU 직접 지정':
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L481:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L481:then')
             self.manual_execution.grid()
         else:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L481:else')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L481:else')
             self.manual_execution.grid_remove()
         if macro or child or v['execution_source'] == 'ticket':
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L485:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L485:then')
             self.common_execution.grid()
         else:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L485:else')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L485:else')
             self.common_execution.grid_remove()
         if macro:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L489:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L489:then')
             self.discovery_filters.grid()
         else:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L489:else')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L489:else')
             self.discovery_filters.grid_remove()
         if v['monitoring_cpu']:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L493:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L493:then')
             self.monitoring_command_group.grid()
         else:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L493:else')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.update_execution_visibility:L493:else')
             self.monitoring_command_group.grid_remove()
         self.monitoring_command.configure(state='disabled' if child else 'normal')
         self.residual_picker.configure(state='disabled' if macro else 'normal')
@@ -560,7 +560,7 @@ class TicketEditor:
     def refresh_end_default(self):
         variable = self.variables['end_time'][0]
         if variable.get() not in ('', self.auto_end):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_end_default:L503:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_end_default:L503:then')
             return
         root = (self.tickets_dir / Path(self.variables['case_dir'][0].get()).expanduser()).resolve()
         control = control_times({'_root': str(root)})
@@ -572,10 +572,10 @@ class TicketEditor:
         self.sync_case_cores()
         self.case_core_vars = {}
         for child in self.case_rows.winfo_children():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.render_case_rows:L513:loop', child=child)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.render_case_rows:L513:loop', child=child)
             child.destroy()
         for index, row in enumerate(self.macro_cases):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.render_case_rows:L515:loop', index=index, row=row)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.render_case_rows:L515:loop', index=index, row=row)
             history = has_postprocessing(row['case_dir'])
             frame = self.ttk.Frame(self.case_rows, style='CaseHistory.TFrame' if history else 'TFrame')
             frame.grid(row=index, column=0, sticky='ew', pady=4)
@@ -586,7 +586,7 @@ class TicketEditor:
                            style='CaseHistory.TLabel' if history else 'TLabel',
                            wraplength=570).grid(row=0, column=0, sticky='ew')
             if self.variables.get('dynamic_cores', (None,))[0].get():
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.render_case_rows:L525:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.render_case_rows:L525:then')
                 cores = self.tk.StringVar(value=str(row.get('cores') or
                                                     self.variables['macro_cores'][0].get() or '1'))
                 self.case_core_vars[index] = cores
@@ -605,23 +605,23 @@ class TicketEditor:
     @_diagnostics.trace
     def sync_case_cores(self):
         for index, variable in self.case_core_vars.items():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.sync_case_cores:L541:loop', index=index, variable=variable)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.sync_case_cores:L541:loop', index=index, variable=variable)
             if index < len(self.macro_cases):
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.sync_case_cores:L542:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.sync_case_cores:L542:then')
                 self.macro_cases[index]['cores'] = variable.get().strip()
 
     @_diagnostics.trace
     def scan_cases(self):
         if self.scan_in_progress:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.scan_cases:L546:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.scan_cases:L546:then')
             return
         if self.values()['task_type'] != 'macro':
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.scan_cases:L548:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.scan_cases:L548:then')
             self.status.set('작업 종류를 매크로 작업으로 선택하세요.')
             return
         directory = self.variables['case_dir'][0].get().strip()
         if not directory:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.scan_cases:L552:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.scan_cases:L552:then')
             self.status.set('검색할 상위 Case directory를 지정하세요.')
             return
         from queue import Queue
@@ -658,27 +658,27 @@ class TicketEditor:
         @_diagnostics.trace
         def finish():
             if result.empty():
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.scan_cases.finish:L584:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.scan_cases.finish:L584:then')
                 self.root.after(100, finish)
                 return
             self.scan_in_progress = False
             self.scan_button.configure(state='normal')
             found = result.get()
             if isinstance(found, Exception):
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.scan_cases.finish:L590:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.scan_cases.finish:L590:then')
                 self.messagebox.showerror('검색 실패', str(found), parent=self.root)
             elif (self.variables['case_dir'][0].get().strip() == directory
                   and self.values()['task_type'] == 'macro'
                   and self.values()['case_include_patterns'] == include_text
                   and self.values()['case_exclude_patterns'] == exclude_text):
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.scan_cases.finish:L592:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.scan_cases.finish:L592:then')
                 self.case_core_vars = {}
                 self.macro_cases, skipped = found
                 if self.variables['dynamic_cores'][0].get():
-                    if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.scan_cases.finish:L598:then')
+                    if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.scan_cases.finish:L598:then')
                     default = self.variables['macro_cores'][0].get() or '1'
                     for row in self.macro_cases:
-                        if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.scan_cases.finish:L600:loop', row=row)
+                        if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.scan_cases.finish:L600:loop', row=row)
                         row['cores'] = default
                 self.render_case_rows()
                 self.status.set(f'선택 대상 {len(self.macro_cases)}개 · 검색 제외 {len(skipped)}개. 삭제 버튼으로 선택을 조정하세요.')
@@ -690,11 +690,11 @@ class TicketEditor:
         try:
             rules = self.pattern_library.load()[self.pattern_choice.get()]
             for key in ('failure_patterns',):
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.apply_pattern:L610:loop', key=key)
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.apply_pattern:L610:loop', key=key)
                 self.texts[key].delete('1.0', 'end')
                 self.texts[key].insert('1.0', '\n'.join(rules[key]))
             for key in ('openfoam_defaults',):
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.apply_pattern:L613:loop', key=key)
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.apply_pattern:L613:loop', key=key)
                 variable, choices = self.variables[key]
                 variable.set(choices[rules[key]] if choices else rules[key])
             self.status.set(f'패턴 적용: {self.pattern_choice.get()} · 티켓 저장 시 반영됩니다.')
@@ -707,15 +707,15 @@ class TicketEditor:
         from tkinter import simpledialog
         name = simpledialog.askstring('패턴 템플릿 저장', '다른 케이스에서도 사용할 템플릿 이름:', parent=self.root)
         if not name or not name.strip():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.save_pattern:L623:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.save_pattern:L623:then')
             return
         name = name.strip()
         try:
             templates = self.pattern_library.load()
             if name in templates and name != DEFAULT_NAME:
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.save_pattern:L628:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.save_pattern:L628:then')
                 if not self.messagebox.askyesno('패턴 덮어쓰기', f'{name} 템플릿을 덮어쓸까요?', parent=self.root):
-                    if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.save_pattern:L629:then')
+                    if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.save_pattern:L629:then')
                     return
             values = self.values()
             rules = {'failure_patterns': lines(values['failure_patterns'], strip=False),
@@ -732,7 +732,7 @@ class TicketEditor:
     def refresh_tables(self):
         self.export_table.delete(*self.export_table.get_children())
         for index, item in enumerate(self.exports):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_tables:L643:loop', index=index, item=item)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_tables:L643:loop', index=index, item=item)
             self.export_table.insert('', 'end', iid=str(index), values=(
                 item['name'], item['pattern'], '이미지' if item.get('kind', 'document') == 'photo' else '파일',
                 item.get('max_files', 1)))
@@ -742,7 +742,7 @@ class TicketEditor:
         table = self.export_table
         selection = table.selection()
         if not new and not selection:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.edit_item:L651:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.edit_item:L651:then')
             return
         index = None if new else int(selection[0])
         item = {} if new else deepcopy(self.exports[index])
@@ -759,19 +759,19 @@ class TicketEditor:
                 ('pattern', '파일 경로 / 패턴', ''),
                 ('kind', '전송 형식', 'document'),
                 ('max_files', '최대 파일 수 (1–10)', 1)]):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.edit_item:L663:loop', row=row, key=key, label=label, default=default)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.edit_item:L663:loop', row=row, key=key, label=label, default=default)
             self.ttk.Label(panel, text=label).grid(row=row, column=0, sticky='w', padx=(0, 12), pady=6)
             variable = self.tk.StringVar(panel, value=str(item.get(key, default)))
             fields[key] = variable
             if key == 'kind':
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.edit_item:L671:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.edit_item:L671:then')
                 widget = self.ttk.Combobox(panel, textvariable=variable, values=['photo', 'document'], state='readonly')
             else:
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.edit_item:L671:else')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.edit_item:L671:else')
                 widget = self.ttk.Entry(panel, textvariable=variable)
             widget.grid(row=row, column=1, sticky='ew', pady=6)
             if row == 0:
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.edit_item:L676:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.edit_item:L676:then')
                 widget.focus_set()
         self.ttk.Label(panel, text='케이스 기준 상대 경로. 예: postProcessing/contour*.png\n'
                                   'photo = 이미지, document = 파일. 최신 파일부터 요청한 개수만큼 보냅니다.',
@@ -785,10 +785,10 @@ class TicketEditor:
                 result = validate_export(result, self.exports,
                                          self.tickets_dir / Path(directory).expanduser(), index)
                 if index is None:
-                    if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.edit_item.apply:L688:then')
+                    if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.edit_item.apply:L688:then')
                     self.exports.append(result)
                 else:
-                    if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.edit_item.apply:L688:else')
+                    if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.edit_item.apply:L688:else')
                     self.exports[index] = result
                 self.refresh_tables()
                 table.selection_set(str(len(self.exports) - 1 if index is None else index))
@@ -807,7 +807,7 @@ class TicketEditor:
     @_diagnostics.trace
     def remove_item(self, kind='exports'):
         if self.export_table.selection():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.remove_item:L706:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.remove_item:L706:then')
             self.exports.pop(int(self.export_table.selection()[0]))
             self.refresh_tables()
 
@@ -816,21 +816,21 @@ class TicketEditor:
         self.files = [self.tickets_dir / name for name in self.service.listing()]
         self.listbox.delete(0, 'end')
         for index, path in enumerate(self.files):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh:L713:loop', index=index, path=path)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh:L713:loop', index=index, path=path)
             self.listbox.insert('end', path.name)
             if path == self.current:
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh:L715:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh:L715:then')
                 self.listbox.selection_set(index)
                 self.listbox.selection_anchor(index)
                 self.listbox.activate(index)
         if hasattr(self, 'run_button'):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh:L719:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh:L719:then')
             self.update_execution_button()
 
     @_diagnostics.trace
     def confirm_switch(self):
         if self.baseline is None or self.baseline == (self.filename.get(), self.values()):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.confirm_switch:L723:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.confirm_switch:L723:then')
             return True
         answer = self.messagebox.askyesnocancel('변경 내용 저장', '수정한 티켓을 저장할까요?', parent=self.root)
         return self.save() if answer else answer is not None
@@ -838,7 +838,7 @@ class TicketEditor:
     @_diagnostics.trace
     def new(self):
         if not self.confirm_switch():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.new:L729:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.new:L729:then')
             return
         self.current = None
         self.file_revision = None
@@ -853,18 +853,18 @@ class TicketEditor:
     def open_selected(self, _event=None):
         picked = self.listbox.curselection()
         if not picked:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_selected:L742:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.open_selected:L742:then')
             return
         if len(picked) > 1:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_selected:L744:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.open_selected:L744:then')
             self.status.set(f'{len(picked)}개 선택 · 선택 삭제로 한 번에 삭제합니다.')
             return
         path = self.files[picked[0]]
         if path == self.current:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_selected:L748:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.open_selected:L748:then')
             return
         if not self.confirm_switch():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_selected:L750:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.open_selected:L750:then')
             self.refresh()
             return
         try:
@@ -885,18 +885,18 @@ class TicketEditor:
     def duplicate(self):
         picked = self.listbox.curselection()
         if len(picked) != 1:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.duplicate:L768:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.duplicate:L768:then')
             self.status.set('복제할 티켓 한 개를 목록에서 선택하세요.')
             return
         path = self.files[picked[0]]
         was_current = path == self.current
         if not self.confirm_switch():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.duplicate:L773:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.duplicate:L773:then')
             self.refresh()
             return
         # Saving pending edits may have renamed the selected source ticket.
         if was_current:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.duplicate:L777:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.duplicate:L777:then')
             path = self.current
         try:
             draft = self.service.duplicate(path.name)
@@ -921,20 +921,20 @@ class TicketEditor:
     def suggest_names(self):
         directory = self.variables['case_dir'][0].get().strip()
         if not directory:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.suggest_names:L799:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.suggest_names:L799:then')
             return
         case_path = Path(directory).expanduser()
         if not case_path.is_absolute():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.suggest_names:L802:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.suggest_names:L802:then')
             case_path = self.tickets_dir / case_path
         name = case_path.resolve().name or 'case'
         variable = self.variables['name'][0]
         if variable.get() in ('', self.auto_name):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.suggest_names:L806:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.suggest_names:L806:then')
             variable.set(name)
             self.auto_name = name
         if self.filename.get() in ('', self.auto_filename):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.suggest_names:L809:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.suggest_names:L809:then')
             values = self.values()
             prefix = 'macro' if values['task_type'] == 'macro' else values['role']
             self.auto_filename = ticket_name(name + '.json', prefix)
@@ -947,7 +947,7 @@ class TicketEditor:
         selected = self.filedialog.askdirectory(title='OpenFOAM 케이스 디렉터리', parent=self.root,
                                                 initialdir=str(initial), mustexist=True)
         if selected:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.choose_case:L820:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.choose_case:L820:then')
             self.variables['case_dir'][0].set(selected)
             self.suggest_names()
 
@@ -955,14 +955,14 @@ class TicketEditor:
     def choose_residual(self):
         directory = self.variables['case_dir'][0].get().strip()
         if not directory:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.choose_residual:L826:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.choose_residual:L826:then')
             self.messagebox.showerror('케이스 경로 확인', 'Case directory를 먼저 입력하세요.', parent=self.root)
             return
         root = (self.tickets_dir / Path(directory).expanduser()).resolve()
         selected = self.filedialog.askopenfilename(title='Residual PNG 선택', parent=self.root,
                                                   initialdir=str(root), filetypes=[('PNG 이미지', '*.png')])
         if selected:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.choose_residual:L832:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.choose_residual:L832:then')
             try:
                 relative = Path(selected).resolve().relative_to(root)
             except ValueError:
@@ -975,14 +975,14 @@ class TicketEditor:
     def choose_logs(self):
         directory = self.variables['case_dir'][0].get().strip()
         if not directory:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.choose_logs:L842:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.choose_logs:L842:then')
             self.messagebox.showerror('케이스 경로 확인', 'Case directory를 먼저 입력하세요.', parent=self.root)
             return
         root = (self.tickets_dir / Path(directory).expanduser()).resolve()
         if self.values()['task_type'] == 'macro':
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.choose_logs:L846:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.choose_logs:L846:then')
             if not self.macro_cases:
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.choose_logs:L847:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.choose_logs:L847:then')
                 self.status.set('하위 케이스 검색 후 기준 케이스의 로그를 선택하거나 공통 상대 경로를 직접 입력하세요.')
                 return
             root = Path(self.macro_cases[0]['case_dir'])
@@ -990,7 +990,7 @@ class TicketEditor:
                                                    parent=self.root, initialdir=str(root),
                                                    filetypes=[('모든 파일', '*'), ('로그 파일', 'log*')])
         if not selected:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.choose_logs:L854:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.choose_logs:L854:then')
             return
         try:
             names = list(dict.fromkeys(str(Path(path).resolve().relative_to(root)) for path in selected))
@@ -1004,7 +1004,7 @@ class TicketEditor:
     @_diagnostics.trace
     def document(self):
         if self.scan_in_progress:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.document:L865:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.document:L865:then')
             raise ValueError('하위 케이스 검색이 끝난 뒤 저장하세요.')
         return self.service.validate(self.values(), self.filename.get(),
                                      self.current.name if self.current else None)
@@ -1032,10 +1032,10 @@ class TicketEditor:
             destination = self.tickets_dir / name
             overwrite = False
             if destination != self.current and destination.exists():
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.save:L889:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.save:L889:then')
                 overwrite = self.messagebox.askyesno('티켓 덮어쓰기', f'{name}이 이미 있습니다. 덮어쓸까요?', parent=self.root)
                 if not overwrite:
-                    if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.save:L891:then')
+                    if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.save:L891:then')
                     return False
             name, data = self.service.save(
                 values, name, self.current.name if self.current else None,
@@ -1056,16 +1056,16 @@ class TicketEditor:
     @_diagnostics.trace
     def submit(self, mode='run'):
         if self.run_busy:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.submit:L909:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.submit:L909:then')
             return
         if len(self.listbox.curselection()) > 1:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.submit:L911:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.submit:L911:then')
             self.status.set('실행할 티켓 한 개를 선택하세요.')
             return
         if self.current is None or self.baseline != (self.filename.get(), self.values()):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.submit:L914:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.submit:L914:then')
             if not self.save():
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.submit:L915:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.submit:L915:then')
                 return
         from queue import Queue
         from threading import Thread
@@ -1089,16 +1089,16 @@ class TicketEditor:
         @_diagnostics.trace
         def finish():
             if result.empty():
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.submit.finish:L934:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.submit.finish:L934:then')
                 self.root.after(100, finish)
                 return
             self.run_busy = False
             outcome = result.get()
             if isinstance(outcome, Exception):
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.submit.finish:L939:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.submit.finish:L939:then')
                 self.messagebox.showerror('실행 실패', str(outcome), parent=self.root)
             else:
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.submit.finish:L939:else')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.submit.finish:L939:else')
                 message = ('이미 큐에 등록되어 있습니다.' if outcome['already_queued'] else
                            '즉시 실행 요청 완료' if mode == 'run' else '대기열 등록 완료')
                 self.status.set(f'{name}: {message}')
@@ -1109,7 +1109,7 @@ class TicketEditor:
     @_diagnostics.trace
     def select_all_tickets(self):
         if self.listbox.size():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.select_all_tickets:L950:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.select_all_tickets:L950:then')
             self.listbox.selection_set(0, 'end')
 
     @_diagnostics.trace
@@ -1119,7 +1119,7 @@ class TicketEditor:
     @_diagnostics.trace
     def open_queue_manager(self):
         if self.queue_window is not None and self.queue_window.winfo_exists():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_queue_manager:L957:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.open_queue_manager:L957:then')
             self.refresh_queue_manager()
             self.queue_window.lift()
             return
@@ -1187,7 +1187,7 @@ class TicketEditor:
     @_diagnostics.trace
     def refresh_queue_manager(self):
         if not self.queue_listboxes or not self.queue_listbox.winfo_exists():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1022:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1022:then')
             return
         selected = {self.queue_jobs_by_lane[lane][index]['id']
                     for lane, box in self.queue_listboxes.items()
@@ -1195,14 +1195,14 @@ class TicketEditor:
                     if index < len(self.queue_jobs_by_lane[lane])}
         self.queue_jobs = self.queue_store.jobs(('queued',))
         for lane, box in self.queue_listboxes.items():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1029:loop', lane=lane, box=box)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1029:loop', lane=lane, box=box)
             self.queue_jobs_by_lane[lane] = list(self.queue_jobs)
             box.delete(0, 'end')
             for index, job in enumerate(self.queue_jobs_by_lane[lane]):
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1032:loop', index=index, job=job)
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1032:loop', index=index, job=job)
                 box.insert('end', f"{job_queue_id(job)} · {index + 1}. {job['case']['name']} · {job['id']} · {job['case_root']}")
                 if job['id'] in selected:
-                    if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1034:then')
+                    if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1034:then')
                     box.selection_set(index)
         self.queue_status.set(f'대기 작업 {len(self.queue_jobs)}개')
         from .config import cases_for, tickets_for
@@ -1213,50 +1213,50 @@ class TicketEditor:
         self.queue_active_jobs = [job_view(job, self.queue_registry) for job in active]
         self.queue_active_listbox.delete(0, 'end')
         for item in self.queue_active_jobs:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1044:loop', item=item)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1044:loop', item=item)
             cpus = item.get('actual_cpu_list') or 'CPU 배정 중'
             self.queue_active_listbox.insert(
                 'end', f"{item['name']} · {item['status']} · {cpus} · {item['case_dir']}")
         selected_result = None
         if self.queue_result_listbox is not None and self.queue_result_listbox.curselection():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1049:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1049:then')
             index = self.queue_result_listbox.curselection()[0]
             if index < len(self.queue_result_jobs):
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1051:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1051:then')
                 selected_result = self.queue_result_jobs[index]['id']
         history = [job for job in jobs if job['status'] not in
                    ('queued', 'starting', 'running', 'postprocessing')]
         self.queue_result_jobs = [job_view(job, self.queue_registry) for job in reversed(history)][:100]
         self.queue_result_listbox.delete(0, 'end')
         for index, item in enumerate(self.queue_result_jobs):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1057:loop', index=index, item=item)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1057:loop', index=index, item=item)
             tracking = '추적 가능' if item['trackable'] else '티켓 없음'
             self.queue_result_listbox.insert(
                 'end', f"[{tracking}] {item['name']} · {item['status']} · {item['case_dir']}")
             if item['id'] == selected_result:
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1061:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1061:then')
                 self.queue_result_listbox.selection_set(index)
         macros = running_macro_views(
             [ticket for ticket in tickets_for(self.queue_config) if ticket['task_type'] == 'macro'],
             cases, jobs, self.queue_store)
         if macros:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1066:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1066:then')
             summaries = []
             for macro in macros:
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1068:loop', macro=macro)
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1068:loop', macro=macro)
                 remaining = self._queue_duration(macro['remaining_seconds'])
                 summaries.append(f"{macro['name']}: {macro['completed']}/{macro['target']} · "
                                  f"경과 {self._queue_duration(macro['elapsed_seconds'])} · 남은 시간 {remaining}")
             self.queue_macro_status.set('실행 중인 매크로\n' + '\n'.join(summaries))
         else:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1066:else')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.refresh_queue_manager:L1066:else')
             self.queue_macro_status.set('실행 중인 매크로 없음')
 
     @staticmethod
     @_diagnostics.trace
     def _queue_duration(seconds):
         if seconds is None:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor._queue_duration:L1078:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor._queue_duration:L1078:then')
             return '알 수 없음'
         seconds = max(0, int(seconds))
         hours, rest = divmod(seconds, 3600)
@@ -1267,23 +1267,23 @@ class TicketEditor:
     def open_queue_result_data(self, _event=None):
         indexes = self.queue_result_listbox.curselection() if self.queue_result_listbox is not None else ()
         if len(indexes) != 1:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1087:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1087:then')
             self.queue_status.set('결과 데이터를 열 작업 하나를 선택하세요.')
             return
         item = self.queue_result_jobs[indexes[0]]
         if not item['trackable']:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1091:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1091:then')
             self.queue_status.set('현재 조회되는 티켓 JSON이 없어 결과 데이터를 추적할 수 없습니다.')
             return
         record = self.queue_registry.get(item['case_dir'])
         if record is None:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1095:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1095:then')
             self.queue_status.set('티켓 목록이 변경되었습니다. 새로고침하세요.')
             return
         case = record['case']
         lines = []
         if case.get('residual_pattern'):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1100:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1100:then')
             try:
                 paths = [entry['path'] for entry in residual_files(case)]
                 lines.append('Residual · ' + case['residual_pattern'])
@@ -1292,7 +1292,7 @@ class TicketEditor:
                 if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1105:except')
                 lines.append('Residual · ' + str(exc))
         for export in case['exports']:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1107:loop', export=export)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1107:loop', export=export)
             try:
                 paths = export_files(case, export)
                 lines.append(f"{export['name']} · {export['pattern']}")
@@ -1301,7 +1301,7 @@ class TicketEditor:
                 if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1112:except')
                 lines.append(f"{export['name']} · {exc}")
         if not lines:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1114:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1114:then')
             lines.append('티켓에 Residual 또는 요청 데이터 경로가 없습니다.')
         window = self.tk.Toplevel(self.queue_window)
         window.title('결과 요청 데이터 · ' + case['name'])
@@ -1313,21 +1313,21 @@ class TicketEditor:
         listing = self.tk.Listbox(frame)
         listing.pack(fill='both', expand=True)
         for line in lines:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1125:loop', line=line)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.open_queue_result_data:L1125:loop', line=line)
             listing.insert('end', line)
 
     @_diagnostics.trace
     def select_all_queue(self):
         for box in self.queue_listboxes.values():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.select_all_queue:L1129:loop', box=box)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.select_all_queue:L1129:loop', box=box)
             if box.size():
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.select_all_queue:L1130:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.select_all_queue:L1130:then')
                 box.selection_set(0, 'end')
 
     @_diagnostics.trace
     def clear_queue_selection(self):
         for box in self.queue_listboxes.values():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.clear_queue_selection:L1134:loop', box=box)
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.clear_queue_selection:L1134:loop', box=box)
             box.selection_clear(0, 'end')
 
     @_diagnostics.trace
@@ -1336,12 +1336,12 @@ class TicketEditor:
                for lane, box in self.queue_listboxes.items()
                for index in box.curselection()]
         if not ids:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.cancel_queue_selection:L1141:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.cancel_queue_selection:L1141:then')
             self.queue_status.set('취소할 대기 작업을 하나 이상 선택하세요.')
             return
         if not self.messagebox.askyesno('선택 작업 취소', f'선택한 대기 작업 {len(ids)}개를 취소할까요?',
                                         parent=self.queue_window):
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.cancel_queue_selection:L1144:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.cancel_queue_selection:L1144:then')
             return
         try:
             result = cancel_queued_jobs(self.queue_store, ids)
@@ -1357,7 +1357,7 @@ class TicketEditor:
     def delete(self):
         names = [self.files[index].name for index in self.listbox.curselection()]
         if not names:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.delete:L1158:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.delete:L1158:then')
             self.status.set('삭제할 티켓을 목록에서 선택하세요. Ctrl / Shift로 여러 개를 선택할 수 있습니다.')
             return
         try:
@@ -1368,7 +1368,7 @@ class TicketEditor:
                     + ('\n…' if len(plan['names']) > 20 else '')
                     + '\n\n케이스 폴더와 계산 결과는 유지됩니다.')
             if not self.messagebox.askyesno('티켓 삭제', text, parent=self.root):
-                if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.delete:L1168:then')
+                if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.delete:L1168:then')
                 return
             deleted = self.service.delete_many(plan['names'], plan['revisions'])
         except (OSError, ValueError) as exc:
@@ -1376,18 +1376,18 @@ class TicketEditor:
             self.messagebox.showerror('삭제 실패', str(exc), parent=self.root)
             return
         if self.current and self.current.name in deleted:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.delete:L1174:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.delete:L1174:then')
             self.baseline = None
             self.new()
         else:
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.delete:L1174:else')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.delete:L1174:else')
             self.refresh()
         self.status.set(f'{len(deleted)}개 티켓 삭제 완료')
 
     @_diagnostics.trace
     def close(self):
         if self.confirm_switch():
-            if _diagnostics.enabled: _diagnostics.step('gui.TicketEditor.close:L1182:then')
+            if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.close:L1182:then')
             self.stop_execution_poll()
             self.root.destroy()
 

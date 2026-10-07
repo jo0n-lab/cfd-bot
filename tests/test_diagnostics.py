@@ -21,7 +21,7 @@ class DiagnosticsTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.addCleanup(self.temp.cleanup)
         self.addCleanup(d.close)
-        d.configure({'diagnostic_logging': {'directory': str(self.root)}}, active=True)
+        d.configure({'diagnostic_logging': {'level': 'detailed', 'directory': str(self.root)}}, active=True)
 
     def records(self):
         d.flush()
@@ -103,7 +103,7 @@ class DiagnosticsTests(unittest.TestCase):
         self.assertEqual(d.child_environment({})['CFD_BOT_DIAGNOSTICS'],'0')
 
     def test_batches_keep_every_branch_and_rotation_keeps_source_header(self):
-        d.configure({'diagnostic_logging': {'directory': str(self.root), 'max_bytes': 1024, 'backups': 3}}, active=True)
+        d.configure({'diagnostic_logging': {'level': 'detailed', 'directory': str(self.root), 'max_bytes': 1024, 'backups': 3}}, active=True)
         @d.trace
         def work():
             for i in range(180):d.step('synthetic.loop', index=i)
@@ -239,7 +239,7 @@ printf 'status=%s\\n' "$status"
 false | true
 printf 'pipeline=%s\\n' "$?"
 '''
-        env=dict(os.environ,CFD_BOT_DIAGNOSTICS='1',CFD_BOT_DIAGNOSTICS_DIR=str(self.root/'shell'))
+        env=dict(os.environ,CFD_BOT_DIAGNOSTICS='1',CFD_BOT_DIAGNOSTICS_LEVEL='detailed',CFD_BOT_DIAGNOSTICS_DIR=str(self.root/'shell'))
         result=subprocess.run(['bash','-o','pipefail','-c',script,'test',str(helper)],env=env,capture_output=True,text=True,timeout=10)
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertEqual(result.stdout,'unchanged\nstatus=7\npipeline=1\n')

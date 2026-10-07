@@ -1,0 +1,62 @@
+[
+  {
+    "mode": "off",
+    "count": 40,
+    "generated_events": 0,
+    "p50_ms": 0.20000076293945312,
+    "p95_ms": 0.8999996185302734,
+    "retained": 18,
+    "overwritten": 0,
+    "estimated_buffer_bytes": 11710
+  },
+  {
+    "mode": "off",
+    "count": 1000,
+    "generated_events": 0,
+    "p50_ms": 3.5,
+    "p95_ms": 4.5,
+    "retained": 18,
+    "overwritten": 0,
+    "estimated_buffer_bytes": 11710
+  },
+  {
+    "mode": "basic",
+    "count": 40,
+    "generated_events": 46,
+    "p50_ms": 0.20000076293945312,
+    "p95_ms": 0.6999998092651367,
+    "retained": 64,
+    "overwritten": 0,
+    "estimated_buffer_bytes": 16382
+  },
+  {
+    "mode": "basic",
+    "count": 1000,
+    "generated_events": 46,
+    "p50_ms": 3.700000286102295,
+    "p95_ms": 5.199999809265137,
+    "retained": 110,
+    "overwritten": 0,
+    "estimated_buffer_bytes": 20894
+  },
+  {
+    "mode": "detailed",
+    "count": 40,
+    "generated_events": 18446,
+    "p50_ms": 2.3999996185302734,
+    "p95_ms": 4.40000057220459,
+    "retained": 10785,
+    "overwritten": 7680,
+    "estimated_buffer_bytes": 8366928
+  },
+  {
+    "mode": "detailed",
+    "count": 1000,
+    "generated_events": 460046,
+    "p50_ms": 72.5499997138977,
+    "p95_ms": 108.5,
+    "retained": 17199,
+    "overwritten": 461312,
+    "estimated_buffer_bytes": 8368376
+  }
+]

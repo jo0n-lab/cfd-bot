@@ -1,5 +1,7 @@
 # CFD bot High-Level Design
 
+> #30 수집 수준 분리: ON 기본 `basic`은 업무 경계·사용자 이벤트·티켓/작업 변경·경고/예외를 기록한다. 내부 정상 함수·분기/반복은 `detailed` 전용이다. [설계 이력](history/2026-10-07-diagnostic-logging-levels.md) · [최신 성능](analysis/diagnostic-level-performance.md).
+
 > #18 사후 원인 분석 로그: [설정·기록·읽기](DIAGNOSTICS.md) · [모든 시퀀스 대응표](analysis/diagnostic-flow-coverage.md) · [ON/OFF 실측](analysis/diagnostic-performance.md). 업무 정책 변경 없이 기록만 추가하며 기본 OFF다.
 
 > #20 운영 구조에 #21 이름 있는 대기열·동적 매크로, #22 `.process-core` CPU binding, #24 코어 수 기반 자동 quota, #25 `ofps` monitor CPU 관측, #26 SQLite lock 격리를 반영했다. [#25 설계](history/2026-10-07-ofps-monitor-cpu-observation.md) · [#26 설계](history/2026-10-07-terminal-event-db-lock.md).

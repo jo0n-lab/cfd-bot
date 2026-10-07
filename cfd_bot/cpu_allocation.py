@@ -12,12 +12,12 @@ from .ui import load_ui
 def format_cpus(cpus):
     ranges = []
     for cpu in sorted(cpus):
-        if _diagnostics.enabled: _diagnostics.step('cpu_allocation.format_cpus:L12:loop', cpu=cpu)
+        if _diagnostics.detailed: _diagnostics.step('cpu_allocation.format_cpus:L12:loop', cpu=cpu)
         if ranges and cpu == ranges[-1][1] + 1:
-            if _diagnostics.enabled: _diagnostics.step('cpu_allocation.format_cpus:L13:then')
+            if _diagnostics.detailed: _diagnostics.step('cpu_allocation.format_cpus:L13:then')
             ranges[-1][1] = cpu
         else:
-            if _diagnostics.enabled: _diagnostics.step('cpu_allocation.format_cpus:L13:else')
+            if _diagnostics.detailed: _diagnostics.step('cpu_allocation.format_cpus:L13:else')
             ranges.append([cpu, cpu])
     return ','.join(str(lo) if lo == hi else f'{lo}-{hi}' for lo, hi in ranges)
 
@@ -28,7 +28,7 @@ def topology(root=Path('/sys/devices/system/cpu')):
     ui = load_ui()
     result = {}
     for cpu in sorted(cpu_set((root / 'online').read_text().strip())):
-        if _diagnostics.enabled: _diagnostics.step('cpu_allocation.topology:L24:loop', cpu=cpu)
+        if _diagnostics.detailed: _diagnostics.step('cpu_allocation.topology:L24:loop', cpu=cpu)
         folder = root / f'cpu{cpu}'
         socket = int((folder / 'topology/physical_package_id').read_text())
         core = int((folder / 'topology/core_id').read_text())
@@ -36,7 +36,7 @@ def topology(root=Path('/sys/devices/system/cpu')):
         # Non-NUMA Linux systems need only the socket restriction.
         node = int(nodes[0].name[4:]) if len(nodes) == 1 else -1
         if socket < 0 or core < 0 or len(nodes) > 1:
-            if _diagnostics.enabled: _diagnostics.step('cpu_allocation.topology:L31:then')
+            if _diagnostics.detailed: _diagnostics.step('cpu_allocation.topology:L31:then')
             raise ValueError(ui.text('scenarios.runtime.cpu.topology_missing', cpu=cpu))
         result[cpu] = (socket, node, core)
     return result
@@ -47,21 +47,21 @@ def occupied_cpus(observed, active):
     ui = load_ui()
     busy = set()
     for record in observed.values():
-        if _diagnostics.enabled: _diagnostics.step('cpu_allocation.occupied_cpus:L40:loop', record=record)
+        if _diagnostics.detailed: _diagnostics.step('cpu_allocation.occupied_cpus:L40:loop', record=record)
         processes = record.get('processes', [])
         values = [p.get('cpu_list') for p in processes] if processes else [record.get('actual_cpu_list')]
         for value in values:
-            if _diagnostics.enabled: _diagnostics.step('cpu_allocation.occupied_cpus:L43:loop', value=value)
+            if _diagnostics.detailed: _diagnostics.step('cpu_allocation.occupied_cpus:L43:loop', value=value)
             if not value or value == ui.text('strings.common.unspecified'):
-                if _diagnostics.enabled: _diagnostics.step('cpu_allocation.occupied_cpus:L44:then')
+                if _diagnostics.detailed: _diagnostics.step('cpu_allocation.occupied_cpus:L44:then')
                 raise ValueError(ui.text('scenarios.runtime.cpu.busy_unknown'))
             busy.update(cpu_set(value))
     for job in active:
-        if _diagnostics.enabled: _diagnostics.step('cpu_allocation.occupied_cpus:L47:loop', job=job)
+        if _diagnostics.detailed: _diagnostics.step('cpu_allocation.occupied_cpus:L47:loop', job=job)
         busy.update(cpu_set(job['case']['cpu_set']))
         monitor_cpu = job['case'].get('monitor_cpu')
         if monitor_cpu:
-            if _diagnostics.enabled: _diagnostics.step('cpu_allocation.occupied_cpus:L50:then')
+            if _diagnostics.detailed: _diagnostics.step('cpu_allocation.occupied_cpus:L50:then')
             busy.update(cpu_set(monitor_cpu))
     return busy
 
@@ -73,57 +73,57 @@ def select_cpus(count, layout, allowed, busy):
     groups = defaultdict(dict)
     occupied_cores = {(layout[c][0], layout[c][2]) for c in busy if c in layout}
     for cpu in sorted(set(allowed) & layout.keys()):
-        if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L60:loop', cpu=cpu)
+        if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L60:loop', cpu=cpu)
         socket, node, core = layout[cpu]
         groups[socket, node].setdefault(core, cpu)
     capacity = sum(len(cores) for cores in groups.values())
     if count < 1 or count > capacity:
-        if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L64:then')
+        if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L64:then')
         raise ValueError(ui.text('scenarios.runtime.cpu.capacity', count=count, capacity=capacity))
     candidates, free_groups, availability = [], [], []
     for (socket, node), cores in sorted(groups.items()):
-        if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L67:loop', cores=cores, socket=socket, node=node)
+        if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L67:loop', cores=cores, socket=socket, node=node)
         free = sorted(cpu for core, cpu in cores.items() if (socket, core) not in occupied_cores)
         if free:
-            if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L69:then')
+            if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L69:then')
             free_groups.append((socket, node, free))
         availability.append(ui.text('scenarios.runtime.cpu.availability', socket=socket,
                                     node=node, count=len(free)))
         if len(free) >= count:
-            if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L73:then')
+            if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L73:then')
             candidates.append((len(free), socket, node, free))
     if sum(len(free) for _, _, free in free_groups) < count:
-        if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L75:then')
+        if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L75:then')
         raise ValueError(ui.text('scenarios.runtime.cpu.waiting', count=count,
                                  availability=', '.join(availability)))
     if candidates:
-        if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L78:then')
+        if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L78:then')
         _, _, _, free = min(candidates)
         selected = free[:count]
     else:
         # Use as few NUMA nodes as possible, then balance ranks across them.
-        if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L78:else')
+        if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L78:else')
         selected_groups, room = [], 0
         for socket, node, free in sorted(free_groups, key=lambda g: (-len(g[2]), g[0], g[1])):
-            if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L84:loop', socket=socket, node=node, free=free)
+            if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L84:loop', socket=socket, node=node, free=free)
             selected_groups.append(free)
             room += len(free)
             if room >= count:
-                if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L87:then')
+                if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L87:then')
                 break
         selected = []
         for index in range(max(map(len, selected_groups))):
-            if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L90:loop', index=index)
+            if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L90:loop', index=index)
             for free in selected_groups:
-                if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L91:loop', free=free)
+                if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L91:loop', free=free)
                 if index < len(free):
-                    if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L92:then')
+                    if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L92:then')
                     selected.append(free[index])
                     if len(selected) == count:
-                        if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L94:then')
+                        if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L94:then')
                         break
             if len(selected) == count:
-                if _diagnostics.enabled: _diagnostics.step('cpu_allocation.select_cpus:L96:then')
+                if _diagnostics.detailed: _diagnostics.step('cpu_allocation.select_cpus:L96:then')
                 break
     return dict(cpu_set=format_cpus(selected),
                 sockets=sorted({layout[c][0] for c in selected}),
@@ -159,22 +159,22 @@ def capacity_status(case, observed, active, config):
     reason = ''
     try:
         if automatic:
-            if _diagnostics.enabled: _diagnostics.step('cpu_allocation.capacity_status:L128:then')
+            if _diagnostics.detailed: _diagnostics.step('cpu_allocation.capacity_status:L128:then')
             select_cpus(required, topology(), pool, busy)
         else:
-            if _diagnostics.enabled: _diagnostics.step('cpu_allocation.capacity_status:L128:else')
+            if _diagnostics.detailed: _diagnostics.step('cpu_allocation.capacity_status:L128:else')
             unavailable = requested - pool
             overlap = requested & busy
             if unavailable:
-                if _diagnostics.enabled: _diagnostics.step('cpu_allocation.capacity_status:L133:then')
+                if _diagnostics.detailed: _diagnostics.step('cpu_allocation.capacity_status:L133:then')
                 can_run = False
                 reason = f"CPU {format_cpus(unavailable)} is outside the managed pool"
             elif overlap:
-                if _diagnostics.enabled: _diagnostics.step('cpu_allocation.capacity_status:L136:then')
+                if _diagnostics.detailed: _diagnostics.step('cpu_allocation.capacity_status:L136:then')
                 can_run = False
                 reason = f"CPU {format_cpus(overlap)} is already occupied"
             elif monitor_requested:
-                if _diagnostics.enabled: _diagnostics.step('cpu_allocation.capacity_status:L139:then')
+                if _diagnostics.detailed: _diagnostics.step('cpu_allocation.capacity_status:L139:then')
                 select_cpus(1, topology(), pool, busy | requested)
     except ValueError as exc:
         if _diagnostics.enabled: _diagnostics.step('cpu_allocation.capacity_status:L141:except')

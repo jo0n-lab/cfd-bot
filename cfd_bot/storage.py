@@ -26,13 +26,13 @@ def runtime_profile(case):
 @_diagnostics.trace
 def runtime_sample(run):
     if run.get('status') != 'succeeded':
-        if _diagnostics.enabled: _diagnostics.step('storage.runtime_sample:L25:then')
+        if _diagnostics.detailed: _diagnostics.step('storage.runtime_sample:L25:then')
         return None
     started = run.get('started')
     finished = run.get('solver_finished', run.get('finished'))
     if not all(isinstance(value, (int, float)) and math.isfinite(value)
                for value in (started, finished)) or finished <= started:
-        if _diagnostics.enabled: _diagnostics.step('storage.runtime_sample:L29:then')
+        if _diagnostics.detailed: _diagnostics.step('storage.runtime_sample:L29:then')
         return None
     return dict(id=run['id'], finished=finished, seconds=finished - started,
                 cores=run.get('actual_cores'), profile=runtime_profile(run['case']))
@@ -92,7 +92,7 @@ class Store:
             # One-time recovery also covers old workers that know only jobs/kv.
             db.execute('BEGIN IMMEDIATE')
             if not db.execute("SELECT 1 FROM kv WHERE key='ticket_index_migrated'").fetchone():
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.__init__:L88:then')
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.__init__:L88:then')
                 db.execute('INSERT INTO ticket_changes(case_root) SELECT DISTINCT case_root FROM jobs')
                 db.execute("INSERT INTO ticket_changes(case_root) SELECT substr(key,10) FROM kv "
                            "WHERE substr(key,1,9)='observed:'")
@@ -122,13 +122,13 @@ class Store:
         """Read many kv values through one SQLite connection."""
         keys = list(dict.fromkeys(keys))
         if not keys:
-            if _diagnostics.enabled: _diagnostics.step('storage.Store.get_many:L114:then')
+            if _diagnostics.detailed: _diagnostics.step('storage.Store.get_many:L114:then')
             return {}
         found = {}
         with self.connect() as db:
             # Stay comfortably below SQLite builds with the legacy 999-variable limit.
             for start in range(0, len(keys), 500):
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.get_many:L119:loop', start=start)
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.get_many:L119:loop', start=start)
                 batch = keys[start:start + 500]
                 rows = db.execute(
                     'SELECT key, body FROM kv WHERE key IN (%s)' % ','.join('?' for _ in batch),
@@ -146,7 +146,7 @@ class Store:
         with self.connect() as db:
             row = db.execute('SELECT body FROM jobs WHERE id=?', (jid,)).fetchone()
         if not row:
-            if _diagnostics.enabled: _diagnostics.step('storage.Store.job:L134:then')
+            if _diagnostics.detailed: _diagnostics.step('storage.Store.job:L134:then')
             raise ValueError(load_ui().text('scenarios.diagnostics.storage.unknown_job', job_id=jid))
         return json.loads(row[0])
 
@@ -154,11 +154,11 @@ class Store:
     def jobs(self, statuses=None):
         with self.connect() as db:
             if statuses:
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.jobs:L140:then')
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.jobs:L140:then')
                 rows = db.execute('SELECT body FROM jobs WHERE status IN (%s) ORDER BY created' %
                                   ','.join('?' for _ in statuses), tuple(statuses)).fetchall()
             else:
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.jobs:L140:else')
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.jobs:L140:else')
                 rows = db.execute('SELECT body FROM jobs ORDER BY created').fetchall()
         return [json.loads(r[0]) for r in rows]
 
@@ -185,11 +185,11 @@ class Store:
             db.execute('BEGIN IMMEDIATE')
             row = db.execute('SELECT body FROM jobs WHERE id=?', (jid,)).fetchone()
             if row is None:
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.mark_terminal_published:L167:then')
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.mark_terminal_published:L167:then')
                 return False
             job = json.loads(row[0])
             if job['status'] not in ('succeeded', 'failed', 'interrupted'):
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.mark_terminal_published:L170:then')
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.mark_terminal_published:L170:then')
                 return False
             job['terminal_event_published'] = True
             db.execute('UPDATE jobs SET body=? WHERE id=?', (json.dumps(job), jid))
@@ -201,7 +201,7 @@ class Store:
         result = []
         with self.connect() as db:
             for start in range(0, len(roots), 500):
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.jobs_for_roots:L180:loop', start=start)
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.jobs_for_roots:L180:loop', start=start)
                 batch = roots[start:start + 500]
                 result.extend(json.loads(r[0]) for r in db.execute(
                     'SELECT body FROM jobs WHERE case_root IN (%s) ORDER BY created' %
@@ -236,7 +236,7 @@ class Store:
     def enqueue(self, case, request_key=None, priority='queue', queue_lane=1,
                 queue_id=None, queue_cpu_set=None, dynamic_cores=None):
         if not case.get('command') and not (Path(case['_root']) / 'Allrun').is_file():
-            if _diagnostics.enabled: _diagnostics.step('storage.Store.enqueue:L209:then')
+            if _diagnostics.detailed: _diagnostics.step('storage.Store.enqueue:L209:then')
             raise ValueError(load_ui(case.get('_ui_dir')).text('scenarios.diagnostics.storage.read_only'))
         profile = queue_profile(case)
         queue_id = queue_id or (profile['id'] if profile else None)
@@ -246,25 +246,25 @@ class Store:
                    queue_lane=queue_lane,
                    dynamic_cores=bool(case.get('dynamic_cores') if dynamic_cores is None else dynamic_cores))
         if queue_id:
-            if _diagnostics.enabled: _diagnostics.step('storage.Store.enqueue:L218:then')
+            if _diagnostics.detailed: _diagnostics.step('storage.Store.enqueue:L218:then')
             job['queue_id'] = queue_id
             if queue_cpu_set:
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.enqueue:L220:then')
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.enqueue:L220:then')
                 job['queue_cpu_set'] = queue_cpu_set
         try:
             with self.connect() as db:
                 db.execute('BEGIN IMMEDIATE')
                 if request_key:
-                    if _diagnostics.enabled: _diagnostics.step('storage.Store.enqueue:L225:then')
+                    if _diagnostics.detailed: _diagnostics.step('storage.Store.enqueue:L225:then')
                     row = db.execute('SELECT body FROM kv WHERE key=?', ('enqueue:' + request_key,)).fetchone()
                     if row:
-                        if _diagnostics.enabled: _diagnostics.step('storage.Store.enqueue:L227:then')
+                        if _diagnostics.detailed: _diagnostics.step('storage.Store.enqueue:L227:then')
                         old = db.execute('SELECT body FROM jobs WHERE id=?', (json.loads(row[0]),)).fetchone()
                         return json.loads(old[0])
                 db.execute('INSERT INTO jobs VALUES (?,?,?,?,?)',
                            (job['id'], job['case_root'], job['status'], job['created'], json.dumps(job)))
                 if request_key:
-                    if _diagnostics.enabled: _diagnostics.step('storage.Store.enqueue:L232:then')
+                    if _diagnostics.detailed: _diagnostics.step('storage.Store.enqueue:L232:then')
                     db.execute('INSERT INTO kv VALUES (?,?)', ('enqueue:' + request_key, json.dumps(job['id'])))
         except sqlite3.IntegrityError as exc:
             if _diagnostics.enabled: _diagnostics.step('storage.Store.enqueue:L234:except')
@@ -282,17 +282,17 @@ class Store:
             with self.connect() as db:
                 db.execute('BEGIN IMMEDIATE')
                 for index, case in enumerate(cases):
-                    if _diagnostics.enabled: _diagnostics.step('storage.Store.enqueue_batch:L246:loop', index=index, case=case)
+                    if _diagnostics.detailed: _diagnostics.step('storage.Store.enqueue_batch:L246:loop', index=index, case=case)
                     key = f'enqueue:ticket:{request}:{index}'
                     row = db.execute('SELECT body FROM kv WHERE key=?', (key,)).fetchone()
                     if row:
-                        if _diagnostics.enabled: _diagnostics.step('storage.Store.enqueue_batch:L249:then')
+                        if _diagnostics.detailed: _diagnostics.step('storage.Store.enqueue_batch:L249:then')
                         old = db.execute('SELECT body FROM jobs WHERE id=?',
                                          (json.loads(row[0]),)).fetchone()
                         jobs.append(json.loads(old[0]))
                         continue
                     if not case.get('command') and not (Path(case['_root']) / 'Allrun').is_file():
-                        if _diagnostics.enabled: _diagnostics.step('storage.Store.enqueue_batch:L254:then')
+                        if _diagnostics.detailed: _diagnostics.step('storage.Store.enqueue_batch:L254:then')
                         raise ValueError(load_ui(case.get('_ui_dir')).text(
                             'scenarios.diagnostics.storage.missing_command', name=case['name']))
                     profile = queue_profile(case)
@@ -305,10 +305,10 @@ class Store:
                                dynamic_cores=bool(case.get('dynamic_cores')
                                                   if dynamic_cores is None else dynamic_cores))
                     if qid:
-                        if _diagnostics.enabled: _diagnostics.step('storage.Store.enqueue_batch:L266:then')
+                        if _diagnostics.detailed: _diagnostics.step('storage.Store.enqueue_batch:L266:then')
                         job['queue_id'] = qid
                         if qcpus:
-                            if _diagnostics.enabled: _diagnostics.step('storage.Store.enqueue_batch:L268:then')
+                            if _diagnostics.detailed: _diagnostics.step('storage.Store.enqueue_batch:L268:then')
                             job['queue_cpu_set'] = qcpus
                     db.execute('INSERT INTO jobs VALUES (?,?,?,?,?)',
                                (job['id'], job['case_root'], job['status'], job['created'], json.dumps(job)))
@@ -327,7 +327,7 @@ class Store:
         """Keep successful external runs after the observed slot is replaced."""
         sample = runtime_sample(run)
         if sample is None:
-            if _diagnostics.enabled: _diagnostics.step('storage.Store.remember_run:L282:then')
+            if _diagnostics.detailed: _diagnostics.step('storage.Store.remember_run:L282:then')
             return
         root = run['case']['_root']
         with self.connect() as db:
@@ -349,10 +349,10 @@ class Store:
                               'ORDER BY created DESC LIMIT 20', (root,)).fetchall()
         samples = {sample['id']: sample for sample in (json.loads(row[0]) for row in rows)}
         for run in [*(json.loads(row[0]) for row in jobs), self.get('observed:' + root)]:
-            if _diagnostics.enabled: _diagnostics.step('storage.Store.runtime_history:L302:loop', run=run)
+            if _diagnostics.detailed: _diagnostics.step('storage.Store.runtime_history:L302:loop', run=run)
             sample = runtime_sample(run) if run else None
             if sample:
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.runtime_history:L304:then')
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.runtime_history:L304:then')
                 samples[sample['id']] = sample
         profile = runtime_profile(case)
         return sorted((sample for sample in samples.values()
@@ -366,11 +366,11 @@ class Store:
             db.execute('BEGIN IMMEDIATE')
             row = db.execute('SELECT body FROM jobs WHERE id=?', (jid,)).fetchone()
             if row is None:
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.update_job:L316:then')
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.update_job:L316:then')
                 raise ValueError(load_ui().text('scenarios.diagnostics.storage.unknown_job', job_id=jid))
             job = json.loads(row[0])
             if expected is not None and job['status'] not in expected:
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.update_job:L319:then')
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.update_job:L319:then')
                 return None
             if _diagnostics.enabled:
                 _diagnostics.event('job.update.request', job_id=jid, before=job, changes=changes)
@@ -389,15 +389,15 @@ class Store:
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
             for jid in ids:
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.cancel_queued:L333:loop', jid=jid)
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.cancel_queued:L333:loop', jid=jid)
                 row = db.execute('SELECT body FROM jobs WHERE id=?', (jid,)).fetchone()
                 if row is None:
-                    if _diagnostics.enabled: _diagnostics.step('storage.Store.cancel_queued:L335:then')
+                    if _diagnostics.detailed: _diagnostics.step('storage.Store.cancel_queued:L335:then')
                     unavailable.append(jid)
                     continue
                 job = json.loads(row[0])
                 if job['status'] != 'queued':
-                    if _diagnostics.enabled: _diagnostics.step('storage.Store.cancel_queued:L339:then')
+                    if _diagnostics.detailed: _diagnostics.step('storage.Store.cancel_queued:L339:then')
                     unavailable.append(jid)
                     continue
                 job.update(status='cancelled', finished=finished)
@@ -411,7 +411,7 @@ class Store:
     def event(self, key, chats, payload):
         chats = list(dict.fromkeys(chats))
         if not chats:
-            if _diagnostics.enabled: _diagnostics.step('storage.Store.event:L350:then')
+            if _diagnostics.detailed: _diagnostics.step('storage.Store.event:L350:then')
             return
         placeholders = ','.join('?' for _ in chats)
         with self.connect() as db:
@@ -420,7 +420,7 @@ class Store:
                 (key, *chats)).fetchall()
         missing = [chat for chat in chats if chat not in {row[0] for row in rows}]
         if not missing:
-            if _diagnostics.enabled: _diagnostics.step('storage.Store.event:L358:then')
+            if _diagnostics.detailed: _diagnostics.step('storage.Store.event:L358:then')
             return
         body = json.dumps(payload)
         with self.connect() as db:
@@ -428,10 +428,10 @@ class Store:
             # Recheck after acquiring the writer lock so concurrent producers
             # cannot insert the same recipient between the read and the write.
             for chat in missing:
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.event:L365:loop', chat=chat)
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.event:L365:loop', chat=chat)
                 if db.execute('SELECT 1 FROM outbox WHERE event_key=? AND chat_id=?',
                               (key, chat)).fetchone() is None:
-                    if _diagnostics.enabled: _diagnostics.step('storage.Store.event:L366:then')
+                    if _diagnostics.detailed: _diagnostics.step('storage.Store.event:L366:then')
                     db.execute('INSERT INTO outbox(event_key,chat_id,body) VALUES (?,?,?)',
                                (key, chat, body))
 
@@ -461,7 +461,7 @@ class Store:
     @_diagnostics.trace
     def remember_message(self, chat_id, message_id, created=None):
         if type(chat_id) is not int or type(message_id) is not int:
-            if _diagnostics.enabled: _diagnostics.step('storage.Store.remember_message:L391:then')
+            if _diagnostics.detailed: _diagnostics.step('storage.Store.remember_message:L391:then')
             return
         created = created if isinstance(created, (int, float)) else time.time()
         with self.connect() as db:
@@ -477,11 +477,11 @@ class Store:
     def chat_messages(self, chat_id, since=None):
         with self.connect() as db:
             if since is None:
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.chat_messages:L405:then')
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.chat_messages:L405:then')
                 rows = db.execute('SELECT message_id FROM chat_messages WHERE chat_id=? '
                                   'ORDER BY message_id', (chat_id,)).fetchall()
             else:
-                if _diagnostics.enabled: _diagnostics.step('storage.Store.chat_messages:L405:else')
+                if _diagnostics.detailed: _diagnostics.step('storage.Store.chat_messages:L405:else')
                 rows = db.execute('SELECT message_id FROM chat_messages '
                                   'WHERE chat_id=? AND created>=? ORDER BY message_id',
                                   (chat_id, since)).fetchall()

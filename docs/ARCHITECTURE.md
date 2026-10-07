@@ -1,5 +1,7 @@
 # CFD bot 아키텍처 — 유즈케이스와 플랫폼 지도
 
+> #30 수집 수준 분리: ON 기본 `basic`은 업무 경계·사용자 이벤트·티켓/작업 변경·경고/예외를 기록한다. 내부 정상 함수·분기/반복은 `detailed` 전용이다. [설계 이력](history/2026-10-07-diagnostic-logging-levels.md) · [최신 성능](analysis/diagnostic-level-performance.md).
+
 > #30: Python/브라우저/ofps의 숫자 코드 기록, 값·예외 사전 공유와 구·신 decoder를 적용했다. [코드 사전](analysis/diagnostic-codebook.md) · [구현 이력](history/2026-10-07-diagnostic-codec-implementation.md).
 
 > #18 사후 원인 분석 로그: [설정·기록·읽기](DIAGNOSTICS.md) · [모든 시퀀스 대응표](analysis/diagnostic-flow-coverage.md) · [ON/OFF 실측](analysis/diagnostic-performance.md). 업무 정책 변경 없이 기록만 추가하며 기본 OFF다.

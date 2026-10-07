@@ -3,7 +3,10 @@
 if [[ ! ${CFD_BOT_DIAGNOSTICS+x} && ${CFD_BOT_OFPS_MANAGED:-0} == 1 ]]; then
     export CFD_BOT_DIAGNOSTICS=0
 fi
-if [[ ! ${CFD_BOT_DIAGNOSTICS+x} ]]; then
+if [[ ${CFD_BOT_OFPS_MANAGED:-0} == 1 && ! ${CFD_BOT_DIAGNOSTICS_LEVEL+x} ]]; then
+    export CFD_BOT_DIAGNOSTICS_LEVEL=basic
+fi
+if [[ ! ${CFD_BOT_DIAGNOSTICS+x} || ! ${CFD_BOT_DIAGNOSTICS_LEVEL+x} ]]; then
     mapfile -t _cfd_diagnostic_options < <("$bot_python" - "$bot_config" <<'PY'
 import json, os, sys
 from pathlib import Path
@@ -21,16 +24,30 @@ if not directory.is_absolute():
     directory = p.parent / directory
 print('1' if options.get('enabled', False) else '0')
 print(directory)
+print(os.environ.get('CFD_BOT_DIAGNOSTICS_LEVEL', options.get('level', 'basic')))
 PY
     )
-    export CFD_BOT_DIAGNOSTICS=${_cfd_diagnostic_options[0]:-0}
+    export CFD_BOT_DIAGNOSTICS=${CFD_BOT_DIAGNOSTICS-${_cfd_diagnostic_options[0]:-0}}
     export CFD_BOT_DIAGNOSTICS_DIR=${_cfd_diagnostic_options[1]:-}
+    export CFD_BOT_DIAGNOSTICS_LEVEL=${_cfd_diagnostic_options[2]:-basic}
 fi
+
+# Same collection level as the parent. Unknown values retain the basic default.
+[[ ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed ]] || CFD_BOT_DIAGNOSTICS_LEVEL=basic
+export CFD_BOT_DIAGNOSTICS_LEVEL
+
+declare -A _cfd_diag_basic_functions=([run_bot_command]=1 [scan_once]=1 [scan_and_sync]=1
+    [scan_supervisors]=1 [sync_ticket_state]=1 [check_cpu_set]=1 [cleanup]=1)
 
 _cfd_diag_write()
 {
     [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ${_cfd_diag_fd:-} ]] || return 0
     local event=$1 status=${2:-0} detail=${3:-} function=${4:-${FUNCNAME[1]:-main}}
+    if [[ $event == shell.call || ( $event == shell.return && $status == 0 ) ]]; then
+        if [[ $CFD_BOT_DIAGNOSTICS_LEVEL != detailed && ${_cfd_diag_basic_functions[$function]:-0} != 1 ]]; then
+            return 0
+        fi
+    fi
     detail=${detail//\\/\\\\}; detail=${detail//\"/\\\"}
     detail=${detail//$'\n'/\\n}; detail=${detail//$'\r'/\\r}; detail=${detail//$'\t'/\\t}
     local code=${_cfd_diag_event_codes[$event]:-\"$event\"}
@@ -102,7 +119,7 @@ case ${CFD_BOT_DIAGNOSTICS:-0} in
                 export CFD_BOT_DIAGNOSTICS=1 CFD_BOT_DIAGNOSTICS_DIR="$_cfd_diag_dir"
                 source "${BASH_SOURCE[0]%/*}/ofps-diagnostic-codes.sh"
                 _cfd_diag_header
-                _cfd_diag_write shell.start 0 'schema=2'
+                _cfd_diag_write shell.start 0 "schema=2 level=$CFD_BOT_DIAGNOSTICS_LEVEL"
                 set -ET
                 trap '_cfd_diag_error "$?" "$LINENO" "${PIPESTATUS[*]}"' ERR
                 trap '_cfd_diag_return "${_cfd_diag_result:-$?}" "${FUNCNAME[0]:-main}" "$LINENO"' RETURN

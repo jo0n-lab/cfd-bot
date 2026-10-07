@@ -24,11 +24,14 @@ import traceback
 import warnings
 
 from . import diagnostic_codec as _codec
+from .diagnostic_policy import basic_function
 
 _POPEN_CLASS = subprocess.Popen
 
 
 enabled = False
+detailed = False
+level = 'basic'
 _sink = None
 _settings = None
 _component = 'python'
@@ -325,7 +328,7 @@ class _Sink:
 
 def configure(config=None, *, state_dir=None, component=None, active=None):
     """Startup/config-reload setting; no watcher and no business-state writes."""
-    global enabled, _sink, _settings, _component, _logging_handler
+    global enabled, detailed, level, _sink, _settings, _component, _logging_handler
     config = config if isinstance(config, dict) else {}
     options = config.get('diagnostic_logging') or {}
     if not isinstance(options, dict):
@@ -333,6 +336,8 @@ def configure(config=None, *, state_dir=None, component=None, active=None):
     setting = options.get('enabled', False) if active is None else active
     if active is None and 'CFD_BOT_DIAGNOSTICS' in os.environ:
         setting = os.environ['CFD_BOT_DIAGNOSTICS'].lower() not in ('0', 'off', 'false')
+    selected_level = os.environ.get('CFD_BOT_DIAGNOSTICS_LEVEL', options.get('level', 'basic'))
+    selected_level = 'detailed' if selected_level == 'detailed' else 'basic'
     directory = options.get('directory')
     if not isinstance(directory, (str, Path)) or not directory:
         directory = os.environ.get('CFD_BOT_DIAGNOSTICS_DIR')
@@ -349,7 +354,7 @@ def configure(config=None, *, state_dir=None, component=None, active=None):
     # Bad logging options do not become new business-configuration failures.
     maximum = maximum if type(maximum) is int and maximum > 0 else 20 * 1024 * 1024
     backups = backups if type(backups) is int and backups > 0 else 3
-    signature = (bool(setting), str(directory), component, maximum, backups, os.getpid())
+    signature = (bool(setting), str(directory), component, maximum, backups, os.getpid(), selected_level)
     telegram = config.get('telegram')
     token_env = telegram.get('token_env', 'TELEGRAM_BOT_TOKEN') if isinstance(telegram, dict) else 'TELEGRAM_BOT_TOKEN'
     token_env = token_env if isinstance(token_env, str) else 'TELEGRAM_BOT_TOKEN'
@@ -359,6 +364,7 @@ def configure(config=None, *, state_dir=None, component=None, active=None):
     close()
     _settings, _component = signature, component
     enabled = bool(setting)
+    level, detailed = selected_level, bool(setting) and selected_level == 'detailed'
     if not enabled:
         return
     try:
@@ -387,7 +393,7 @@ def configure(config=None, *, state_dir=None, component=None, active=None):
     _sequence_functions.update(node['function'] for flow in manifest_document.get('flows', [])
                                for node in flow['nodes'] if 'function' in node)
     _sink.header = {'event': 'log.file', 'instance': _sink.instance, 'pid': os.getpid(),
-                    'schema_version': 2, 'source_map_sha256': digest, 'component': _component,
+                    'schema_version': 2, 'level': level, 'source_map_sha256': digest, 'component': _component,
                     'event_codes': _codec.EVENTS}
     functions = sorted({entry['function'] for entry in map_entries if 'function' in entry})
     try:
@@ -415,7 +421,7 @@ def configure(config=None, *, state_dir=None, component=None, active=None):
         pass
     except OSError:
         print('CFD diagnostic source map could not be archived.', file=sys.stderr)
-    _write('service.start', {'schema_version': 2, 'python': sys.version.split()[0],
+    _write('service.start', {'schema_version': 2, 'level': level, 'python': sys.version.split()[0],
                             'source_map_sha256': digest, 'clock': 'Unix UTC nanoseconds',
                             'max_bytes': maximum, 'backups': backups,
                             'parent_call_id': os.environ.get('CFD_BOT_PARENT_CALL_ID'),
@@ -462,7 +468,7 @@ def event(name, /, **fields):
 
 
 def step(name, /, **fields):
-    if enabled:
+    if enabled and (detailed or name.endswith(':except')):
         sequence, timestamp = next(_counter), time.time_ns()
         values = {k: call_value(v, k, False) for k, v in fields.items()}
         if name.endswith(':except'):
@@ -551,16 +557,16 @@ def flush():
 
 
 def close():
-    global enabled, _sink
+    global enabled, detailed, _sink
     if _sink is not None:
         _write('log.closed', {'reason': 'reconfigure_or_exit'}, flush=True)
         _sink.close()
     _sink = None
-    enabled = False
+    enabled = detailed = False
 
 
 def settings():
-    return {'enabled': enabled, 'directory': str(_sink.directory) if _sink else None,
+    return {'enabled': enabled, 'level': level, 'directory': str(_sink.directory) if _sink else None,
             'instance': _sink.instance if _sink else None}
 
 
@@ -568,6 +574,7 @@ def child_environment(env=None):
     """Use on existing spawn calls only. Do not mutate the process environment."""
     result = dict(os.environ if env is None else env)
     result['CFD_BOT_DIAGNOSTICS'] = '1' if enabled else '0'
+    result['CFD_BOT_DIAGNOSTICS_LEVEL'] = level
     if _sink is not None:
         result['CFD_BOT_DIAGNOSTICS_DIR'] = str(_sink.directory)
     current = _current.get()
@@ -720,6 +727,13 @@ class _Call:
             self.frame['errors'].clear()
 
 
+def _helper_failure(name, exc):
+    # No call context/timestamps/summaries on the normal helper path. The
+    # enclosing business call is the correlation context, not a helper call ID.
+    _write('function.error', {'function': name, 'exception': exception_info(exc),
+                              'normal_call_omitted': True}, flush=True)
+
+
 def trace(function):
     """Record real calls and preserve return values and exception identities."""
     unwrapped = inspect.unwrap(function)
@@ -731,6 +745,7 @@ def trace(function):
     definition['_skip'] = int(bool(definition['parameters']) and definition['parameters'][0] in ('self', 'cls'))
     definition['_input_names'] = tuple(definition['parameters'][definition['_skip']:])
     _definitions[name] = definition
+    basic = basic_function(name)
 
     @functools.wraps(function)
     def wrapped(*args, **kwargs):
@@ -738,6 +753,12 @@ def trace(function):
             _bootstrap(args[0] if args else kwargs.get('argv'))
         if not enabled:
             return function(*args, **kwargs)
+        if not detailed and not basic:
+            try:
+                return function(*args, **kwargs)
+            except BaseException as exc:
+                _helper_failure(name, exc)
+                raise
         call = _Call(function, definition, args, kwargs)
         call.enter()
         call.begin()
@@ -756,6 +777,14 @@ def trace(function):
     def generated(*args, **kwargs):
         if not enabled:
             return (yield from function(*args, **kwargs))
+        if not detailed and not basic:
+            try:
+                return (yield from function(*args, **kwargs))
+            except GeneratorExit:
+                raise
+            except BaseException as exc:
+                _helper_failure(name, exc)
+                raise
         call = _Call(function, definition, args, kwargs)
         generator = function(*args, **kwargs)
         send, failure, first = None, None, True

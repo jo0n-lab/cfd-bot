@@ -4,6 +4,12 @@ const {performance}=require('node:perf_hooks');
 const context=vm.createContext({performance,Event:class Event{},document:{addEventListener(){}},window:{addEventListener(){}},console:{warn(){},error(){}}});
 vm.runInContext(fs.readFileSync('cfd_bot/web_static/diagnostics.js','utf8')+';globalThis.logger=CFDLog;',context);
 const log=context.logger;log.configure(true);
+assert.equal(log.level,'basic');
+const helper=log.wrap(x=>x,'web.ui.esc:L3:C12');
+const before=log.stats().retained;assert.equal(helper('value'),'value');assert.equal(log.stats().retained,before);
+log.configure(true,'detailed');helper('value');
+assert(log.snapshot().records.map(JSON.parse).some(r=>r.event==='function.call'&&r.function==='web.ui.esc:L3:C12'));
+log.configure(true,'basic');
 for(const [i,value] of [0,false,'',null,undefined,NaN].entries()){
  let caught=false;try{log.wrap(()=>{throw value;},'falsey-'+i)();}catch(error){caught=true;assert(Object.is(error,value));}assert(caught);
 }

@@ -38,7 +38,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 `te:<token>:queue`는 실행 설정 화면이고 일반 `queue`는 실제 DB 큐다. 동일 단어라도 처리 함수가 다르다. 그림에는 action 조건을 표시한다. 논리적 UC가 확인 버튼까지 여러 update를 필요로 하면 각각의 action 분기를 시간 순서로 나열한다.
 
 
-#18 진단 로그는 아래 모든 시퀀스의 실제 함수·분기에 적용한다. [공통 로그 계약](../DIAGNOSTICS.md)과 [시퀀스별 이벤트 대응표](../analysis/diagnostic-flow-coverage.md)를 함께 읽는다.
+#18/#30 진단 로그는 basic에서 업무 경계·명시적 사건·예외를, detailed에서 내부 함수·분기까지 기록한다. [공통 로그 계약](../DIAGNOSTICS.md)과 [시퀀스별 이벤트 대응표](../analysis/diagnostic-flow-coverage.md)를 함께 읽는다.
 
 
 내부 반복·파일 접근·잠금 범위는 [catalog LLD](../LLD.md#catalog), 현재 921행 매크로의 함수별 시간과 큐 응답량은 [운영 데이터 분석](../analysis/live-bottlenecks.md)에 있다. 그림의 보라색 loop는 함수 내부 반복이며 추가 함수가 아니다.

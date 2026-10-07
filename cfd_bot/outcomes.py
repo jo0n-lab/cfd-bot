@@ -35,7 +35,7 @@ def decide(case, telemetry, started, *, returncode=None, external=False,
     """
     ui = load_ui(case.get('_ui_dir'))
     if returncode is not None and returncode != 0:
-        if _diagnostics.enabled: _diagnostics.step('outcomes.decide:L32:then')
+        if _diagnostics.detailed: _diagnostics.step('outcomes.decide:L32:then')
         context = telemetry.get('errors', [])[-2:] if log_fresh else []
         detail = ' · ' + '; '.join(line[-500:] for line in context) if context else ''
         return 'failed', ui.text('scenarios.outcomes.nonzero_exit', returncode=returncode, detail=detail)
@@ -43,25 +43,25 @@ def decide(case, telemetry, started, *, returncode=None, external=False,
     watcher = case.get('watcher', {})
     failure = watcher.get('failure', {})
     for relative in failure.get('updated_files', []):
-        if _diagnostics.enabled: _diagnostics.step('outcomes.decide:L39:loop', relative=relative)
+        if _diagnostics.detailed: _diagnostics.step('outcomes.decide:L39:loop', relative=relative)
         if _fresh(case, relative, started):
-            if _diagnostics.enabled: _diagnostics.step('outcomes.decide:L40:then')
+            if _diagnostics.detailed: _diagnostics.step('outcomes.decide:L40:then')
             return 'failed', ui.text('scenarios.outcomes.failure_file', path=relative)
 
     if telemetry.get('errors') and log_fresh:
-        if _diagnostics.enabled: _diagnostics.step('outcomes.decide:L43:then')
+        if _diagnostics.detailed: _diagnostics.step('outcomes.decide:L43:then')
         return 'failed', ui.text('scenarios.outcomes.failure_log', error=telemetry['errors'][-1])
 
     if not log_fresh:
-        if _diagnostics.enabled: _diagnostics.step('outcomes.decide:L46:then')
+        if _diagnostics.detailed: _diagnostics.step('outcomes.decide:L46:then')
         return 'failed', ui.text('scenarios.outcomes.stale_log')
 
     control = control_times(case)
     if control is None:
-        if _diagnostics.enabled: _diagnostics.step('outcomes.decide:L50:then')
+        if _diagnostics.detailed: _diagnostics.step('outcomes.decide:L50:then')
         return 'failed', ui.text('scenarios.outcomes.control_missing')
     if control['stop_at'] != 'endTime':
-        if _diagnostics.enabled: _diagnostics.step('outcomes.decide:L52:then')
+        if _diagnostics.detailed: _diagnostics.step('outcomes.decide:L52:then')
         return 'failed', ui.text('scenarios.outcomes.stop_mode', stop_at=control['stop_at'])
 
     target = control['end']
@@ -70,13 +70,13 @@ def decide(case, telemetry, started, *, returncode=None, external=False,
     current = telemetry.get('time')
     if (not isinstance(current, (int, float)) or isinstance(current, bool)
             or not math.isfinite(current)):
-        if _diagnostics.enabled: _diagnostics.step('outcomes.decide:L59:then')
+        if _diagnostics.detailed: _diagnostics.step('outcomes.decide:L59:then')
         return 'failed', ui.text('scenarios.outcomes.time_missing', target_label=target_label,
                                  target=f'{target:g}')
 
     if current > target or math.isclose(current, target, rel_tol=1e-9,
                                         abs_tol=1e-12):
-        if _diagnostics.enabled: _diagnostics.step('outcomes.decide:L64:then')
+        if _diagnostics.detailed: _diagnostics.step('outcomes.decide:L64:then')
         source = ui.text('scenarios.outcomes.external_source') if external else ''
         return 'succeeded', ui.text('scenarios.outcomes.success', source=source,
                                     target_label=target_label, target=f'{target:g}', current=f'{current:g}')

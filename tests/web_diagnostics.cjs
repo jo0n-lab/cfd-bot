@@ -12,6 +12,12 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   await page.locator('[data-action="open-ticket"]').first().click();
   await page.locator('#f-name').waitFor();
   const data=await page.evaluate(()=>{
+   if(CFDLog.level!=='basic')throw Error('server level not applied');
+   const begin=CFDLog.stats().retained;esc('normal');
+   if(CFDLog.stats().retained!==begin)throw Error('basic helper recorded');
+   CFDLog.configure(true,'detailed');esc('detailed');
+   if(!CFDLog.snapshot().records.map(JSON.parse).some(r=>r.event==='function.call'&&r.function.startsWith('web.ui.esc:')))throw Error('detailed helper missing');
+   CFDLog.configure(true,'basic');
    const before=CFDLog.snapshot();
    CFDLog.configure(false);toast('OFF diagnostic test');
    const off=CFDLog.snapshot();

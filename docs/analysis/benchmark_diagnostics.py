@@ -20,12 +20,14 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--source',required=True)
     parser.add_argument('--mode',choices=('baseline','off','on'),required=True)
+    parser.add_argument('--level', choices=('basic','detailed'), default='basic')
     parser.add_argument('--members',type=int,default=40)
     parser.add_argument('--samples',type=int,default=20)
     parser.add_argument('--valid-cpu',action='store_true')
     parser.add_argument('--scenario')
     args=parser.parse_args()
     os.environ['CFD_BOT_DIAGNOSTICS']='1' if args.mode=='on' else '0'
+    os.environ['CFD_BOT_DIAGNOSTICS_LEVEL']=args.level
     sys.path.insert(0,args.source)
     from cfd_bot.bot import Bot
     from cfd_bot.catalog import ticket_index
@@ -77,7 +79,7 @@ def main():
         else:count=errors=written=0
         proc_status=dict(line.split(':',1) for line in Path('/proc/self/status').read_text().splitlines() if ':' in line) if Path('/proc/self/status').exists() else {}
         rss=int(proc_status['VmHWM'].split()[0]) if 'VmHWM' in proc_status else resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        print(json.dumps(dict(mode=args.mode,members=args.members,active=len(records),valid_cpu_settings=args.valid_cpu,cold_ms=cold_ms,results=result,
+        print(json.dumps(dict(mode=args.mode,level=args.level,members=args.members,active=len(records),valid_cpu_settings=args.valid_cpu,cold_ms=cold_ms,results=result,
                               rss_kib=rss,rss_source='proc.VmHWM' if proc_status else 'rusage',records=count,log_errors=errors,
                               bytes_written=written,
                               log_bytes=sum(p.stat().st_size for p in (root/'state/diagnostics').glob('*')),python=sys.version.split()[0]),indent=2))
