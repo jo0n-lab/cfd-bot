@@ -485,7 +485,7 @@ class Handler(BaseHTTPRequestHandler):
                 if _diagnostics.enabled: _diagnostics.step('web.Handler.handle_request:L398:then')
                 return self.respond(app.get(url.path, query))
             assets = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css',
-                      '/diagnostics.js': 'diagnostics.js'}
+                      '/diagnostics.js': 'diagnostics.js', '/diagnostic_codes.js': 'diagnostic_codes.js'}
             for platform in ('Windows', 'macOS'):
                 if _diagnostics.enabled: _diagnostics.step('web.Handler.handle_request:L401:loop', platform=platform)
                 name = f'downloads/CFD-Control-Room-{platform}.zip'

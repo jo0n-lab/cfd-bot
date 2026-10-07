@@ -127,6 +127,65 @@ class DiagnosticsTests(unittest.TestCase):
         d.remember_secret(value)
         self.assertEqual(d.summary(value,'path'),'[redacted]')
 
+    def test_old_batches_still_decode(self):
+        path=self.root/'legacy.jsonl'
+        header={'event':'log.file','pid':123,'instance':'old','component':'legacy'}
+        batch={'event':'log.batch','contexts':[{'thread':7,'trace_id':'t','initiator':None}],
+               'records':[['function.return',100,8,0,'123:2',None,{'function':'old.work','result':False}]]}
+        path.write_text(json.dumps(header)+'\n'+json.dumps(batch)+'\n')
+        records=list(d.read_records(path))
+        self.assertEqual(records[1]['function'],'old.work')
+        self.assertIs(records[1]['result'],False)
+        self.assertEqual(records[1]['trace_id'],'t')
+
+    def test_numeric_codec_preserves_types_and_exception_propagation(self):
+        failure=RuntimeError('same original failure')
+        scopes=[]
+        @d.trace
+        def leaf(flag):
+            if flag=='raise':raise failure
+            return flag
+        @d.trace
+        def middle():return leaf('raise')
+        @d.trace
+        def outer():
+            scopes.append(d._current.get()['errors'])
+            return middle()
+        leaf(True);leaf(1);leaf(False);leaf(0)
+        with self.assertRaises(RuntimeError) as raised:outer()
+        self.assertIs(raised.exception,failure)
+        self.assertEqual(scopes,[{}])
+        records=self.records()
+        returned=[r['result'] for r in records if r['event']=='function.return' and r.get('function','').endswith('.leaf')]
+        self.assertEqual([type(v) for v in returned],[bool,int,bool,int])
+        errors=[r['exception'][0] for r in records if r['event']=='function.raise']
+        self.assertEqual(len(errors),3)
+        self.assertEqual(len({e['error_id'] for e in errors}),1)
+        self.assertLess(len(errors[0]['frames']),len(errors[-1]['frames']))
+        raw=[json.loads(line) for p in self.root.glob('*.jsonl') for line in p.read_text().splitlines()]
+        batches=[r for r in raw if r.get('event')=='log.batch.v2']
+        self.assertTrue(batches)
+        self.assertTrue(any(e[1] is not None for b in batches for e in b['errors']))
+
+    def test_readonly_sqlite_context_is_not_reported_as_commit(self):
+        db=d.connect_sqlite(self.root/'readonly.sqlite')
+        try:
+            with db:db.execute('SELECT 1').fetchone()
+        finally:db.close()
+        events=[r['event'] for r in self.records()]
+        self.assertIn('db.context.exit',events)
+        self.assertNotIn('db.transaction.commit',events)
+
+    def test_long_lived_request_bounds_exception_references(self):
+        @d.trace
+        def observe():
+            maximum=0
+            for i in range(600):
+                d.exception_info(ValueError('failure '+str(i)))
+                maximum=max(maximum,len(d._current.get()['errors']))
+            return maximum
+        self.assertEqual(observe(),256)
+
     def test_invalid_logging_options_are_not_new_business_validation(self):
         d.configure({'telegram': {'token_env': []}, 'diagnostic_logging': {
             'directory': {}, 'max_bytes': 'invalid', 'backups': -1}}, state_dir=str(self.root), active=True)
@@ -184,7 +243,7 @@ printf 'pipeline=%s\\n' "$?"
         result=subprocess.run(['bash','-o','pipefail','-c',script,'test',str(helper)],env=env,capture_output=True,text=True,timeout=10)
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertEqual(result.stdout,'unchanged\nstatus=7\npipeline=1\n')
-        records=[json.loads(line) for p in (self.root/'shell').glob('*.jsonl') for line in p.read_text().splitlines()]
+        records=[record for p in (self.root/'shell').glob('*.jsonl') for record in d.read_records(p)]
         self.assertTrue(any(r['event']=='shell.return' and r['function']=='good' and r['status']==7 for r in records))
         self.assertTrue(any(r['event']=='shell.error' and r['status']==1 for r in records))
 

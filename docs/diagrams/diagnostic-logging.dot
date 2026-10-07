@@ -5,9 +5,9 @@ digraph diagnostics {
   ui [label="Telegram · GUI · web · CLI\n조작 / actor / 요청"];
   domain [label="기존 공용 함수 · Store\n호출 / 반환 / 분기 / 예외"];
   process [label="ofps · worker · hooks\nPID / CPU / 출력 / 종료"];
-  log [label="프로세스별 JSONL\ncall · parent · trace · 시각", fillcolor="#eff6ff", color="#2563eb"];
-  browser [label="브라우저 로컬 순환 로그\nUI → Promise → server trace", fillcolor="#eff6ff", color="#2563eb"];
-  map [label="HLD/LLD 99개 시퀀스\nsource map / hash / step ID", fillcolor="#fff7ed", color="#ea580c"];
+  log [label="숫자 code · 공유 값/예외 · batch\ncall · parent · trace · 시각", fillcolor="#eff6ff", color="#2563eb"];
+  browser [label="브라우저 숫자 순환 buffer\nUI → Promise → server trace\nexport 시 JSON 변환", fillcolor="#eff6ff", color="#2563eb"];
+  map [label="HLD/LLD 99개 시퀀스\nsource map + JSON/문서 코드 사전\nschema 1/2 decoder", fillcolor="#fff7ed", color="#ea580c"];
   control [label="공통 ON/OFF\n기본 OFF · env 우선", fillcolor="#fff7ed", color="#ea580c"];
   ui -> domain -> process;
   ui -> log [style=dashed, label="기록"];

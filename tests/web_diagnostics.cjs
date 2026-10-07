@@ -19,7 +19,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    const object={id:'test-object'},failure=new Error('not-recorded-free-text');
    if(CFDLog.wrap(x=>x,'identity')(object)!==object)throw Error('identity changed');
    try{CFDLog.wrap(()=>{throw failure;},'failure')();}catch(error){if(error!==failure)throw Error('error identity changed');}
-   return {before:before.records.length,off:off.records.length,records:CFDLog.snapshot().records.map(JSON.parse),csrf:S.csrf};
+   const originalStringify=JSON.stringify;
+   JSON.stringify=()=>{throw Error('eager JSON encoding');};
+   try{CFDLog.wrap(x=>x,'no-eager-encode')('value');}finally{JSON.stringify=originalStringify;}
+   return {before:before.records.length,off:off.records.length,records:CFDLog.snapshot().records.map(JSON.parse),csrf:S.csrf,compact:CFDLog.exportLines()};
   });
   assert.equal(data.before,data.off);
   assert(data.records.some(r=>r.event==='ui.click'));
@@ -28,6 +31,11 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
   const output=JSON.stringify(data.records);
   assert(!output.includes(data.csrf));
   assert(!output.includes('not-recorded-free-text'));
+  const packed=data.compact.join('\n')+'\n';
+  assert(!packed.includes(data.csrf));
+  assert.equal(JSON.parse(data.compact[0]).schema_version,2);
+  assert(data.compact.some(line=>JSON.parse(line).event==='browser.batch.v2'));
+  fs.writeFileSync('/tmp/cfd-browser-compact.jsonl',packed);
   fs.writeFileSync('/tmp/cfd-browser-diagnostics.jsonl',data.records.map(JSON.stringify).join('\n')+'\n');
   console.log(JSON.stringify({browser_logging:'passed',records:data.records.length,on_off:true,csrf_redacted:true,http_correlation:true}));
  }finally{await browser.close();}

@@ -84,3 +84,5 @@ systemctl --user enable --now cfd-bot-web.service
 ## 사후 원인 분석 로그
 
 [#18 진단 로그](docs/DIAGNOSTICS.md)는 Telegram·GUI·web·ofps·worker의 함수 호출/응답, UI 이벤트, 티켓/작업 변경과 Python/shell 예외를 연결한다. 기본 OFF이며 `diagnostic_logging.enabled` 또는 `CFD_BOT_DIAGNOSTICS=1/0`으로 제어한다. [전체 시퀀스 대응](docs/analysis/diagnostic-flow-coverage.md)과 [대량 데이터 ON/OFF 성능 결과](docs/analysis/diagnostic-performance.md)를 확인한 뒤 활성화한다.
+
+#30에서는 Python·browser·ofps를 숫자 코드와 값/예외 참조 형식으로 바꿨다. [별도 코드 사전](docs/analysis/diagnostic-codebook.md), [적용 전후 측정](docs/analysis/diagnostic-codec-performance.md)을 제공하며 이전 로그도 같은 decoder로 읽는다. `python3 -m cfd_bot.diagnostics <로그 파일>`로 개별 사건을 펼칠 수 있다.

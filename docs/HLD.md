@@ -25,7 +25,7 @@ Linux 호스트의 OpenFOAM/Basilisk 계산과 cfd-bot 전용 monitor 프로세�
 
 ![사후 분석 로그의 관측 경계](diagrams/diagnostic-logging.svg)
 
-진단 기록은 업무 DB와 분리된 프로세스별 파일 및 브라우저 로컬 버퍼로 간다. 동일 trace/parent를 통해 기존 실행 흐름을 관측한다. 기록의 생성·직렬화·회전 외에는 실행 정책을 추가하지 않는다.
+진단 기록은 업무 DB와 분리된 프로세스별 파일 및 브라우저 로컬 버퍼로 간다. 동일 trace/parent를 통해 기존 실행 흐름을 관측한다. #30은 정적 숫자 코드·batch 값/예외 참조를 사용하고 browser는 export 시 JSON으로 변환한다. [별도 코드 사전](analysis/diagnostic-codebook.md)과 schema 1/2 decoder를 제공한다. 기록의 생성·직렬화·회전 외에는 실행 정책을 추가하지 않는다.
 
 ![프로세스·저장소·외부 경계](hld-system-design.svg)
 

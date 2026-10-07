@@ -22,6 +22,8 @@ def main():
     parser.add_argument('--mode',choices=('baseline','off','on'),required=True)
     parser.add_argument('--members',type=int,default=40)
     parser.add_argument('--samples',type=int,default=20)
+    parser.add_argument('--valid-cpu',action='store_true')
+    parser.add_argument('--scenario')
     args=parser.parse_args()
     os.environ['CFD_BOT_DIAGNOSTICS']='1' if args.mode=='on' else '0'
     sys.path.insert(0,args.source)
@@ -37,6 +39,9 @@ def main():
         for i in range(args.members):
             case=root/f'case-{i}';(case/'system').mkdir(parents=True)
             (case/'system/controlDict').write_text('startTime 0; stopAt endTime; endTime 10;\n')
+            if args.valid_cpu:
+                (case/'.process-core').write_text('NP=1\nCPU_SET="0"\nexport NP CPU_SET\n')
+                (case/'Allrun').write_text('#!/bin/sh\nexit 0\n')
             (case/'log.solver').write_text('Time = 1\nExecutionTime = 1 s  ClockTime = 1 s\nTime = 2\nExecutionTime = 2 s  ClockTime = 2 s\n')
             (folder/f'alone-{i}.json').write_text(json.dumps(dict(version=1,case_dir=str(case),name=f'fixture-{i}',watcher={'logs':['log.solver']})))
             if i<40:
@@ -56,6 +61,7 @@ def main():
             stack.enter_context(patch('urllib.request.urlopen',side_effect=AssertionError('no network')))
             for name,operation in [('warm_catalog',lambda:cases_for(config)),('one_ticket',lambda:app.service.open('alone-0.json')),
                                    ('telegram_stat',stat),('web_overview',app.overview),('log_tail_2000_lines',lambda:recent_log(huge))]:
+                if args.scenario and name!=args.scenario:continue
                 for _ in range(3):operation()
                 elapsed=[];cpu=time.process_time()
                 for _ in range(args.samples):
@@ -69,8 +75,10 @@ def main():
             written=diagnostics._sink.bytes_written if diagnostics._sink else 0
             diagnostics.close()
         else:count=errors=written=0
-        print(json.dumps(dict(mode=args.mode,members=args.members,active=len(records),cold_ms=cold_ms,results=result,
-                              rss_kib=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,records=count,log_errors=errors,
+        proc_status=dict(line.split(':',1) for line in Path('/proc/self/status').read_text().splitlines() if ':' in line) if Path('/proc/self/status').exists() else {}
+        rss=int(proc_status['VmHWM'].split()[0]) if 'VmHWM' in proc_status else resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        print(json.dumps(dict(mode=args.mode,members=args.members,active=len(records),valid_cpu_settings=args.valid_cpu,cold_ms=cold_ms,results=result,
+                              rss_kib=rss,rss_source='proc.VmHWM' if proc_status else 'rusage',records=count,log_errors=errors,
                               bytes_written=written,
                               log_bytes=sum(p.stat().st_size for p in (root/'state/diagnostics').glob('*')),python=sys.version.split()[0]),indent=2))
 

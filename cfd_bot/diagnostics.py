@@ -23,6 +23,8 @@ import time
 import traceback
 import warnings
 
+from . import diagnostic_codec as _codec
+
 _POPEN_CLASS = subprocess.Popen
 
 
@@ -39,7 +41,13 @@ _sequence_functions = set()
 _IDENTIFIERS = ('_config', '_root', 'id', 'name', 'case_dir', 'status', 'phase',
                 'cpu_set', 'actual_cpu_list', 'cores', 'time', 'offset', 'ended',
                 'request_id', 'queue_id', 'revision', 'reason')
+_IDENTIFIERS += ('state', 'error', 'can_run', 'capacity', 'used_cores', 'free_cores',
+                 'required_cores', 'queue_possible', 'queue_required', 'monitor_cpu',
+                 'monitoring_command', 'task_type', 'role', 'resource_source', 'cpu_policy',
+                 'queue_cpu_set', 'backlog', 'missing', 'outcome', 'returncode')
+_IDENTIFIER_SET = frozenset(_IDENTIFIERS)
 _secrets = set()
+_secret_epoch = 0
 _warning_handler = warnings.showwarning
 _thread_exception_handler = threading.excepthook
 _exception_handler = sys.excepthook
@@ -68,8 +76,12 @@ _SAFE_STRINGS = {
 
 
 def remember_secret(value):
+    global _secret_epoch
     if isinstance(value, str) and value and value not in _secrets:
         _secrets.add(value)
+        _secret_epoch += 1
+        _argument_summary.cache_clear()
+        _collection_summary.cache_clear()
         _redact_cached.cache_clear()
         _scalar_summary.cache_clear()
 
@@ -149,6 +161,8 @@ def summary(value, key='', depth=0):
         return result
     if type(value) in (list, tuple, set, frozenset):
         items = list(itertools.islice(iter(value), 12))
+        if all(type(v) in (str, bool, int, float, type(None)) for v in items):
+            return _collection_summary(key, tuple((type(v), v) for v in items), len(value), _secret_epoch)
         return {'count': len(value), 'items': [summary(v, key, depth + 1) for v in items],
                 'truncated': len(value) > len(items)}
     return {'type': type(value).__name__}
@@ -157,24 +171,61 @@ def summary(value, key='', depth=0):
 def call_value(value, key, detailed):
     if key in _IDENTITY_KEYS:
         return summary(value, key)
-    if type(value) is dict and not detailed:
+    if type(value) is dict:
+        if key == 'state' and 'offset' in value:
+            return summary(value, key)
         if _SECRET_KEY.search(key) or key in _ENV_KEYS:
             return '[redacted]'
+        items = value.items() if len(value) <= len(_IDENTIFIERS) else ((name, value[name]) for name in _IDENTIFIERS if name in value)
         return {'type': 'dict', 'count': len(value),
-                'identity': {name: summary(value[name], name) for name in _IDENTIFIERS if name in value}}
+                'identity': {name: summary(item, name) for name, item in items if name in _IDENTIFIER_SET}}
     return summary(value, key)
+
+
+@functools.lru_cache(maxsize=4096)
+def _argument_summary(keys, values, epoch):
+    return {key: summary(value, key) for key, value in zip(keys, values)}
+
+
+@functools.lru_cache(maxsize=4096)
+def _collection_summary(key, values, count, epoch):
+    return {'count': count, 'items': [summary(v[1], key, 1) for v in values],
+            'truncated': count > len(values)}
+
+
+@functools.lru_cache(maxsize=4096)
+def _caller_definition(module, code, line):
+    return {'module': module,
+            'function': code.co_name, 'line': line}
+
+
+@functools.lru_cache(maxsize=4096)
+def _trace_frame(code, line, epoch):
+    return {'file': redact(code.co_filename), 'line': line, 'function': code.co_name}
 
 
 def exception_info(exc):
     if exc is None:
         return None
-    chain = []
-    seen = set()
+    current = _current.get()
+    identities = current['errors'] if current is not None else {}
+    chain, seen = [], set()
     while exc is not None and id(exc) not in seen:
         seen.add(id(exc))
-        chain.append({'type': type(exc).__name__, 'message': redact(str(exc))[:2048],
-                      'frames': [{'file': redact(f.filename), 'line': f.lineno, 'function': f.name}
-                                 for f in traceback.extract_tb(exc.__traceback__)[-24:]],
+        identity = identities.get(id(exc))
+        if identity is None:
+            # Long-lived serve/CLI frames must not retain every past traceback.
+            # A later observation after eviction gets a fresh, complete definition.
+            if len(identities) >= 256:
+                identities.clear()
+            identity = (exc, f'{_sink.instance if _sink else ""}:error:{next(_counter)}')
+            identities[id(exc)] = identity
+        frames, tb = [], exc.__traceback__
+        while tb is not None:
+            frames.append(_trace_frame(tb.tb_frame.f_code, tb.tb_lineno, _secret_epoch))
+            tb = tb.tb_next
+        chain.append({'error_id': identity[1], 'type': type(exc).__name__, 'message': redact(str(exc))[:2048],
+                      'frames': frames[-24:],
                       'sqlite_errorcode': getattr(exc, 'sqlite_errorcode', None),
                       'sqlite_errorname': getattr(exc, 'sqlite_errorname', None)})
         exc = exc.__cause__ or exc.__context__
@@ -196,6 +247,9 @@ class _Sink:
         self.bytes_written = 0
         self.errors = 0
         self.defined = set()
+        self.function_codes = {}
+        self.event_codes = _codec.EVENT_CODES
+        self.flushed_errors = set()
         self.encoder = json.JSONEncoder(ensure_ascii=False, separators=(',', ':'), allow_nan=False)
         self.header = None
         self.pending = []
@@ -229,16 +283,7 @@ class _Sink:
     def _drain(self):
         if not self.pending:
             return
-        contexts, context_ids, rows = [], {}, []
-        for event, stamp, sequence, thread, call, parent, trace, actor, fields in self.pending:
-            key = (thread, trace, id(actor))
-            context = context_ids.get(key)
-            if context is None:
-                context = len(contexts)
-                context_ids[key] = context
-                contexts.append({'thread': thread, 'trace_id': trace, 'initiator': actor})
-            rows.append([event, stamp, sequence, context, call, parent, fields])
-        line = self.encoder.encode({'event': 'log.batch', 'contexts': contexts, 'records': rows}) + '\n'
+        line = self.encoder.encode(_codec.encode(self.pending, self.function_codes, self.event_codes)) + '\n'
         self.pending = []
         if self.stream is None:
             self._open()
@@ -342,7 +387,25 @@ def configure(config=None, *, state_dir=None, component=None, active=None):
     _sequence_functions.update(node['function'] for flow in manifest_document.get('flows', [])
                                for node in flow['nodes'] if 'function' in node)
     _sink.header = {'event': 'log.file', 'instance': _sink.instance, 'pid': os.getpid(),
-                    'schema_version': 1, 'source_map_sha256': digest, 'component': _component}
+                    'schema_version': 2, 'source_map_sha256': digest, 'component': _component,
+                    'event_codes': _codec.EVENTS}
+    functions = sorted({entry['function'] for entry in map_entries if 'function' in entry})
+    try:
+        codebook_bytes = Path(__file__).with_name('diagnostic_codes.json').read_bytes()
+        codebook = json.loads(codebook_bytes)
+        functions = codebook['function_codes']
+        _sink.header['event_codes'] = codebook['event_codes']
+        codebook_hash = hashlib.sha256(codebook_bytes).hexdigest()
+        _sink.header['codebook_sha256'] = codebook_hash
+        codebook_path = _sink.directory / ('codes-' + codebook_hash + '.json')
+        if not codebook_path.exists():
+            fd = os.open(str(codebook_path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, 'wb') as output: output.write(codebook_bytes)
+    except (OSError, ValueError, KeyError):
+        pass
+    _sink.function_codes = {name: index for index, name in enumerate(functions)}
+    _sink.event_codes = {name: int(number) for number, name in _sink.header['event_codes'].items()}
+    _sink.header['function_codes'] = functions
     try:
         archive = _sink.directory / ('sources-' + digest + '.json')
         fd = os.open(str(archive), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -352,7 +415,7 @@ def configure(config=None, *, state_dir=None, component=None, active=None):
         pass
     except OSError:
         print('CFD diagnostic source map could not be archived.', file=sys.stderr)
-    _write('service.start', {'schema_version': 1, 'python': sys.version.split()[0],
+    _write('service.start', {'schema_version': 2, 'python': sys.version.split()[0],
                             'source_map_sha256': digest, 'clock': 'Unix UTC nanoseconds',
                             'max_bytes': maximum, 'backups': backups,
                             'parent_call_id': os.environ.get('CFD_BOT_PARENT_CALL_ID'),
@@ -363,6 +426,13 @@ def _write(event, fields, flush=False):
     if not enabled or _sink is None:
         return
     frame = _current.get()
+    if flush and fields.get('exception'):
+        error = fields['exception'][0].get('error_id')
+        if error and error in _sink.flushed_errors:
+            flush = False
+        elif error:
+            if len(_sink.flushed_errors) >= 1024: _sink.flushed_errors.clear()
+            _sink.flushed_errors.add(error)
     record = (event, time.time_ns(), next(_counter), threading.get_ident(),
               frame['id'] if frame else None, frame['parent'] if frame else None,
               frame['trace'] if frame else None, _actor.get(), fields)
@@ -394,7 +464,7 @@ def event(name, /, **fields):
 def step(name, /, **fields):
     if enabled:
         sequence, timestamp = next(_counter), time.time_ns()
-        values = {k: summary(v, k) for k, v in fields.items()}
+        values = {k: call_value(v, k, False) for k, v in fields.items()}
         if name.endswith(':except'):
             values['exception'] = exception_info(sys.exc_info()[1])
         current = _current.get()
@@ -557,26 +627,31 @@ class _Call:
         self.id = f'{os.getpid()}:{next(_counter)}'
         self.parent = parent['id'] if parent else os.environ.get('CFD_BOT_PARENT_CALL_ID')
         self.trace = parent['trace'] if parent else os.environ.get('CFD_BOT_TRACE_ID', f'{_sink.instance if _sink else ""}:{self.id}')
-        self.frame = {'id': self.id, 'parent': self.parent, 'trace': self.trace, 'steps': []}
+        self.frame = {'id': self.id, 'parent': self.parent, 'trace': self.trace, 'steps': [],
+                      'errors': parent['errors'] if parent else {}}
         self.definition = definition
         self.detailed = definition['function'].replace('.<locals>.', '.') in _sequence_functions
         self.start = time.perf_counter_ns()
         self.token = None
         self.actor_token = None
-        names = definition['parameters']
-        values = {names[i] if i < len(names) else f'arg{i}': v for i, v in enumerate(args)}
-        values.update(kwargs)
-        self.values = values
+        self.args, self.kwargs = args, kwargs
+        self.values = None
+        if definition['function'] in ('bot.Bot.handle', 'ticket_chat.TicketChat.handle',
+                                       'web.Handler.do_GET', 'web.Handler.do_POST'):
+            names = definition['parameters']
+            self.values = {names[i] if i < len(names) else f'arg{i}': v for i, v in enumerate(args)}
+            self.values.update(kwargs)
+        values = self.values
         caller = sys._getframe(2)
-        self.caller = {'module': caller.f_globals.get('__name__'), 'function': caller.f_code.co_name,
-                       'line': caller.f_lineno}
+        self.caller = _caller_definition(caller.f_globals.get('__name__'), caller.f_code, caller.f_lineno)
         self.request_root = (definition['function'] in ('bot.Bot.handle', 'bot.deliver',
                              'monitor.Monitor.run_once', 'web.Handler.do_GET', 'web.Handler.do_POST')
-                             or str(self.caller['module']).startswith('tkinter'))
+                             or str(caller.f_globals.get('__name__')).startswith('tkinter'))
         self.parent_trace = parent['trace'] if parent else None
         if self.request_root:
             self.trace = f'{_sink.instance if _sink else ""}:{self.id}'
             self.frame['trace'] = self.trace
+            self.frame['errors'] = {}
         # Actor attribution is derived from existing request data, never auth logic.
         if definition['function'] in ('bot.Bot.handle', 'ticket_chat.TicketChat.handle'):
             update = values.get('update', {})
@@ -601,17 +676,25 @@ class _Call:
         key = self.definition['function']
         if _sink is not None and key not in _sink.defined:
             _sink.defined.add(key)
-            _write('function.definition', self.definition)
+            _write('function.definition', {k:v for k,v in self.definition.items() if not k.startswith('_')})
+        args = self.args[self.definition['_skip']:]
+        names = self.definition['_input_names']
+        if not self.kwargs and len(args) <= len(names) and all(type(v) in (str, type(None)) for v in args):
+            inputs = _argument_summary(names[:len(args)], args, _secret_epoch)
+        else:
+            raw = {names[i] if i < len(names) else f'arg{i+self.definition["_skip"]}': v for i, v in enumerate(args)}
+            raw.update({k: v for k, v in self.kwargs.items() if k not in ('self', 'cls')})
+            inputs = {k: call_value(v, k, self.detailed) for k, v in raw.items()}
         _write('function.call', {'function': key,
                                  'caller': self.caller,
                                  'parent_trace_id': self.parent_trace if self.request_root else None,
-                                 'input': {k: call_value(v, k, self.detailed) for k, v in self.values.items() if k not in ('self', 'cls')}})
+                                 'input': inputs})
         if key in ('bot.Bot.handle', 'ticket_chat.TicketChat.handle'):
             update = self.values.get('update', {})
             callback = update.get('callback_query') or {}
             message = update.get('message') or {}
             text = message.get('text') or ''
-            event('ui.telegram.received', update_id=update.get('update_id'),
+            event('ui.telegram.received' if key == 'bot.Bot.handle' else 'ui.telegram.routed', update_id=update.get('update_id'),
                   action=callback.get('data') or (text.split(None, 1)[0] if text.startswith('/') else 'text.input'),
                   callback_id=callback.get('id'), text_length=len(text))
         elif key in ('web.Handler.do_GET', 'web.Handler.do_POST'):
@@ -633,16 +716,20 @@ class _Call:
             _actor.reset(self.actor_token)
         if self.parent is None or self.request_root:
             flush()
+            # Exception objects retain traceback frames; never retain them past a request.
+            self.frame['errors'].clear()
 
 
 def trace(function):
     """Record real calls and preserve return values and exception identities."""
     unwrapped = inspect.unwrap(function)
     code = getattr(unwrapped, '__code__', None)
-    name = function.__module__.removeprefix('cfd_bot.') + '.' + function.__qualname__
+    name = (function.__module__.removeprefix('cfd_bot.') + '.' + function.__qualname__).replace('.<locals>.', '.')
     definition = {'function': name, 'file': Path(code.co_filename).name if code else '',
                   'line': code.co_firstlineno if code else 0,
                   'parameters': list(inspect.signature(function).parameters)}
+    definition['_skip'] = int(bool(definition['parameters']) and definition['parameters'][0] in ('self', 'cls'))
+    definition['_input_names'] = tuple(definition['parameters'][definition['_skip']:])
     _definitions[name] = definition
 
     @functools.wraps(function)
@@ -754,6 +841,7 @@ class _Connection(sqlite3.Connection):
     def __exit__(self, kind, value, tb):
         started = time.perf_counter_ns() if enabled else 0
         acquired = self._diagnostic_acquired
+        was_transaction = self.in_transaction if enabled else False
         try:
             result = super().__exit__(kind, value, tb)
         except BaseException as exc:
@@ -763,7 +851,7 @@ class _Connection(sqlite3.Connection):
             raise
         else:
             if enabled:
-                _write('db.transaction.rollback' if kind else 'db.transaction.commit',
+                _write(('db.transaction.rollback' if kind else 'db.transaction.commit') if was_transaction else 'db.context.exit',
                        {'connection_id': self._diagnostic_id,
                         'duration_ns': time.perf_counter_ns()-started,
                         'held_ns': time.perf_counter_ns()-acquired if acquired else None})
@@ -787,13 +875,37 @@ def read_records(path):
     with Path(path).open() as stream:
         for line in stream:
             record = json.loads(line)
-            if record.get('event') == 'log.file':
-                header = {key: record[key] for key in ('instance', 'pid', 'component') if key in record}
+            if record.get('event') in ('log.file', 'browser.export', 'shell.file'):
+                header = record
+            if record.get('event') == 'browser.batch.v2':
+                for row in record['records']:
+                    code, delta, seq, call, parent = row[:5]
+                    item = dict(event=header['event_codes'][str(code)], ts_ms=header['utc_origin_ms']+delta,
+                                mono_ms=header['mono_origin_ms']+delta, session=header['session'],
+                                seq=seq, call_id=call, parent_call_id=parent)
+                    if code == 1:
+                        item.update(function=header['function_codes'][row[5]], input=record['values'][row[6]], interaction_id=row[7])
+                    elif code in (2, 3):
+                        item.update(function=header['function_codes'][row[5]], duration_ms=row[6], result=record['values'][row[7]])
+                    else: item['data'] = record['values'][row[5]]
+                    yield item
+                continue
+            if record.get('event') == 'shell.record.v2':
+                code, stamp, pid, parent, call, function, line, status, detail = record['v']
+                yield dict(event=header['event_codes'].get(str(code),code), ts_seconds=stamp, pid=pid,
+                           parent_call_id=parent,call_id=call,trace_id=header.get('trace_id'),
+                           function=header['function_codes'][function] if isinstance(function,int) else function,
+                           line=line,status=status,detail=detail)
+                continue
+            if record.get('event') == 'log.batch.v2':
+                yield from _codec.decode(record, header)
+                continue
             if record.get('event') != 'log.batch':
                 yield record
                 continue
             for event, stamp, sequence, context, call, parent, fields in record['records']:
-                item = dict(header, **record['contexts'][context])
+                item = {key: header[key] for key in ('instance', 'pid', 'component') if key in header}
+                item.update(record['contexts'][context])
                 item.update(event=event, ts_ns=stamp, seq=sequence, call_id=call, parent_call_id=parent)
                 item.update(fields)
                 yield item

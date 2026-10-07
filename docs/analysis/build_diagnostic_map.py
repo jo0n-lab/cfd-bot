@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[2]
 def main():
     entries=[]
     for path in sorted((ROOT/'cfd_bot').glob('*.py')):
-        if path.name=='diagnostics.py':continue
+        if path.name in ('diagnostics.py', 'diagnostic_codec.py'):continue
         tree=ast.parse(path.read_text())
         def visit(node,parents=()):
             if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef,ast.ClassDef)):

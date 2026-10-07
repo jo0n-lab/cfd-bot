@@ -1,6 +1,6 @@
 # 함수·호출식 소스 색인
 
-기준 HEAD `ebf494f2f916de84889b6c2e84641167f40839b3` + 2026-10-07 작업 트리. 실제 검토 파일 SHA-256은 [source-manifest.json](source-manifest.json)에 기록했다.
+기준 HEAD `7efff102e5165e49a29ec0e24b4e1e75f45bc0fc` + 2026-10-07 작업 트리. 실제 검토 파일 SHA-256은 [source-manifest.json](source-manifest.json)에 기록했다.
 
 이 색인은 코드 AST의 정의·시그니처·호출식을 추출한다. `self.*` 등은 원문 그대로이며 동적 dispatch를 모두 해석한 call graph가 아니다. 사용자 요청/반환 및 순서는 [유즈케이스 그림](../lld/flows.md)과 [LLD](../LLD.md)를 기준으로 읽는다. nested function은 부모 이름으로 구분한다.
 
@@ -113,64 +113,81 @@
 | [cpu_allocation.managed_cpus](../../cfd_bot/cpu_allocation.py#L134) | `config, affinity=None` | `sorted`, `os.sched_getaffinity`, `config.get('scheduler', {}).get`, `config.get`, `len`, `min`, `set` |
 | [cpu_allocation.capacity_status](../../cfd_bot/cpu_allocation.py#L143) | `case, observed, active, config` | `managed_cpus`, `occupied_cpus`, `_diagnostics.step`, `int`, `bool`, `case.get('monitoring', {}).get`, `case.get`, `dict`, `len`, `str`, `set`, `cpu_set`, `select_cpus`, `topology`, `format_cpus`, `max` |
 | [cpu_allocation.allocate_cpus](../../cfd_bot/cpu_allocation.py#L187) | `count, observed, active, *, allowed=None` | `os.sched_getaffinity`, `select_cpus`, `topology`, `occupied_cpus` |
+## diagnostic_codec.py
+
+| 함수 (소스 위치) | 시그니처 | 직접 호출식 (정적 원문) |
+|---|---|---|
+| [diagnostic_codec.Values.__init__](../../cfd_bot/diagnostic_codec.py#L26) | `self` | 없음 |
+| [diagnostic_codec.Values.ref](../../cfd_bot/diagnostic_codec.py#L31) | `self, value` | `type`, `self.identities.get`, `id`, `len`, `all`, `value.values`, `tuple`, `value.items`, `self.scalars.get`, `self.values.append` |
+| [diagnostic_codec.encode](../../cfd_bot/diagnostic_codec.py#L55) | `records, function_codes, event_codes=EVENT_CODES` | `Values`, `id`, `context_ids.get`, `len`, `contexts.append`, `event_codes.get`, `call_ref`, `function_codes.get`, `values.ref`, `fields.get`, `exception_ref`, `steps_ref`, `fields.items`, `rows.append`, `str` |
+| [diagnostic_codec.encode.call_ref](../../cfd_bot/diagnostic_codec.py#L60) | `value` | `call_ids.get`, `len`, `calls.append` |
+| [diagnostic_codec.encode.exception_ref](../../cfd_bot/diagnostic_codec.py#L68) | `chain` | `tuple`, `values.ref`, `item.items`, `item.get`, `error_versions.get`, `result.append`, `len`, `errors.append`, `list` |
+| [diagnostic_codec.encode.steps_ref](../../cfd_bot/diagnostic_codec.py#L87) | `steps` | `len`, `values.ref` |
+| [diagnostic_codec.decode](../../cfd_bot/diagnostic_codec.py#L116) | `batch, header` | `int`, `header.get`, `dict`, `errors.append`, `events.get`, `str`, `EVENTS.get`, `result.update`, `function_name`, `steps` |
+| [diagnostic_codec.decode.function_name](../../cfd_bot/diagnostic_codec.py#L127) | `code` | `isinstance` |
+| [diagnostic_codec.decode.steps](../../cfd_bot/diagnostic_codec.py#L130) | `items` | `len` |
 ## diagnostics.py
 
 | 함수 (소스 위치) | 시그니처 | 직접 호출식 (정적 원문) |
 |---|---|---|
-| [diagnostics.remember_secret](../../cfd_bot/diagnostics.py#L70) | `value` | `isinstance`, `_secrets.add`, `_redact_cached.cache_clear`, `_scalar_summary.cache_clear` |
-| [diagnostics._redact_text](../../cfd_bot/diagnostics.py#L77) | `value` | `value.replace`, `_TOKEN.sub`, `_CREDENTIAL.sub`, `re.sub` |
-| [diagnostics.redact](../../cfd_bot/diagnostics.py#L90) | `value` | `str`, `len`, `_redact_cached`, `_redact_text` |
-| [diagnostics.actor_id](../../cfd_bot/diagnostics.py#L95) | `value` | `hashlib.sha256(str(value).encode()).hexdigest`, `hashlib.sha256`, `str(value).encode`, `str` |
-| [diagnostics._scalar_summary](../../cfd_bot/diagnostics.py#L100) | `value, key` | `_SECRET_KEY.search`, `actor_id`, `type`, `math.isfinite`, `str`, `isinstance`, `len`, `value.startswith`, `value.split`, `redact` |
-| [diagnostics.summary](../../cfd_bot/diagnostics.py#L121) | `value, key='', depth=0` | `str`, `type`, `len`, `_scalar_summary.__wrapped__`, `_scalar_summary`, `_SECRET_KEY.search`, `actor_id`, `isinstance`, `redact`, `list`, `itertools.islice`, `value.items`, `summary`, `iter` |
-| [diagnostics.call_value](../../cfd_bot/diagnostics.py#L157) | `value, key, detailed` | `summary`, `type`, `_SECRET_KEY.search`, `len` |
-| [diagnostics.exception_info](../../cfd_bot/diagnostics.py#L168) | `exc` | `set`, `id`, `seen.add`, `chain.append`, `type`, `redact`, `str`, `traceback.extract_tb`, `getattr` |
-| [diagnostics._Sink.__init__](../../cfd_bot/diagnostics.py#L185) | `self, directory, max_bytes, backups, component` | `Path`, `self.directory.mkdir`, `os.getpid`, `time.time_ns`, `threading.RLock`, `set`, `json.JSONEncoder`, `time.monotonic` |
-| [diagnostics._Sink._open](../../cfd_bot/diagnostics.py#L204) | `self` | `os.open`, `str`, `os.fdopen`, `self.stream.write`, `self.encoder.encode`, `dict`, `time.time_ns` |
-| [diagnostics._Sink.write](../../cfd_bot/diagnostics.py#L210) | `self, record, flush=False` | `self.pending.append`, `time.monotonic`, `len`, `self._drain`, `self.stream.flush`, `print` |
-| [diagnostics._Sink._drain](../../cfd_bot/diagnostics.py#L229) | `self` | `id`, `context_ids.get`, `len`, `contexts.append`, `rows.append`, `self.encoder.encode`, `self._open`, `self.stream.close`, `range`, `Path`, `str`, `old.exists`, `old.replace`, `self.path.replace`, `self.stream.write`, `line.encode` |
-| [diagnostics._Sink.flush](../../cfd_bot/diagnostics.py#L259) | `self` | `self._drain`, `self.stream.flush`, `time.monotonic` |
-| [diagnostics._Sink.close](../../cfd_bot/diagnostics.py#L270) | `self` | `self.flush`, `self.stream.close` |
-| [diagnostics.configure](../../cfd_bot/diagnostics.py#L281) | `config=None, *, state_dir=None, component=None, active=None` | `isinstance`, `config.get`, `options.get`, `os.environ['CFD_BOT_DIAGNOSTICS'].lower`, `os.environ.get`, `str`, `Path`, `Path(directory).is_absolute`, `re.sub`, `type`, `bool`, `os.getpid`, `telegram.get`, `remember_secret`, `close`, `_Sink`, `print`, `_LogHandler`, `logging.getLogger().addHandler`, `logging.getLogger`, `Path(__file__).with_name`, `manifest.read_bytes`, `json.loads`, `manifest_document.get`, `hashlib.sha256(manifest_data).hexdigest`, `hashlib.sha256`, `_step_numbers.clear`, `_step_numbers.update`, `enumerate`, `_sequence_functions.clear`, `_sequence_functions.update`, `os.open`, `os.fdopen`, `output.write`, `_write`, `sys.version.split` |
-| [diagnostics._write](../../cfd_bot/diagnostics.py#L362) | `event, fields, flush=False` | `_current.get`, `time.time_ns`, `next`, `threading.get_ident`, `_actor.get`, `_sink.write` |
-| [diagnostics.trace_id](../../cfd_bot/diagnostics.py#L372) | `` | `_current.get` |
-| [diagnostics._LogHandler.__init__](../../cfd_bot/diagnostics.py#L378) | `self` | `super().__init__`, `super` |
-| [diagnostics._LogHandler.emit](../../cfd_bot/diagnostics.py#L381) | `self, record` | `_write`, `redact`, `record.getMessage`, `exception_info` |
-| [diagnostics.event](../../cfd_bot/diagnostics.py#L389) | `name, /, **fields` | `_write`, `summary`, `fields.items` |
-| [diagnostics.step](../../cfd_bot/diagnostics.py#L394) | `name, /, **fields` | `next`, `time.time_ns`, `summary`, `fields.items`, `name.endswith`, `exception_info`, `sys.exc_info`, `_current.get`, `_step_numbers.get`, `data.append`, `current['steps'].append`, `len`, `_write`, `dict` |
-| [diagnostics._showwarning](../../cfd_bot/diagnostics.py#L415) | `message, category, filename, lineno, file=None, line=None` | `_write`, `redact`, `_warning_handler` |
-| [diagnostics._thread_exception](../../cfd_bot/diagnostics.py#L422) | `args` | `_write`, `exception_info`, `_thread_exception_handler` |
-| [diagnostics._uncaught_exception](../../cfd_bot/diagnostics.py#L429) | `kind, exc, tb` | `_write`, `exception_info`, `_exception_handler` |
-| [diagnostics.component](../../cfd_bot/diagnostics.py#L435) | `name` | 없음 |
-| [diagnostics.configure_path](../../cfd_bot/diagnostics.py#L440) | `path, component_name` | `Path`, `json.loads`, `path.read_text`, `isinstance`, `str`, `path.resolve`, `configure` |
-| [diagnostics._bootstrap](../../cfd_bot/diagnostics.py#L453) | `argv` | `isinstance`, `enumerate`, `argument.startswith`, `argument.split`, `len`, `configure_path`, `configure` |
-| [diagnostics.inherit_context](../../cfd_bot/diagnostics.py#L468) | `function` | `contextvars.copy_context` |
-| [diagnostics.inherit_context.run](../../cfd_bot/diagnostics.py#L473) | `*args, **kwargs` | `context.run` |
-| [diagnostics.flush](../../cfd_bot/diagnostics.py#L478) | `` | `_sink.flush` |
-| [diagnostics.close](../../cfd_bot/diagnostics.py#L483) | `` | `_write`, `_sink.close` |
-| [diagnostics.settings](../../cfd_bot/diagnostics.py#L492) | `` | `str` |
-| [diagnostics.child_environment](../../cfd_bot/diagnostics.py#L497) | `env=None` | `dict`, `str`, `_current.get` |
-| [diagnostics.run_process](../../cfd_bot/diagnostics.py#L510) | `*args, **kwargs` | `child_environment`, `kwargs.get`, `subprocess.run`, `time.perf_counter_ns`, `event`, `_write`, `exception_info`, `isinstance`, `result.stderr.decode`, `redact`, `len` |
-| [diagnostics.spawn_process](../../cfd_bot/diagnostics.py#L532) | `*args, **kwargs` | `child_environment`, `kwargs.get`, `subprocess.Popen`, `event`, `_write`, `exception_info` |
-| [diagnostics.signal_process](../../cfd_bot/diagnostics.py#L547) | `pid, signum` | `event`, `getattr`, `str`, `flush`, `os.killpg` |
-| [diagnostics._Call.__init__](../../cfd_bot/diagnostics.py#L555) | `self, function, definition, args, kwargs` | `_current.get`, `os.getpid`, `next`, `os.environ.get`, `definition['function'].replace`, `time.perf_counter_ns`, `len`, `enumerate`, `values.update`, `sys._getframe`, `caller.f_globals.get`, `str(self.caller['module']).startswith`, `str`, `values.get`, `update.get`, `message.get('from', {}).get`, `message.get`, `_actor.set`, `actor_id`, `definition['function'].startswith`, `(_actor.get() or {}).get`, `_actor.get` |
-| [diagnostics._Call.enter](../../cfd_bot/diagnostics.py#L594) | `self` | `_current.set` |
-| [diagnostics._Call.leave](../../cfd_bot/diagnostics.py#L597) | `self` | `_current.reset` |
-| [diagnostics._Call.begin](../../cfd_bot/diagnostics.py#L600) | `self` | `_sink.defined.add`, `_write`, `call_value`, `self.values.items`, `self.values.get`, `update.get`, `message.get`, `event`, `callback.get`, `text.startswith`, `text.split`, `len`, `handler.path.split` |
-| [diagnostics._Call.finish](../../cfd_bot/diagnostics.py#L621) | `self, result=None, exc=None, cancelled=False` | `time.perf_counter_ns`, `exception_info`, `call_value`, `_write`, `_actor.reset`, `flush` |
-| [diagnostics.trace](../../cfd_bot/diagnostics.py#L638) | `function` | `inspect.unwrap`, `getattr`, `function.__module__.removeprefix`, `Path`, `list`, `inspect.signature`, `inspect.isgeneratorfunction`, `hasattr`, `setattr` |
-| [diagnostics.trace.wrapped](../../cfd_bot/diagnostics.py#L649) | `*args, **kwargs` | `_bootstrap`, `kwargs.get`, `function`, `_Call`, `call.enter`, `call.begin`, `call.finish`, `call.leave` |
-| [diagnostics.trace.generated](../../cfd_bot/diagnostics.py#L669) | `*args, **kwargs` | `function`, `_Call`, `call.enter`, `call.begin`, `generator.throw`, `generator.send`, `call.finish`, `call.leave`, `generator.close`, `sys.exc_info` |
-| [diagnostics.callback](../../cfd_bot/diagnostics.py#L711) | `function, name` | `trace` |
-| [diagnostics._Connection.__init__](../../cfd_bot/diagnostics.py#L718) | `self, *args, **kwargs` | `super().__init__`, `super`, `os.getpid`, `next` |
-| [diagnostics._Connection._execute](../../cfd_bot/diagnostics.py#L723) | `self, method, sql, parameters=()` | `method`, `time.perf_counter_ns`, `sql.strip`, `sql.lstrip().split(None, 1)[0].upper`, `sql.lstrip().split`, `sql.lstrip`, `hashlib.sha256(sql.encode()).hexdigest`, `hashlib.sha256`, `sql.encode`, `_write`, `dict`, `exception_info` |
-| [diagnostics._Connection.execute](../../cfd_bot/diagnostics.py#L745) | `self, sql, parameters=()` | `self._execute`, `super` |
-| [diagnostics._Connection.executemany](../../cfd_bot/diagnostics.py#L748) | `self, sql, parameters` | `self._execute`, `super` |
-| [diagnostics._Connection.executescript](../../cfd_bot/diagnostics.py#L751) | `self, sql` | `self._execute`, `super` |
-| [diagnostics._Connection.__exit__](../../cfd_bot/diagnostics.py#L754) | `self, kind, value, tb` | `time.perf_counter_ns`, `super().__exit__`, `super`, `_write`, `exception_info` |
-| [diagnostics.connect_sqlite](../../cfd_bot/diagnostics.py#L775) | `*args, **kwargs` | `sqlite3.connect` |
-| [diagnostics.read_records](../../cfd_bot/diagnostics.py#L784) | `path` | `Path(path).open`, `Path`, `json.loads`, `record.get`, `dict`, `item.update` |
-| [diagnostics.dump_records](../../cfd_bot/diagnostics.py#L802) | `` | `argparse.ArgumentParser`, `parser.add_argument`, `Path(__file__).with_name`, `Path`, `parser.parse_args`, `args.map.read_bytes`, `hashlib.sha256(raw).hexdigest`, `hashlib.sha256`, `json.loads`, `read_records`, `record.get`, `record.pop`, `isinstance`, `len`, `output.update`, `print`, `json.dumps` |
+| [diagnostics.remember_secret](../../cfd_bot/diagnostics.py#L78) | `value` | `isinstance`, `_secrets.add`, `_argument_summary.cache_clear`, `_collection_summary.cache_clear`, `_redact_cached.cache_clear`, `_scalar_summary.cache_clear` |
+| [diagnostics._redact_text](../../cfd_bot/diagnostics.py#L89) | `value` | `value.replace`, `_TOKEN.sub`, `_CREDENTIAL.sub`, `re.sub` |
+| [diagnostics.redact](../../cfd_bot/diagnostics.py#L102) | `value` | `str`, `len`, `_redact_cached`, `_redact_text` |
+| [diagnostics.actor_id](../../cfd_bot/diagnostics.py#L107) | `value` | `hashlib.sha256(str(value).encode()).hexdigest`, `hashlib.sha256`, `str(value).encode`, `str` |
+| [diagnostics._scalar_summary](../../cfd_bot/diagnostics.py#L112) | `value, key` | `_SECRET_KEY.search`, `actor_id`, `type`, `math.isfinite`, `str`, `isinstance`, `len`, `value.startswith`, `value.split`, `redact` |
+| [diagnostics.summary](../../cfd_bot/diagnostics.py#L133) | `value, key='', depth=0` | `str`, `type`, `len`, `_scalar_summary.__wrapped__`, `_scalar_summary`, `_SECRET_KEY.search`, `actor_id`, `isinstance`, `redact`, `list`, `itertools.islice`, `value.items`, `summary`, `iter`, `all`, `_collection_summary`, `tuple` |
+| [diagnostics.call_value](../../cfd_bot/diagnostics.py#L171) | `value, key, detailed` | `summary`, `type`, `_SECRET_KEY.search`, `len`, `value.items` |
+| [diagnostics._argument_summary](../../cfd_bot/diagnostics.py#L186) | `keys, values, epoch` | `summary`, `zip` |
+| [diagnostics._collection_summary](../../cfd_bot/diagnostics.py#L191) | `key, values, count, epoch` | `summary`, `len` |
+| [diagnostics._caller_definition](../../cfd_bot/diagnostics.py#L197) | `module, code, line` | 없음 |
+| [diagnostics._trace_frame](../../cfd_bot/diagnostics.py#L203) | `code, line, epoch` | `redact` |
+| [diagnostics.exception_info](../../cfd_bot/diagnostics.py#L207) | `exc` | `_current.get`, `set`, `id`, `seen.add`, `identities.get`, `len`, `identities.clear`, `next`, `frames.append`, `_trace_frame`, `chain.append`, `type`, `redact`, `str`, `getattr` |
+| [diagnostics._Sink.__init__](../../cfd_bot/diagnostics.py#L236) | `self, directory, max_bytes, backups, component` | `Path`, `self.directory.mkdir`, `os.getpid`, `time.time_ns`, `threading.RLock`, `set`, `json.JSONEncoder`, `time.monotonic` |
+| [diagnostics._Sink._open](../../cfd_bot/diagnostics.py#L258) | `self` | `os.open`, `str`, `os.fdopen`, `self.stream.write`, `self.encoder.encode`, `dict`, `time.time_ns` |
+| [diagnostics._Sink.write](../../cfd_bot/diagnostics.py#L264) | `self, record, flush=False` | `self.pending.append`, `time.monotonic`, `len`, `self._drain`, `self.stream.flush`, `print` |
+| [diagnostics._Sink._drain](../../cfd_bot/diagnostics.py#L283) | `self` | `self.encoder.encode`, `_codec.encode`, `self._open`, `self.stream.close`, `range`, `Path`, `str`, `old.exists`, `old.replace`, `self.path.replace`, `self.stream.write`, `len`, `line.encode` |
+| [diagnostics._Sink.flush](../../cfd_bot/diagnostics.py#L304) | `self` | `self._drain`, `self.stream.flush`, `time.monotonic` |
+| [diagnostics._Sink.close](../../cfd_bot/diagnostics.py#L315) | `self` | `self.flush`, `self.stream.close` |
+| [diagnostics.configure](../../cfd_bot/diagnostics.py#L326) | `config=None, *, state_dir=None, component=None, active=None` | `isinstance`, `config.get`, `options.get`, `os.environ['CFD_BOT_DIAGNOSTICS'].lower`, `os.environ.get`, `str`, `Path`, `Path(directory).is_absolute`, `re.sub`, `type`, `bool`, `os.getpid`, `telegram.get`, `remember_secret`, `close`, `_Sink`, `print`, `_LogHandler`, `logging.getLogger().addHandler`, `logging.getLogger`, `Path(__file__).with_name`, `manifest.read_bytes`, `json.loads`, `manifest_document.get`, `hashlib.sha256(manifest_data).hexdigest`, `hashlib.sha256`, `_step_numbers.clear`, `_step_numbers.update`, `enumerate`, `_sequence_functions.clear`, `_sequence_functions.update`, `sorted`, `Path(__file__).with_name('diagnostic_codes.json').read_bytes`, `hashlib.sha256(codebook_bytes).hexdigest`, `codebook_path.exists`, `os.open`, `os.fdopen`, `output.write`, `int`, `_sink.header['event_codes'].items`, `_write`, `sys.version.split` |
+| [diagnostics._write](../../cfd_bot/diagnostics.py#L425) | `event, fields, flush=False` | `_current.get`, `fields.get`, `fields['exception'][0].get`, `len`, `_sink.flushed_errors.clear`, `_sink.flushed_errors.add`, `time.time_ns`, `next`, `threading.get_ident`, `_actor.get`, `_sink.write` |
+| [diagnostics.trace_id](../../cfd_bot/diagnostics.py#L442) | `` | `_current.get` |
+| [diagnostics._LogHandler.__init__](../../cfd_bot/diagnostics.py#L448) | `self` | `super().__init__`, `super` |
+| [diagnostics._LogHandler.emit](../../cfd_bot/diagnostics.py#L451) | `self, record` | `_write`, `redact`, `record.getMessage`, `exception_info` |
+| [diagnostics.event](../../cfd_bot/diagnostics.py#L459) | `name, /, **fields` | `_write`, `summary`, `fields.items` |
+| [diagnostics.step](../../cfd_bot/diagnostics.py#L464) | `name, /, **fields` | `next`, `time.time_ns`, `call_value`, `fields.items`, `name.endswith`, `exception_info`, `sys.exc_info`, `_current.get`, `_step_numbers.get`, `data.append`, `current['steps'].append`, `len`, `_write`, `dict` |
+| [diagnostics._showwarning](../../cfd_bot/diagnostics.py#L485) | `message, category, filename, lineno, file=None, line=None` | `_write`, `redact`, `_warning_handler` |
+| [diagnostics._thread_exception](../../cfd_bot/diagnostics.py#L492) | `args` | `_write`, `exception_info`, `_thread_exception_handler` |
+| [diagnostics._uncaught_exception](../../cfd_bot/diagnostics.py#L499) | `kind, exc, tb` | `_write`, `exception_info`, `_exception_handler` |
+| [diagnostics.component](../../cfd_bot/diagnostics.py#L505) | `name` | 없음 |
+| [diagnostics.configure_path](../../cfd_bot/diagnostics.py#L510) | `path, component_name` | `Path`, `json.loads`, `path.read_text`, `isinstance`, `str`, `path.resolve`, `configure` |
+| [diagnostics._bootstrap](../../cfd_bot/diagnostics.py#L523) | `argv` | `isinstance`, `enumerate`, `argument.startswith`, `argument.split`, `len`, `configure_path`, `configure` |
+| [diagnostics.inherit_context](../../cfd_bot/diagnostics.py#L538) | `function` | `contextvars.copy_context` |
+| [diagnostics.inherit_context.run](../../cfd_bot/diagnostics.py#L543) | `*args, **kwargs` | `context.run` |
+| [diagnostics.flush](../../cfd_bot/diagnostics.py#L548) | `` | `_sink.flush` |
+| [diagnostics.close](../../cfd_bot/diagnostics.py#L553) | `` | `_write`, `_sink.close` |
+| [diagnostics.settings](../../cfd_bot/diagnostics.py#L562) | `` | `str` |
+| [diagnostics.child_environment](../../cfd_bot/diagnostics.py#L567) | `env=None` | `dict`, `str`, `_current.get` |
+| [diagnostics.run_process](../../cfd_bot/diagnostics.py#L580) | `*args, **kwargs` | `child_environment`, `kwargs.get`, `subprocess.run`, `time.perf_counter_ns`, `event`, `_write`, `exception_info`, `isinstance`, `result.stderr.decode`, `redact`, `len` |
+| [diagnostics.spawn_process](../../cfd_bot/diagnostics.py#L602) | `*args, **kwargs` | `child_environment`, `kwargs.get`, `subprocess.Popen`, `event`, `_write`, `exception_info` |
+| [diagnostics.signal_process](../../cfd_bot/diagnostics.py#L617) | `pid, signum` | `event`, `getattr`, `str`, `flush`, `os.killpg` |
+| [diagnostics._Call.__init__](../../cfd_bot/diagnostics.py#L625) | `self, function, definition, args, kwargs` | `_current.get`, `os.getpid`, `next`, `os.environ.get`, `definition['function'].replace`, `time.perf_counter_ns`, `len`, `enumerate`, `self.values.update`, `sys._getframe`, `_caller_definition`, `caller.f_globals.get`, `str(caller.f_globals.get('__name__')).startswith`, `str`, `values.get`, `update.get`, `message.get('from', {}).get`, `message.get`, `_actor.set`, `actor_id`, `definition['function'].startswith`, `(_actor.get() or {}).get`, `_actor.get` |
+| [diagnostics._Call.enter](../../cfd_bot/diagnostics.py#L669) | `self` | `_current.set` |
+| [diagnostics._Call.leave](../../cfd_bot/diagnostics.py#L672) | `self` | `_current.reset` |
+| [diagnostics._Call.begin](../../cfd_bot/diagnostics.py#L675) | `self` | `_sink.defined.add`, `_write`, `self.definition.items`, `k.startswith`, `len`, `all`, `type`, `_argument_summary`, `enumerate`, `raw.update`, `self.kwargs.items`, `call_value`, `raw.items`, `self.values.get`, `update.get`, `message.get`, `event`, `callback.get`, `text.startswith`, `text.split`, `handler.path.split` |
+| [diagnostics._Call.finish](../../cfd_bot/diagnostics.py#L704) | `self, result=None, exc=None, cancelled=False` | `time.perf_counter_ns`, `exception_info`, `call_value`, `_write`, `_actor.reset`, `flush`, `self.frame['errors'].clear` |
+| [diagnostics.trace](../../cfd_bot/diagnostics.py#L723) | `function` | `inspect.unwrap`, `getattr`, `(function.__module__.removeprefix('cfd_bot.') + '.' + function.__qualname__).replace`, `function.__module__.removeprefix`, `Path`, `list`, `inspect.signature`, `int`, `bool`, `tuple`, `inspect.isgeneratorfunction`, `hasattr`, `setattr` |
+| [diagnostics.trace.wrapped](../../cfd_bot/diagnostics.py#L736) | `*args, **kwargs` | `_bootstrap`, `kwargs.get`, `function`, `_Call`, `call.enter`, `call.begin`, `call.finish`, `call.leave` |
+| [diagnostics.trace.generated](../../cfd_bot/diagnostics.py#L756) | `*args, **kwargs` | `function`, `_Call`, `call.enter`, `call.begin`, `generator.throw`, `generator.send`, `call.finish`, `call.leave`, `generator.close`, `sys.exc_info` |
+| [diagnostics.callback](../../cfd_bot/diagnostics.py#L798) | `function, name` | `trace` |
+| [diagnostics._Connection.__init__](../../cfd_bot/diagnostics.py#L805) | `self, *args, **kwargs` | `super().__init__`, `super`, `os.getpid`, `next` |
+| [diagnostics._Connection._execute](../../cfd_bot/diagnostics.py#L810) | `self, method, sql, parameters=()` | `method`, `time.perf_counter_ns`, `sql.strip`, `sql.lstrip().split(None, 1)[0].upper`, `sql.lstrip().split`, `sql.lstrip`, `hashlib.sha256(sql.encode()).hexdigest`, `hashlib.sha256`, `sql.encode`, `_write`, `dict`, `exception_info` |
+| [diagnostics._Connection.execute](../../cfd_bot/diagnostics.py#L832) | `self, sql, parameters=()` | `self._execute`, `super` |
+| [diagnostics._Connection.executemany](../../cfd_bot/diagnostics.py#L835) | `self, sql, parameters` | `self._execute`, `super` |
+| [diagnostics._Connection.executescript](../../cfd_bot/diagnostics.py#L838) | `self, sql` | `self._execute`, `super` |
+| [diagnostics._Connection.__exit__](../../cfd_bot/diagnostics.py#L841) | `self, kind, value, tb` | `time.perf_counter_ns`, `super().__exit__`, `super`, `_write`, `exception_info` |
+| [diagnostics.connect_sqlite](../../cfd_bot/diagnostics.py#L863) | `*args, **kwargs` | `sqlite3.connect` |
+| [diagnostics.read_records](../../cfd_bot/diagnostics.py#L872) | `path` | `Path(path).open`, `Path`, `json.loads`, `record.get`, `dict`, `str`, `item.update`, `header['event_codes'].get`, `header.get`, `isinstance`, `_codec.decode` |
+| [diagnostics.dump_records](../../cfd_bot/diagnostics.py#L914) | `` | `argparse.ArgumentParser`, `parser.add_argument`, `Path(__file__).with_name`, `Path`, `parser.parse_args`, `args.map.read_bytes`, `hashlib.sha256(raw).hexdigest`, `hashlib.sha256`, `json.loads`, `read_records`, `record.get`, `record.pop`, `isinstance`, `len`, `output.update`, `print`, `json.dumps` |
 ## editor.py
 
 | 함수 (소스 위치) | 시그니처 | 직접 호출식 (정적 원문) |

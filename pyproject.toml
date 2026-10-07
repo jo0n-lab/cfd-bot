@@ -18,4 +18,4 @@ cfd-ticket-web = "cfd_bot.web:main"
 packages = ["cfd_bot"]
 
 [tool.setuptools.package-data]
-cfd_bot = ["web_static/*", "web_static/downloads/*.zip", "diagnostic_map.json"]
+cfd_bot = ["web_static/*", "web_static/downloads/*.zip", "diagnostic_map.json", "diagnostic_codes.json"]

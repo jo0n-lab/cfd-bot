@@ -33,10 +33,19 @@ _cfd_diag_write()
     local event=$1 status=${2:-0} detail=${3:-} function=${4:-${FUNCNAME[1]:-main}}
     detail=${detail//\\/\\\\}; detail=${detail//\"/\\\"}
     detail=${detail//$'\n'/\\n}; detail=${detail//$'\r'/\\r}; detail=${detail//$'\t'/\\t}
-    printf '{"event":"%s","ts_seconds":"%s","pid":%s,"parent_call_id":"%s","call_id":"%s","trace_id":"%s","function":"%s","line":%s,"status":%s,"detail":"%s"}\n' \
-        "$event" "${EPOCHREALTIME:-0}" "$BASHPID" "${_cfd_diag_parent:-${CFD_BOT_PARENT_CALL_ID:-}}" \
-        "${_cfd_diag_call:-$BASHPID}" "${CFD_BOT_TRACE_ID:-$BASHPID}" "$function" \
-        "${5:-${BASH_LINENO[0]:-0}}" "$status" "$detail" >&"$_cfd_diag_fd" || :
+    local code=${_cfd_diag_event_codes[$event]:-\"$event\"}
+    local function_code=${_cfd_diag_function_codes[$function]:-\"$function\"}
+    printf '{"event":"shell.record.v2","v":[%s,"%s",%s,"%s","%s",%s,%s,%s,"%s"]}\n' \
+        "$code" "${EPOCHREALTIME:-0}" "$BASHPID" "${_cfd_diag_parent:-${CFD_BOT_PARENT_CALL_ID:-}}" \
+        "${_cfd_diag_call:-$BASHPID}" "$function_code" "${5:-${BASH_LINENO[0]:-0}}" "$status" "$detail" >&"$_cfd_diag_fd" || :
+
+}
+
+
+_cfd_diag_header()
+{
+    printf '{"event":"shell.file","schema_version":2,"codebook_sha256":"%s","event_codes":%s,"function_codes":%s,"trace_id":"%s"}\n' \
+        "$_cfd_diag_codebook_sha" "$_cfd_diag_event_json" "$_cfd_diag_function_json" "${CFD_BOT_TRACE_ID:-$BASHPID}" >&"$_cfd_diag_fd" || :
 }
 
 _cfd_diag_return()
@@ -73,6 +82,7 @@ _cfd_diag_rotate()
         exec {_cfd_diag_fd}>&-
         (umask 077; : > "$_cfd_diag_file") || return 0
         if exec {_cfd_diag_fd}>>"$_cfd_diag_file"; then
+            _cfd_diag_header
             _cfd_diag_write log.rotation 0 'previous=.1 max_bytes=20971520 backups=3'
         else
             CFD_BOT_DIAGNOSTICS=0
@@ -90,7 +100,9 @@ case ${CFD_BOT_DIAGNOSTICS:-0} in
             _cfd_diag_file="$_cfd_diag_dir/ofps-$BASHPID-${EPOCHREALTIME//./}.jsonl"
             if exec {_cfd_diag_fd}>>"$_cfd_diag_file"; then
                 export CFD_BOT_DIAGNOSTICS=1 CFD_BOT_DIAGNOSTICS_DIR="$_cfd_diag_dir"
-                _cfd_diag_write shell.start 0 'schema=1'
+                source "${BASH_SOURCE[0]%/*}/ofps-diagnostic-codes.sh"
+                _cfd_diag_header
+                _cfd_diag_write shell.start 0 'schema=2'
                 set -ET
                 trap '_cfd_diag_error "$?" "$LINENO" "${PIPESTATUS[*]}"' ERR
                 trap '_cfd_diag_return "${_cfd_diag_result:-$?}" "${FUNCNAME[0]:-main}" "$LINENO"' RETURN

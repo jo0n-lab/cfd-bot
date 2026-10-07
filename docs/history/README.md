@@ -4,6 +4,7 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-10-07 | [숫자 코드·사전 기반 진단 로그 구현](2026-10-07-diagnostic-codec-implementation.md) | [#30](https://github.com/jo0n-lab/cfd-bot/issues/30) |
 | 2026-10-07 | [진단 로그 지연·중복·숫자 코드/해시 사전 검토](2026-10-07-diagnostic-overhead-review.md) | [#30](https://github.com/jo0n-lab/cfd-bot/issues/30) |
 | 2026-10-07 | [전체 시퀀스 진단 로그·ON/OFF·성능 비교](2026-10-07-diagnostic-sequence-logging.md) | [#18](https://github.com/jo0n-lab/cfd-bot/issues/18) |
 | 2026-10-07 | [종료 이벤트 재처리로 인한 SQLite lock 제거](2026-10-07-terminal-event-db-lock.md) | [#26](https://github.com/jo0n-lab/cfd-bot/issues/26) |

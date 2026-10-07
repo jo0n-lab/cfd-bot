@@ -270,4 +270,4 @@ sequenceDiagram
     end
 ```
 
-[기계 판독 대응표](../cfd_bot/diagnostic_map.json)는 기존 99개 시퀀스의 모든 노드를 Python/JS/shell 기록 또는 외부 호출 경계에 연결한다. 정적 대응표의 완성도와 실제 환경에서 시나리오를 실행한 검증 범위는 구분한다. `log.batch`와 `steps[]`는 무손실 저장 형식이며 decoder가 개별 기록으로 확장한다.
+[기계 판독 대응표](../cfd_bot/diagnostic_map.json)는 기존 99개 시퀀스의 모든 노드를 Python/JS/shell 기록 또는 외부 호출 경계에 연결한다. 정적 대응표의 완성도와 실제 환경에서 시나리오를 실행한 검증 범위는 구분한다. #30의 `log.batch.v2`는 함수/event 숫자 코드, 공통 context/call/value 사전, delta 시간/순서, error ID와 공유 stack을 사용한다. decoder는 기존 `log.batch`와 신형 Python/browser/ofps 기록을 모두 읽고 개별 호출·분기·반환을 복원한다. [정확한 필드 순서와 번호](analysis/diagnostic-codebook.md)를 별도 제공한다. 예외 객체 참조는 요청 종료 시 해제하며, 읽기 DB context 종료는 실제 commit과 다른 code를 쓴다.

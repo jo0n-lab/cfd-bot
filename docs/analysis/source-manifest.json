@@ -1,5 +1,5 @@
 {
-  "head": "ebf494f2f916de84889b6c2e84641167f40839b3",
+  "head": "7efff102e5165e49a29ec0e24b4e1e75f45bc0fc",
   "date": "2026-10-07",
   "working_tree": true,
   "sha256": {
@@ -12,7 +12,8 @@
     "cfd_bot/config.py": "bd420fb3952b555b947167e11df16047b3bf9534ad060e805de140753a44d850",
     "cfd_bot/control.py": "99814f09a9c6443e735b0d139471d5526fc3f2ac302214c141e07d8b4e810a46",
     "cfd_bot/cpu_allocation.py": "891cfc104856a910e1d03232cc52096bab02d2e17ccdba989c310646d7fb69ed",
-    "cfd_bot/diagnostics.py": "cccf1801fc8ee64403ca19c52d8b87dbc3aff0db5eb7a87dffb5985b5ce1dc27",
+    "cfd_bot/diagnostic_codec.py": "3bb0374af15187442b95eda05e654258ec168058ffed1cef2332cecdaa1dc53d",
+    "cfd_bot/diagnostics.py": "d15da8a417a82e83894e59989075574a19df789a08f186c7ef873d7feee76db8",
     "cfd_bot/editor.py": "1754e28e50448a17f008ddf75a2f537d15704bf3d7f5789185f0a415526f489a",
     "cfd_bot/execution.py": "91aa76402cfc765691d21101b01be57e9e472f5b0004b2b5f48a4076fadbfb45",
     "cfd_bot/gui.py": "2bc23ba809952011fbc77ef91566d80075c1b640be8e2fca24d55ada7e86913d",
@@ -33,7 +34,7 @@
     "cfd_bot/ticket_run.py": "4c02cd29d57c8a69768a1ca93930faa23ffa77dc71fa43270093988944d02c08",
     "cfd_bot/tickets.py": "f587fa8d68eb3b195f3106ed28d453ba84330804568d0a29f2d0ff026b7e0cf7",
     "cfd_bot/ui.py": "36ed51cc53c086be63d501ac3c669ff266044ad4d76b33c395bd7819b7ebf3d7",
-    "cfd_bot/web.py": "a2699e36e43eb33f2e616c266216603b1c5fc07226d6c238089d39e35be1d797",
+    "cfd_bot/web.py": "62125842cf3ebab445244d10094e18349d5cc4198e3e32569c0a55a9f27885be",
     "cfd_bot/web_static/app.js": "a21aabf7ea00afba95e17b8df1542301ed7f5d127cd0f588d7bd7642865e234f",
     "bin/ofps": "a979aa00670fa80fdd477705cda10688548a215ffb045e6079d6343189623579",
     "bin/cfd-web-tunnel": "04db8999b8e4a4d4525c902f3121adba3018888e0654ae80019bea53a11ac690",
