@@ -691,7 +691,7 @@
     "key": "UC-28-tg",
     "title": "실행 중 managed 작업 중단",
     "platform": "Telegram",
-    "trigger": "queue → stop:id → stopyes:id",
+    "trigger": "queue → rselect/rall/rcancel/rcancelyes 또는 stop:id",
     "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
@@ -707,7 +707,7 @@
     "key": "UC-28-web",
     "title": "실행 중 managed 작업 중단",
     "platform": "web",
-    "trigger": "action(stop-job) → /api/queue",
+    "trigger": "action(stop-selected-jobs / stop-job) → /api/queue",
     "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
     "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
   },
@@ -747,7 +747,7 @@
     "key": "D-16",
     "title": "실행 중 managed 작업 안전 중단",
     "platform": "공용",
-    "trigger": "interrupt_running_job(store, jid)",
+    "trigger": "interrupt_running_jobs(store, selected ids)",
     "outcome": "stopping 동안 CPU·case unique 예약 유지; worker가 TERM 후 필요 시 KILL하고 interrupted 확정",
     "error": "queued/terminal/external ofps-only job은 변경 없음; PID identity 불일치는 신호 생략"
   },

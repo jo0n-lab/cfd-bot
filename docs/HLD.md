@@ -6,6 +6,9 @@
 
 ## 1. 목적·범위·품질 요구
 
+실행 작업 중단은 세 UI 모두 개별·다중 선택·전체 선택을 지원한다. 공용 batch helper가
+선택한 ID만 기존 중단 함수로 전달한다. [설계 이력](history/2026-10-07-bulk-running-job-interruption.md).
+
 #28은 계산 종료 뒤 남은 monitor가 외부 계산으로 재등록되는 중복 알림을 수정한다.
 현황·CPU 점유에는 전체 snapshot을 쓰고 계산 생명주기에는 solver/계산 wrapper를 쓴다.
 [원인·As-Is/To-Be](history/2026-10-07-monitor-tail-duplicate-notifications.md).

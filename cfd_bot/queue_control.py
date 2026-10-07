@@ -61,3 +61,16 @@ def interrupt_running_job(store, jid, *, ui=None):
             reason=catalog.text('scenarios.jobs.user_interrupted'))
         return completed or store.job(job['id'])
     return store.job(job['id'])
+
+
+def interrupt_running_jobs(store, job_ids, *, ui=None):
+    """Interrupt the selected IDs using the existing per-job stop contract."""
+    ids = (list(dict.fromkeys(str(jid) for jid in job_ids if str(jid)))
+           if isinstance(job_ids, (list, tuple, set)) else [])
+    if not ids:
+        raise ValueError((ui or load_ui()).text('scenarios.diagnostics.queue.selection_required'))
+    result = dict(interrupted=[], unavailable=[])
+    for jid in ids:
+        job = interrupt_running_job(store, jid, ui=ui)
+        result['interrupted' if job else 'unavailable'].append(jid)
+    return result

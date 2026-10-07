@@ -287,7 +287,7 @@
 <a id="d-16"></a>
 ## D-16 — 실행 중 managed 작업 안전 중단
 
-진입: `interrupt_running_job(store, jid)`.
+진입: `interrupt_running_jobs(store, selected ids)`.
 
 ![D-16 함수 요청·응답](../diagrams/D-16.svg)
 
@@ -296,6 +296,6 @@
 **정상 결과:** stopping 동안 CPU·case unique 예약 유지; worker가 TERM 후 필요 시 KILL하고 interrupted 확정.
 **실패/취소:** queued/terminal/external ofps-only job은 변경 없음; PID identity 불일치는 신호 생략.
 
-**코드 연결:** [queue_control.interrupt_running_job](../../cfd_bot/queue_control.py#L44), [storage.Store.request_interruption](../../cfd_bot/storage.py#L358), [queue_control.interrupt_process_groups](../../cfd_bot/queue_control.py#L22), [processes.identity](../../cfd_bot/processes.py#L22), [storage.Store.update_job](../../cfd_bot/storage.py#L322).
+**코드 연결:** [queue_control.interrupt_running_jobs](../../cfd_bot/queue_control.py#L66), [queue_control.interrupt_running_job](../../cfd_bot/queue_control.py#L44), [storage.Store.request_interruption](../../cfd_bot/storage.py#L358), [queue_control.interrupt_process_groups](../../cfd_bot/queue_control.py#L22), [processes.identity](../../cfd_bot/processes.py#L22), [storage.Store.update_job](../../cfd_bot/storage.py#L322).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).

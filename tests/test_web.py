@@ -194,6 +194,22 @@ class WebTests(Environment):
         self.post('/api/queue', dict(action='cancel', id=jobs[0]['id']))
         self.assertEqual(self.store.job(jobs[0]['id'])['status'], 'cancelled')
 
+    def test_queue_bulk_interrupt_skips_finished_and_waiting_jobs(self):
+        jobs = []
+        for i, status in enumerate(('running', 'postprocessing', 'succeeded', 'queued')):
+            root = self.root / f'bulk-stop-{i}'
+            root.mkdir()
+            job = self.store.enqueue(dict(self.case, _root=str(root)))
+            self.store.update_job(job['id'], status=status)
+            jobs.append(job)
+        result = self.post('/api/queue', dict(action='interrupt_many',
+                           ids=[j['id'] for j in jobs] + [jobs[0]['id'], 'missing']))
+        self.assertEqual(result['interrupted'], [j['id'] for j in jobs[:2]])
+        self.assertEqual(result['unavailable'], [j['id'] for j in jobs[2:]] + ['missing'])
+        self.assertEqual([self.store.job(j['id'])['status'] for j in jobs],
+                         ['interrupted', 'interrupted', 'succeeded', 'queued'])
+        self.assertEqual(self.request('/api/queue', dict(action='interrupt_many', ids=[]))[0], 400)
+
     def test_queue_bulk_cancel_returns_cancelled_and_stale_selections(self):
         jobs = []
         for index in range(3):

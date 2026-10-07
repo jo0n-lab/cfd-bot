@@ -288,20 +288,28 @@ class BulkDeleteControllerTests(unittest.TestCase):
         case_root.mkdir()
         job = store.enqueue(dict(name='running', _root=str(case_root), command=['./Allrun']))
         store.update_job(job['id'], status='running', started=time.time())
+        second_root = root / 'case2'
+        second_root.mkdir()
+        second = store.enqueue(dict(name='second', _root=str(second_root), command=['./Allrun']))
+        store.update_job(second['id'], status='running')
         editor = TicketEditor.__new__(TicketEditor)
         editor.queue_store = store
         editor.queue_active_listbox = Mock()
-        editor.queue_active_listbox.curselection.return_value = (0,)
-        editor.queue_active_jobs = [dict(id=job['id'], name='running', status='running')]
+        editor.queue_active_listbox.curselection.return_value = (0, 1)
+        editor.queue_active_jobs = [dict(id=job['id'], name='running', status='running'),
+                                    dict(id=second['id'], name='second', status='running')]
         editor.queue_status = Mock()
         editor.queue_window = None
         editor.messagebox = Mock()
         editor.messagebox.askyesno.return_value = True
         editor.refresh_queue_manager = Mock()
 
+        editor.select_all_active_jobs()
+        self.assertEqual(editor.queue_active_listbox.selection_set.call_count, 2)
         editor.interrupt_active_job()
 
         self.assertEqual(store.job(job['id'])['status'], 'interrupted')
+        self.assertEqual(store.job(second['id'])['status'], 'interrupted')
         editor.refresh_queue_manager.assert_called_once()
         editor.messagebox.showerror.assert_not_called()
 

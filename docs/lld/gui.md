@@ -84,7 +84,7 @@
 **정상 결과:** 파일 경로 표시; 이미지 preview/다운로드는 구현 없음.
 **실패/취소:** ValueError/OSError → messagebox; 초안 유지.
 
-**코드 연결:** [gui.TicketEditor.open_queue_result_data](../../cfd_bot/gui.py#L1112), [artifacts.residual_files](../../cfd_bot/artifacts.py#L58).
+**코드 연결:** [gui.TicketEditor.open_queue_result_data](../../cfd_bot/gui.py#L1121), [artifacts.residual_files](../../cfd_bot/artifacts.py#L58).
 
 **관련 검증:** [test_residual.py](../../tests/test_residual.py).
 
@@ -101,7 +101,7 @@
 **정상 결과:** 파일 경로 표시; 이미지 preview/다운로드는 구현 없음.
 **실패/취소:** ValueError/OSError → messagebox; 초안 유지.
 
-**코드 연결:** [gui.TicketEditor.open_queue_result_data](../../cfd_bot/gui.py#L1112), [artifacts.export_files](../../cfd_bot/artifacts.py#L13).
+**코드 연결:** [gui.TicketEditor.open_queue_result_data](../../cfd_bot/gui.py#L1121), [artifacts.export_files](../../cfd_bot/artifacts.py#L13).
 
 **관련 검증:** [test_web.py](../../tests/test_web.py), [test_core.py](../../tests/test_core.py).
 
@@ -237,7 +237,7 @@
 **정상 결과:** Tk status / widget / dialog 반영.
 **실패/취소:** ValueError/OSError → messagebox; 초안 유지.
 
-**코드 연결:** [gui.TicketEditor.delete](../../cfd_bot/gui.py#L1183), [editor.TicketService.deletion_preview](../../cfd_bot/editor.py#L449), [editor.TicketService.delete_many](../../cfd_bot/editor.py#L454), [gui.TicketEditor.refresh](../../cfd_bot/gui.py#L710).
+**코드 연결:** [gui.TicketEditor.delete](../../cfd_bot/gui.py#L1192), [editor.TicketService.deletion_preview](../../cfd_bot/editor.py#L449), [editor.TicketService.delete_many](../../cfd_bot/editor.py#L454), [gui.TicketEditor.refresh](../../cfd_bot/gui.py#L710).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py).
 
@@ -322,7 +322,7 @@
 **정상 결과:** Tk status / widget / dialog 반영.
 **실패/취소:** ValueError/OSError → messagebox; 초안 유지.
 
-**코드 연결:** [gui.TicketEditor.refresh_queue_manager](../../cfd_bot/gui.py#L1023), [storage.Store.jobs](../../cfd_bot/storage.py#L148), [config.cases_for](../../cfd_bot/config.py#L420), [run_views.tracking_registry](../../cfd_bot/run_views.py#L16), [run_views.job_view](../../cfd_bot/run_views.py#L28), [config.tickets_for](../../cfd_bot/config.py#L445), [run_views.running_macro_views](../../cfd_bot/run_views.py#L60).
+**코드 연결:** [gui.TicketEditor.refresh_queue_manager](../../cfd_bot/gui.py#L1027), [storage.Store.jobs](../../cfd_bot/storage.py#L148), [config.cases_for](../../cfd_bot/config.py#L420), [run_views.tracking_registry](../../cfd_bot/run_views.py#L16), [run_views.job_view](../../cfd_bot/run_views.py#L28), [config.tickets_for](../../cfd_bot/config.py#L445), [run_views.running_macro_views](../../cfd_bot/run_views.py#L60).
 
 **관련 검증:** [test_run_views.py](../../tests/test_run_views.py), [test_named_queues.py](../../tests/test_named_queues.py).
 
@@ -339,7 +339,7 @@
 **정상 결과:** Tk status / widget / dialog 반영.
 **실패/취소:** ValueError/OSError → messagebox; 초안 유지.
 
-**코드 연결:** [gui.TicketEditor.cancel_queue_selection](../../cfd_bot/gui.py#L1164), [queue_control.cancel_queued_jobs](../../cfd_bot/queue_control.py#L11), [gui.TicketEditor.refresh_queue_manager](../../cfd_bot/gui.py#L1023).
+**코드 연결:** [gui.TicketEditor.cancel_queue_selection](../../cfd_bot/gui.py#L1173), [queue_control.cancel_queued_jobs](../../cfd_bot/queue_control.py#L11), [gui.TicketEditor.refresh_queue_manager](../../cfd_bot/gui.py#L1027).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_web.py](../../tests/test_web.py).
 
@@ -407,7 +407,7 @@
 **정상 결과:** Tk status / widget / dialog 반영.
 **실패/취소:** ValueError/OSError → messagebox; 초안 유지.
 
-**코드 연결:** [gui.TicketEditor.interrupt_active_job](../../cfd_bot/gui.py#L1088), [queue_control.interrupt_running_job](../../cfd_bot/queue_control.py#L44), [gui.TicketEditor.refresh_queue_manager](../../cfd_bot/gui.py#L1023).
+**코드 연결:** [gui.TicketEditor.interrupt_active_job](../../cfd_bot/gui.py#L1102), [queue_control.interrupt_running_jobs](../../cfd_bot/queue_control.py#L66), [gui.TicketEditor.refresh_queue_manager](../../cfd_bot/gui.py#L1027).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py), [test_web.py](../../tests/test_web.py).
 

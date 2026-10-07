@@ -243,9 +243,9 @@ tg('UC-25','대화 일괄 정리','/clean',db('chat_messages','chat, since=48h-6
 # Non-UI operational entrypoints are one chart with explicit command branches.
 chart('UC-26','외부 PC 접속과 브라우저','Windows / macOS / Linux','launcher / cfd-web-tunnel',fn('OpenSSH ssh','-N -T -L loopback:local:loopback:server','연결 유지',note='Windows Get-SshAliases / macOS ssh_config_hosts → Host 번호 선택; ssh가 인증/ProxyJump 해석'), '포트 열림 확인 → 브라우저 http://127.0.0.1 → UC-01-web; 종료 시 자신이 만든 SSH 종료','잘못된 선택·포트 충돌·SSH 종료 시 실패; HTTP health 확인과 단순 포트 열림은 다름')
 chart('UC-27','운영 CLI 명령 분기','CLI','python -m cfd_bot [command]',fn('cli.main','argv','exit code',fn('config.load_bot','config path','BotConfig'),fn('config.cases_for','check: force=True; enqueue: cached index','Case[]'),fn('processes.snapshot','status만: command','Snapshot',detail='D-04'),db('enqueue','enqueue만: selected Case','Job'),fn('monitor.Monitor.run_once','monitor만: loop/once','bool'),fn('bot.serve','serve만','None; loop'),fn('web.serve','web만','None; loop')), 'check는 검증/stdout만; identify는 Telegram 조회; gui는 config 분기 전에 launch','OSError/ValueError/RuntimeError → stderr, exit 2; _worker는 별도 worker 반환')
-tg('UC-28','실행 중 managed 작업 중단','queue → stop:id → stopyes:id',db('job','확인 화면용 id','Job'),fn('queue_control.interrupt_running_job','확인 후 id','Job | None',detail='D-16'),tg_send())
-gui('UC-28','실행 중 managed 작업 중단','interrupt_active_job',fn('tkinter.messagebox.askyesno','선택 active job','bool'),fn('queue_control.interrupt_running_job','확인 Yes: id','Job | None',detail='D-16'),fn('gui.TicketEditor.refresh_queue_manager','','None'))
-web('UC-28','실행 중 managed 작업 중단','action(stop-job)','/api/queue',fn('queue_control.interrupt_running_job','action=interrupt, id','Job | None',detail='D-16'),post=True,note='브라우저 확인 modal 뒤 호출; stopping 상태에는 버튼 없음')
+tg('UC-28','실행 중 managed 작업 중단','queue → rselect/rall/rcancel/rcancelyes 또는 stop:id',db('job','확인 화면용 id','Job'),fn('queue_control.interrupt_running_jobs','전체/개별 선택 ID 확인','중단 요청 / unavailable',detail='D-16'),tg_send())
+gui('UC-28','실행 중 managed 작업 중단','interrupt_active_job',fn('tkinter.messagebox.askyesno','선택 active job','bool'),fn('queue_control.interrupt_running_jobs','전체/다중 선택 후 확인: IDs','중단 요청 / unavailable',detail='D-16'),fn('gui.TicketEditor.refresh_queue_manager','','None'))
+web('UC-28','실행 중 managed 작업 중단','action(stop-selected-jobs / stop-job)','/api/queue',fn('queue_control.interrupt_running_jobs','action=interrupt_many, ids (개별도 지원)','중단 요청 / unavailable',detail='D-16'),post=True,note='브라우저 확인 modal 뒤 호출; stopping 상태에는 버튼 없음')
 # Background flows, expanded function-level request/return charts.
 chart('BG-01','solver·monitor CPU를 합치는 scanner','Bash + Python','bin/ofps options',fn('bin/ofps:scan_and_sync','records path','scan exit status',fn('bin/ofps:scan_once','records_file','stdout',fn('bin/ofps:scan_supervisors','proc/process candidates','supervisor records'),fn('bin/ofps:openfoam_case_from_process','PID','case root|empty'),fn('bin/ofps:basilisk_case_from_process','PID','case root|empty'),fn('bin/ofps:monitor_case_from_process','PID environ + cwd','표식 있는 case root|empty',note='bot CASE/JOB/MONITOR_CPU 또는 TCB_MONITORED_SOLVER_PID; controlDict와 case 내부 cwd 확인'),fn('bin/ofps:thread_affinity_union','solver 또는 monitor PID','CPU set')),fn('bin/ofps:sync_ticket_state','standalone만 snapshot file','status',fn('processes.parse_snapshot','raw','case별 solver+monitor affinity 합집합'),db('put','snapshot, parsed'),fn('tickets.sync_ticket_states','settings,store,snapshot','None'))),'managed는 stdout만; --check는 monitor CPU overlap도 거절; --watch는 반복','유효 case root 또는 지원하는 monitor 표식이 없는 후보 제외; standalone sync 실패가 CPU 검사 exit를 덮어쓰지 않음')
 chart('BG-02','현재 CASE · 이전 실행/종료 확인 중 CASE 감시','Monitor thread','run_once 완료 후 poll_seconds 대기',
@@ -284,8 +284,9 @@ chart('D-15','증분 상태 반영 · 종료 child와 부모 macro 재시도','�
             fn('tickets.atomic_json','request_id 동일 + 변경 있을 때','fsync / replace',note='부모 row와 집계 포함; 실패하면 ACK하지 않음')),
        db('acknowledge_ticket_changes','성공한 roots와 읽었던 watermark','새 이벤트 보존'),fn('catalog.TicketIndex.acknowledge','성공한 generations','None'))),
  '종료·취소·전후처리도 DB 이벤트로 반영; 완료된 과거 티켓 반복 검사 없음','동기화 중 새 제출의 request_id가 바뀌면 보존·재시도; DB/JSON 분리 장애는 journal 재생')
-chart('D-16','실행 중 managed 작업 안전 중단','공용','interrupt_running_job(store, jid)',
- fn('queue_control.interrupt_running_job','store, jid, ui?','Job | None',
+chart('D-16','실행 중 managed 작업 안전 중단','공용','interrupt_running_jobs(store, selected ids)',
+ fn('queue_control.interrupt_running_jobs','선택 ID 중복 제거','interrupted IDs / unavailable IDs',
+    fn('queue_control.interrupt_running_job','각 선택 ID에 기존 중단 적용','Job | None'),
     db('request_interruption','LIVE job id, reason','stopping Job | None'),
     fn('queue_control.interrupt_process_groups','저장된 hook/monitor/solver PID + identity','signalled PID[]',
        fn('processes.identity','현재 PID','boot:pid:starttick | None'),

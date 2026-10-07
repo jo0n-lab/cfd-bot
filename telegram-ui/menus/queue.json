@@ -40,5 +40,10 @@
   "result_data": "결과 요청 데이터 · {case_name}",
   "recent_result": "최근 결과 · {case_name}",
   "macro_title": "실행 중인 매크로",
-  "macro_line": "{name} · {completed}/{target} cases ({progress})\n경과 {elapsed} · 예상 남은 시간 {remaining}\n현재 계산: {active}"
+  "macro_line": "{name} · {completed}/{target} cases ({progress})\n경과 {elapsed} · 예상 남은 시간 {remaining}\n현재 계산: {active}",
+  "running_multi_select": "실행 작업 선택·일괄 중단",
+  "running_selection_title": "실행 작업 다중 선택 · {selected}/{total}개 선택\n전체 선택 후 한 번에 중단할 수 있습니다.",
+  "interrupt_many": "선택 중단 ({count}개)",
+  "interrupt_many_confirm": "선택한 실행 작업 {count}개를 중단할까요?\n이미 종료된 작업은 건너뜁니다.\n\n{names}",
+  "interrupt_many_result": "중단 요청: {cancelled}개 · 이미 종료/변경 {unavailable}개"
 }

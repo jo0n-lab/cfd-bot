@@ -54,7 +54,7 @@
 | UC-25 대화 메시지 정리 | `/clean` | N/A: Telegram 전용 | N/A: Telegram 전용 | N/A | [T](lld/telegram.md#uc-25) |
 | UC-26 외부 PC 접속·배포 파일 받기 | N/A | SSH X11은 배포 환경 기능 | client-downloads ZIP·SSH 전달 후 웹 | Windows CMD/PS, macOS app, cfd-web-tunnel | [R](lld/runtime.md#launcher) |
 | UC-27 운영·검증·감시/서비스 기동 | 사용자 명령 N/A | CLI gui로 기동 | health endpoint·CLI web 기동 | check/identify/monitor/serve/_worker | [R](lld/runtime.md#cli) |
-| UC-28 실행 중 managed 작업 중단 | `/queue`의 중단 버튼 → 확인 | 큐 창의 실행 작업 선택 → 확인 | 실행 중 표의 중단 버튼 → modal 확인 | N/A | [D-16](lld/domain.md#d-16) |
+| UC-28 실행 중 managed 작업 중단 | `/queue` 개별/전체 선택 → 중단 확인 | 실행 목록 다중/전체 선택 → 중단 확인 | 실행 중 표 다중/전체 선택 → 중단 확인 | N/A | [D-16](lld/domain.md#d-16) |
 
 세 UI의 공용 티켓 필드에는 이름, case_dir, task_type/role, end_time, watcher 로그·실패 정규식·오류 파일, 알림 events, Residual, exports, 전/후처리, 실행 출처·CPU·monitoring, `execution_queue.id`, `dynamic_cores`, 매크로 필터·자식별 cores가 포함된다. quota는 입력 필드가 아니라 일반 head의 실제 NP 또는 동적 child NP에서 산정된다. 각 필드의 코드 변환은 [LLD 필드 계약](LLD.md#fields)에 정리했다.
 

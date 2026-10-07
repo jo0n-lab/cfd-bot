@@ -21,7 +21,7 @@ from .control import control_times
 from .editor import TicketService, case_browser_start, lines, validate_export
 from .logs import estimate, recent_case_log
 from .patterns import PatternLibrary
-from .queue_control import cancel_queued_jobs, interrupt_running_job
+from .queue_control import cancel_queued_jobs, interrupt_running_job, interrupt_running_jobs
 from .run_views import job_view, running_macro_views, tracking_registry
 from .storage import Store
 from .ticket_run import TicketRunner
@@ -306,6 +306,8 @@ class WebApp:
                 if action == 'cancel' and not result['cancelled']:
                     raise ValueError('대기 중인 작업만 취소할 수 있습니다. 상태를 새로고침하세요.')
                 return result
+            if action == 'interrupt_many':
+                return interrupt_running_jobs(self.store, data.get('ids', []), ui=self.bot.ui)
             if action == 'interrupt':
                 job = interrupt_running_job(self.store, data.get('id'), ui=self.bot.ui)
                 if job is None:

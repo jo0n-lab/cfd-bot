@@ -219,6 +219,10 @@ pause/resume은 `Store.put('queue_paused', bool)`이며 Telegram/web/CLI에 존�
 
 ![실행 중단 요청·반환](diagrams/D-16.svg)
 
+`interrupt_running_jobs(store, ids)`는 중복 ID를 제거하고 기존 단일 중단 함수를 호출해
+`interrupted`(요청 접수 ID)와 `unavailable` 목록을 반환한다. Telegram은 확인 화면의 ID를
+고정하고, GUI/web도 선택한 목록만 전달한다. 이후 새로 시작된 작업은 포함하지 않는다.
+
 `interrupt_running_job(store,jid)`는 `starting|running|postprocessing`을 한 transaction에서 `stopping`으로 바꾸고 요청 시각과 사유를 기록한다. `stopping`은 LIVE/ACTIVE와 case unique index에 포함되므로 실제 child가 남은 동안 CPU와 case 예약이 풀리지 않는다. 저장된 hook·monitor·solver PID마다 현재 `/proc` identity가 저장값과 같은지 확인하고, session leader인 process group에만 SIGTERM을 보낸다. worker는 child 시작 직후와 0.5초 telemetry 갱신마다 상태를 확인하고 `_stop_child`에서 10초 후 SIGKILL로 올린다. 중단 요청은 solver return code와 정상·실패 판정보다 우선해 `interrupted`가 된다. Scheduler recovery는 구형 또는 소실 worker의 stopping 작업도 모든 identity가 사라진 뒤 terminal로 확정한다. ofps로만 발견한 외부 실행은 managed PID 계약이 없어 중단 대상이 아니다.
 
 <a id="data"></a>

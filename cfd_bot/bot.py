@@ -10,7 +10,7 @@ from .config import cases_for, tickets_for
 from .catalog import ticket_index
 from .monitor import Monitor
 from .processes import DaemonLock, snapshot as process_snapshot
-from .queue_control import cancel_queued_jobs, interrupt_running_job
+from .queue_control import cancel_queued_jobs, interrupt_running_job, interrupt_running_jobs
 from .queueing import job_queue_id
 from .run_views import case_id_for_root, running_macro_views, tracking_registry
 from .report import compact_status, macro_queue_text, queue_text, render_run
@@ -118,18 +118,19 @@ class Bot:
                                                      type=type(exc).__name__, error=exc)}
 
     @staticmethod
-    def queue_selection_key(chat, user=None):
-        return f'queue-selection:{chat}:{chat if user is None else user}'
+    def queue_selection_key(chat, user=None, running=False):
+        return f'queue-selection:{chat}:{chat if user is None else user}' + (':running' if running else '')
 
-    def queue_selection(self, chat, user=None):
-        jobs = self.store.jobs(('queued',))
+    def queue_selection(self, chat, user=None, running=False):
+        jobs = self.store.jobs(('starting', 'running', 'postprocessing') if running else ('queued',))
         available = {job['id'] for job in jobs}
-        selected = [jid for jid in self.store.get(self.queue_selection_key(chat, user), []) if jid in available]
-        self.store.put(self.queue_selection_key(chat, user), selected)
+        selected = [jid for jid in self.store.get(self.queue_selection_key(chat, user, running), []) if jid in available]
+        self.store.put(self.queue_selection_key(chat, user, running), selected)
         return jobs, selected
 
-    def show_queue_selection(self, chat, page=0, notice='', user=None):
-        jobs, selected = self.queue_selection(chat, user)
+    def show_queue_selection(self, chat, page=0, notice='', user=None, running=False):
+        jobs, selected = self.queue_selection(chat, user, running)
+        prefix = 'r' if running else 'q'
         page = max(0, min(int(page), max(0, (len(jobs) - 1) // QUEUE_PAGE)))
         visible = jobs[page * QUEUE_PAGE:(page + 1) * QUEUE_PAGE]
         rows = [[button(self.ui.text('strings.common.checked' if job['id'] in selected
@@ -137,19 +138,21 @@ class Bot:
                                self.ui.text('menus.queue.selection_item',
                                             queue=job_queue_id(job),
                                             case_name=job['case']['name']),
-                        'qtoggle:' + job['id'])] for job in visible]
+                        prefix + 'toggle:' + job['id'])] for job in visible]
         navigation = []
         if page:
-            navigation.append(button(self.ui.text('menus.queue.previous'), f'qpage:{page - 1}'))
+            navigation.append(button(self.ui.text('menus.queue.previous'), f'{prefix}page:{page - 1}'))
         if (page + 1) * QUEUE_PAGE < len(jobs):
-            navigation.append(button(self.ui.text('menus.queue.next'), f'qpage:{page + 1}'))
+            navigation.append(button(self.ui.text('menus.queue.next'), f'{prefix}page:{page + 1}'))
         if navigation:
             rows.append(navigation)
-        rows += [[button(self.ui.text('menus.queue.select_all'), 'qall'),
-                  button(self.ui.text('menus.queue.clear_all'), 'qnone')],
-                 [button(self.ui.text('menus.queue.cancel_many', count=len(selected)), 'qcancel')],
+        rows += [[button(self.ui.text('menus.queue.select_all'), prefix + 'all'),
+                  button(self.ui.text('menus.queue.clear_all'), prefix + 'none')],
+                 [button(self.ui.text('menus.queue.interrupt_many' if running else 'menus.queue.cancel_many',
+                                      count=len(selected)), prefix + 'cancel')],
                  [button(self.ui.text('menus.queue.back'), 'queue')]]
-        text = self.ui.text('menus.queue.selection_title', selected=len(selected), total=len(jobs))
+        text = self.ui.text('menus.queue.running_selection_title' if running else 'menus.queue.selection_title',
+                            selected=len(selected), total=len(jobs))
         self.send(chat, (notice + '\n\n' if notice else '') + text, keyboard(rows))
 
     def status(self, snap=None, runs=None, error=None):
@@ -313,6 +316,8 @@ class Bot:
                                 'resume' if self.store.get('queue_paused', False) else 'pause')])
             if self.store.jobs(('queued',)):
                 rows.append([button(self.ui.text('menus.queue.multi_select'), 'qselect')])
+            if any(j['status'] in ('starting', 'running', 'postprocessing') for j in jobs):
+                rows.append([button(self.ui.text('menus.queue.running_multi_select'), 'rselect')])
             rows += [[button(self.ui.text('menus.queue.cancel_case', case_name=j['case']['name'],
                                           queue=job_queue_id(j)),
                              'cancel:' + j['id'])]
@@ -332,53 +337,62 @@ class Bot:
             text = queue_text(self.store, enabled, self.ui) + macro_queue_text(macros, self.ui)
             self.send(chat, text, keyboard(rows))
             return
+        running_selection = action.split(':', 1)[0] in (
+            'rselect', 'rback', 'rpage', 'rtoggle', 'rall', 'rnone', 'rcancel', 'rcancelyes')
+        prefix = 'r' if running_selection else 'q'
+        selection_key = self.queue_selection_key(chat, actor, running_selection)
+        if running_selection:
+            action = 'q' + action[1:]
         if action == 'qselect':
-            self.store.put(self.queue_selection_key(chat, actor), [])
-            self.show_queue_selection(chat, user=actor)
+            self.store.put(self.queue_selection_key(chat, actor, running_selection), [])
+            self.show_queue_selection(chat, user=actor, running=running_selection)
             return
         if action == 'qback':
-            self.show_queue_selection(chat, user=actor)
+            self.show_queue_selection(chat, user=actor, running=running_selection)
             return
         if action.startswith('qpage:'):
-            self.show_queue_selection(chat, int(action.split(':', 1)[1]), user=actor)
+            self.show_queue_selection(chat, int(action.split(':', 1)[1]), user=actor, running=running_selection)
             return
         if action.startswith('qtoggle:'):
             jid = action.split(':', 1)[1]
-            jobs, selected = self.queue_selection(chat, actor)
+            jobs, selected = self.queue_selection(chat, actor, running_selection)
             if jid not in {job['id'] for job in jobs}:
-                self.show_queue_selection(chat, notice=self.ui.text('menus.queue.cancel_unavailable'), user=actor)
+                self.show_queue_selection(chat, notice=self.ui.text('menus.queue.interrupt_unavailable' if running_selection else 'menus.queue.cancel_unavailable'), user=actor, running=running_selection)
                 return
             selected.remove(jid) if jid in selected else selected.append(jid)
-            self.store.put(self.queue_selection_key(chat, actor), selected)
-            self.show_queue_selection(chat, user=actor)
+            self.store.put(self.queue_selection_key(chat, actor, running_selection), selected)
+            self.show_queue_selection(chat, user=actor, running=running_selection)
             return
         if action in ('qall', 'qnone'):
-            jobs, _ = self.queue_selection(chat, actor)
-            self.store.put(self.queue_selection_key(chat, actor),
+            jobs, _ = self.queue_selection(chat, actor, running_selection)
+            self.store.put(self.queue_selection_key(chat, actor, running_selection),
                            [job['id'] for job in jobs] if action == 'qall' else [])
-            self.show_queue_selection(chat, user=actor)
+            self.show_queue_selection(chat, user=actor, running=running_selection)
             return
         if action == 'qcancel':
-            jobs, selected = self.queue_selection(chat, actor)
+            jobs, selected = self.queue_selection(chat, actor, running_selection)
             if not selected:
                 raise ValueError(self.ui.text('scenarios.diagnostics.queue.selection_required'))
             names = {job['id']: job['case']['name'] for job in jobs}
             preview = '\n'.join(names[jid] for jid in selected[:30])
             if len(selected) > 30:
                 preview += '\n…'
-            self.send(chat, self.ui.text('menus.queue.cancel_many_confirm', count=len(selected), names=preview),
-                      keyboard([[button(self.ui.text('menus.queue.cancel_many', count=len(selected)),
-                                        'qcancelyes'),
-                                 button(self.ui.text('strings.common.cancel'), 'qback')]]))
+            self.store.put(selection_key + ':pending', selected)
+            self.send(chat, self.ui.text('menus.queue.interrupt_many_confirm' if running_selection else 'menus.queue.cancel_many_confirm', count=len(selected), names=preview),
+                      keyboard([[button(self.ui.text('menus.queue.interrupt_many' if running_selection else 'menus.queue.cancel_many', count=len(selected)),
+                                        prefix + 'cancelyes'),
+                                 button(self.ui.text('strings.common.cancel'), prefix + 'back')]]))
             return
         if action == 'qcancelyes':
-            selected = self.store.get(self.queue_selection_key(chat, actor), [])
-            result = cancel_queued_jobs(self.store, selected, ui=self.ui)
-            self.store.put(self.queue_selection_key(chat, actor), [])
-            notice = self.ui.text('menus.queue.cancel_many_result',
-                                  cancelled=len(result['cancelled']),
+            selected = self.store.get(selection_key + ':pending', [])
+            control = interrupt_running_jobs if running_selection else cancel_queued_jobs
+            result = control(self.store, selected, ui=self.ui)
+            self.store.put(selection_key + ':pending', [])
+            self.store.put(self.queue_selection_key(chat, actor, running_selection), [])
+            notice = self.ui.text('menus.queue.interrupt_many_result' if running_selection else 'menus.queue.cancel_many_result',
+                                  cancelled=len(result['interrupted' if running_selection else 'cancelled']),
                                   unavailable=len(result['unavailable']))
-            self.show_queue_selection(chat, notice=notice, user=actor)
+            self.show_queue_selection(chat, notice=notice, user=actor, running=running_selection)
             return
         parts = action.split(':')
         if parts[0] == 'cases':

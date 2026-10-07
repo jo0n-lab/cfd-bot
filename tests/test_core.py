@@ -1125,6 +1125,34 @@ class BotTests(Environment):
                          ['cancelled', 'cancelled', 'starting'])
         self.assertIn('선택 취소 완료: 2개 · 이미 시작/변경 1개', api.messages[-1][1])
 
+    def test_running_queue_select_all_interrupts_only_confirmed_jobs(self):
+        api = FakeAPI()
+        bot = Bot(self.config, self.store, api)
+        jobs = []
+        for index in range(12):
+            root = self.root / f'running-{index}'
+            root.mkdir()
+            job = self.store.enqueue(dict(self.case, _root=str(root), name=root.name))
+            self.store.update_job(job['id'], status='running')
+            jobs.append(job)
+        waiting = self.store.enqueue(self.case)
+        bot.dispatch(20, 'rselect', 'select')
+        bot.dispatch(20, 'rall', 'all')
+        self.assertEqual(len(self.store.get(bot.queue_selection_key(20, running=True))), 12)
+        bot.dispatch(20, 'rnone', 'clear')
+        self.assertEqual(self.store.get(bot.queue_selection_key(20, running=True)), [])
+        bot.dispatch(20, 'rall', 'all-again')
+        bot.dispatch(20, 'rcancel', 'confirm')
+        self.assertTrue(all(self.store.job(j['id'])['status'] == 'running' for j in jobs))
+        self.store.update_job(jobs[-1]['id'], status='succeeded')
+        self.store.update_job(waiting['id'], status='running')
+        bot.dispatch(20, 'rall', 'selection-changed-after-confirm')
+        bot.dispatch(20, 'rcancelyes', 'stop')
+        self.assertEqual([self.store.job(j['id'])['status'] for j in jobs],
+                         ['interrupted'] * 11 + ['succeeded'])
+        self.assertEqual(self.store.job(waiting['id'])['status'], 'running')
+        self.assertIn('중단 요청: 11개 · 이미 종료/변경 1개', api.messages[-1][1])
+
     def test_queue_running_job_requires_confirmation_then_interrupts(self):
         api = FakeAPI()
         bot = Bot(self.config, self.store, api)
