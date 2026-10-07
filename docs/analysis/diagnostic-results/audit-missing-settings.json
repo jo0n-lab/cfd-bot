@@ -1,0 +1,949 @@
+{
+  "revision": "0306c0d",
+  "samples_per_mode": 3,
+  "members": 921,
+  "active": 40,
+  "ablation": {
+    "web_overview": {
+      "full": {
+        "samples": [
+          {
+            "wall_ms": 1690.8851116895676,
+            "cpu_ms": 1672.1837000000003
+          },
+          {
+            "wall_ms": 1311.1265879124403,
+            "cpu_ms": 1295.3476239999998
+          },
+          {
+            "wall_ms": 1328.6913372576237,
+            "cpu_ms": 1312.806373999999
+          }
+        ],
+        "median_ms": 1328.6913372576237
+      },
+      "off": {
+        "samples": [
+          {
+            "wall_ms": 340.1777110993862,
+            "cpu_ms": 328.90053399999977
+          },
+          {
+            "wall_ms": 354.4627372175455,
+            "cpu_ms": 343.7530839999994
+          },
+          {
+            "wall_ms": 339.70675989985466,
+            "cpu_ms": 328.5797749999979
+          }
+        ],
+        "median_ms": 340.1777110993862
+      },
+      "no_write": {
+        "samples": [
+          {
+            "wall_ms": 933.4087632596493,
+            "cpu_ms": 920.9248189999996
+          },
+          {
+            "wall_ms": 915.0530770421028,
+            "cpu_ms": 901.6458170000003
+          },
+          {
+            "wall_ms": 1063.6727772653103,
+            "cpu_ms": 1048.6391879999992
+          }
+        ],
+        "median_ms": 933.4087632596493
+      },
+      "encode_no_disk": {
+        "samples": [
+          {
+            "wall_ms": 1282.9792518168688,
+            "cpu_ms": 1267.4062319999998
+          },
+          {
+            "wall_ms": 1304.044502787292,
+            "cpu_ms": 1288.690366
+          },
+          {
+            "wall_ms": 1283.780638128519,
+            "cpu_ms": 1268.3684710000005
+          }
+        ],
+        "median_ms": 1283.780638128519
+      },
+      "no_summary": {
+        "samples": [
+          {
+            "wall_ms": 902.2720623761415,
+            "cpu_ms": 888.5460179999995
+          },
+          {
+            "wall_ms": 902.6434123516083,
+            "cpu_ms": 889.080839
+          },
+          {
+            "wall_ms": 957.7489281073213,
+            "cpu_ms": 943.4115940000005
+          }
+        ],
+        "median_ms": 902.6434123516083
+      }
+    },
+    "log_tail_2000_lines": {
+      "full": {
+        "samples": [
+          {
+            "wall_ms": 94.75763514637947,
+            "cpu_ms": 94.4548730000001
+          },
+          {
+            "wall_ms": 94.55050248652697,
+            "cpu_ms": 94.27630600000114
+          },
+          {
+            "wall_ms": 95.30484769493341,
+            "cpu_ms": 95.00416100000209
+          }
+        ],
+        "median_ms": 94.75763514637947
+      },
+      "off": {
+        "samples": [
+          {
+            "wall_ms": 14.060604386031628,
+            "cpu_ms": 14.027891000001347
+          },
+          {
+            "wall_ms": 14.203793369233608,
+            "cpu_ms": 14.16280799999825
+          },
+          {
+            "wall_ms": 14.182998798787594,
+            "cpu_ms": 14.149806999999015
+          }
+        ],
+        "median_ms": 14.182998798787594
+      },
+      "no_write": {
+        "samples": [
+          {
+            "wall_ms": 59.695422649383545,
+            "cpu_ms": 59.54350300000044
+          },
+          {
+            "wall_ms": 59.51555073261261,
+            "cpu_ms": 59.38573999999974
+          },
+          {
+            "wall_ms": 59.7951440140605,
+            "cpu_ms": 59.63941799999972
+          }
+        ],
+        "median_ms": 59.695422649383545
+      },
+      "encode_no_disk": {
+        "samples": [
+          {
+            "wall_ms": 93.60734652727842,
+            "cpu_ms": 93.32607600000031
+          },
+          {
+            "wall_ms": 94.30556558072567,
+            "cpu_ms": 93.66810099999867
+          },
+          {
+            "wall_ms": 94.0073411911726,
+            "cpu_ms": 93.71359400000046
+          }
+        ],
+        "median_ms": 94.0073411911726
+      },
+      "no_summary": {
+        "samples": [
+          {
+            "wall_ms": 73.94626550376415,
+            "cpu_ms": 73.71714399999973
+          },
+          {
+            "wall_ms": 74.11727961152792,
+            "cpu_ms": 73.87410000000116
+          },
+          {
+            "wall_ms": 74.01130814105272,
+            "cpu_ms": 73.77622699999975
+          }
+        ],
+        "median_ms": 74.01130814105272
+      }
+    }
+  },
+  "web_overview": {
+    "physical_lines": 3640,
+    "file_bytes": 14181978,
+    "events": {
+      "log.file": 1,
+      "service.start": 1,
+      "function.definition": 59,
+      "function.call": 13193,
+      "db.statement.start": 132,
+      "db.transaction.acquired": 2,
+      "db.statement.end": 132,
+      "db.transaction.commit": 91,
+      "function.return": 10550,
+      "sequence.step": 884,
+      "sequence.steps": 58,
+      "function.raise": 2643,
+      "log.closed": 1
+    },
+    "top_calls": [
+      [
+        "run_views.case_id_for_root",
+        1882
+      ],
+      [
+        "ui.UiCatalog.text",
+        1041
+      ],
+      [
+        "ui.UiCatalog.value",
+        1041
+      ],
+      [
+        "bot.case_id",
+        961
+      ],
+      [
+        "ticket_run.TicketRunner._state",
+        921
+      ],
+      [
+        "editor.TicketService.path",
+        921
+      ],
+      [
+        "catalog.TicketIndex.document",
+        921
+      ],
+      [
+        "editor.TicketService.revision",
+        921
+      ],
+      [
+        "ui.load_ui",
+        882
+      ],
+      [
+        "ticket_run.TicketRunner._capacity",
+        881
+      ],
+      [
+        "execution.execution_case",
+        881
+      ],
+      [
+        "execution._process_core",
+        881
+      ],
+      [
+        "logs.feed",
+        160
+      ],
+      [
+        "control._value",
+        120
+      ],
+      [
+        "storage.Store.connect",
+        91
+      ],
+      [
+        "logs.read_log",
+        80
+      ]
+    ],
+    "steps": 10160,
+    "top_steps": [
+      [
+        "607",
+        1762
+      ],
+      [
+        "622",
+        1762
+      ],
+      [
+        "1212",
+        921
+      ],
+      [
+        "1631",
+        921
+      ],
+      [
+        "1649",
+        921
+      ],
+      [
+        "1831",
+        921
+      ],
+      [
+        "608",
+        881
+      ],
+      [
+        "970",
+        160
+      ],
+      [
+        "975",
+        160
+      ],
+      [
+        "993",
+        160
+      ],
+      [
+        "977",
+        160
+      ],
+      [
+        "405",
+        120
+      ]
+    ],
+    "expanded_field_bytes": {
+      "function": 645884,
+      "input": 2681726,
+      "caller": 818139,
+      "result": 484221,
+      "exception": 2915991
+    },
+    "repeated_payload_occurrences": 26174,
+    "repeated_payload_bytes_upper_bound": 1568481,
+    "top_repeated_payloads": [
+      {
+        "field": "result",
+        "count": 2843,
+        "bytes_each": 26
+      },
+      {
+        "field": "caller",
+        "count": 2763,
+        "bytes_each": 59
+      },
+      {
+        "field": "input",
+        "count": 1762,
+        "bytes_each": 57
+      },
+      {
+        "field": "result",
+        "count": 1762,
+        "bytes_each": 26
+      },
+      {
+        "field": "caller",
+        "count": 1041,
+        "bytes_each": 52
+      },
+      {
+        "field": "caller",
+        "count": 961,
+        "bytes_each": 55
+      },
+      {
+        "field": "caller",
+        "count": 921,
+        "bytes_each": 58
+      },
+      {
+        "field": "caller",
+        "count": 921,
+        "bytes_each": 71
+      }
+    ],
+    "codecs": {
+      "current": {
+        "data_bytes": 14181979,
+        "dictionary_bytes": 2,
+        "total_bytes": 14181981,
+        "gzip1_bytes": 1135081,
+        "serialize_cpu_ms": 232.22786099999837,
+        "transform_and_roundtrip_cpu_ms": 0.002193000000261236,
+        "gzip_cpu_ms": 69.91865999999902,
+        "roundtrip": true
+      },
+      "numeric_dictionary": {
+        "data_bytes": 7277701,
+        "dictionary_bytes": 184578,
+        "total_bytes": 7462279,
+        "gzip1_bytes": 956178,
+        "serialize_cpu_ms": 228.6281680000002,
+        "transform_and_roundtrip_cpu_ms": 1416.1813690000004,
+        "gzip_cpu_ms": 45.44355299999836,
+        "roundtrip": true
+      },
+      "sha256_payload_dictionary": {
+        "data_bytes": 12258058,
+        "dictionary_bytes": 2281241,
+        "total_bytes": 14539299,
+        "gzip1_bytes": 1455806,
+        "serialize_cpu_ms": 201.54056899999873,
+        "transform_and_roundtrip_cpu_ms": 858.7481410000031,
+        "gzip_cpu_ms": 78.60661699999838,
+        "roundtrip": true
+      },
+      "integer_payload_dictionary": {
+        "data_bytes": 11925878,
+        "dictionary_bytes": 2035751,
+        "total_bytes": 13961629,
+        "gzip1_bytes": 1073381,
+        "serialize_cpu_ms": 194.40779399999997,
+        "transform_and_roundtrip_cpu_ms": 990.5243239999991,
+        "gzip_cpu_ms": 67.16729300000068,
+        "roundtrip": true
+      }
+    },
+    "profile_top_self": [
+      {
+        "file": "encoder.py",
+        "line": 204,
+        "function": "iterencode",
+        "primitive_calls": 4559,
+        "calls": 4559,
+        "self_seconds": 0.247028714,
+        "cumulative_seconds": 0.247028714
+      },
+      {
+        "file": "copy.py",
+        "line": 128,
+        "function": "deepcopy",
+        "primitive_calls": 3768,
+        "calls": 255200,
+        "self_seconds": 0.21624852,
+        "cumulative_seconds": 0.4381957
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 121,
+        "function": "summary",
+        "primitive_calls": 43891,
+        "calls": 156470,
+        "self_seconds": 0.20927098100000002,
+        "cumulative_seconds": 0.46503245400000004
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 555,
+        "function": "__init__",
+        "primitive_calls": 13193,
+        "calls": 13193,
+        "self_seconds": 0.08717659500000001,
+        "cumulative_seconds": 0.125941262
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 146,
+        "function": "<dictcomp>",
+        "primitive_calls": 10193,
+        "calls": 10193,
+        "self_seconds": 0.084807436,
+        "cumulative_seconds": 0.325764745
+      },
+      {
+        "file": "copy.py",
+        "line": 226,
+        "function": "_deepcopy_dict",
+        "primitive_calls": 4605,
+        "calls": 24867,
+        "self_seconds": 0.074876649,
+        "cumulative_seconds": 0.424048099
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'search' of 're.Pattern' objects>",
+        "primitive_calls": 63362,
+        "calls": 63362,
+        "self_seconds": 0.072947122,
+        "cumulative_seconds": 0.072947122
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 210,
+        "function": "write",
+        "primitive_calls": 27744,
+        "calls": 27744,
+        "self_seconds": 0.061196534000000004,
+        "cumulative_seconds": 0.41060493000000003
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 90,
+        "function": "redact",
+        "primitive_calls": 139174,
+        "calls": 139174,
+        "self_seconds": 0.059222847,
+        "cumulative_seconds": 0.07075007600000001
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'get' of 'dict' objects>",
+        "primitive_calls": 584169,
+        "calls": 584169,
+        "self_seconds": 0.053902676000000004,
+        "cumulative_seconds": 0.053902676000000004
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 362,
+        "function": "_write",
+        "primitive_calls": 27744,
+        "calls": 27744,
+        "self_seconds": 0.052968153000000004,
+        "cumulative_seconds": 0.482145301
+      },
+      {
+        "file": "traceback.py",
+        "line": 321,
+        "function": "extract",
+        "primitive_calls": 3527,
+        "calls": 3527,
+        "self_seconds": 0.046898233000000004,
+        "cumulative_seconds": 0.14716388400000002
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 648,
+        "function": "wrapped",
+        "primitive_calls": 1,
+        "calls": 13102,
+        "self_seconds": 0.043838348000000006,
+        "cumulative_seconds": 2.386023923
+      },
+      {
+        "file": "pathlib.py",
+        "line": 58,
+        "function": "parse_parts",
+        "primitive_calls": 12336,
+        "calls": 12336,
+        "self_seconds": 0.042324459,
+        "cumulative_seconds": 0.069826636
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<built-in method posix.stat>",
+        "primitive_calls": 17194,
+        "calls": 17194,
+        "self_seconds": 0.041623783000000004,
+        "cumulative_seconds": 0.055922903
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<built-in method builtins.len>",
+        "primitive_calls": 433894,
+        "calls": 433894,
+        "self_seconds": 0.040005322,
+        "cumulative_seconds": 0.040005322
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<built-in method builtins.id>",
+        "primitive_calls": 395885,
+        "calls": 395885,
+        "self_seconds": 0.034895903,
+        "cumulative_seconds": 0.034895903
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 229,
+        "function": "_drain",
+        "primitive_calls": 3637,
+        "calls": 3637,
+        "self_seconds": 0.034782378,
+        "cumulative_seconds": 0.314649234
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 394,
+        "function": "step",
+        "primitive_calls": 11044,
+        "calls": 11044,
+        "self_seconds": 0.033603594,
+        "cumulative_seconds": 0.34091292
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<built-in method builtins.isinstance>",
+        "primitive_calls": 221616,
+        "calls": 221616,
+        "self_seconds": 0.028361693,
+        "cumulative_seconds": 0.028361693
+      }
+    ],
+    "profile_total_seconds": 2.3860243920000013,
+    "exception_records": 3527
+  },
+  "log_tail_2000_lines": {
+    "physical_lines": 35,
+    "file_bytes": 1379247,
+    "events": {
+      "log.file": 1,
+      "service.start": 1,
+      "function.definition": 4,
+      "function.call": 2004,
+      "function.return": 2004,
+      "sequence.steps": 31,
+      "log.closed": 1
+    },
+    "top_calls": [
+      [
+        "logs.feed",
+        2000
+      ],
+      [
+        "logs.read_log",
+        2
+      ],
+      [
+        "logs.recent_log",
+        1
+      ],
+      [
+        "logs.fresh_state",
+        1
+      ]
+    ],
+    "steps": 10002,
+    "top_steps": [
+      [
+        "971",
+        2000
+      ],
+      [
+        "977",
+        2000
+      ],
+      [
+        "972",
+        1000
+      ],
+      [
+        "990",
+        1000
+      ],
+      [
+        "974",
+        1000
+      ],
+      [
+        "992",
+        1000
+      ],
+      [
+        "1004",
+        1000
+      ],
+      [
+        "1013",
+        999
+      ],
+      [
+        "1015",
+        1
+      ],
+      [
+        "1006",
+        1
+      ],
+      [
+        "980",
+        1
+      ]
+    ],
+    "expanded_field_bytes": {
+      "function": 44191,
+      "input": 247257,
+      "caller": 116232,
+      "result": 9374
+    },
+    "repeated_payload_occurrences": 5996,
+    "repeated_payload_bytes_upper_bound": 371318,
+    "top_repeated_payloads": [
+      {
+        "field": "caller",
+        "count": 2000,
+        "bytes_each": 58
+      },
+      {
+        "field": "result",
+        "count": 2000,
+        "bytes_each": 4
+      },
+      {
+        "field": "input",
+        "count": 999,
+        "bytes_each": 123
+      },
+      {
+        "field": "input",
+        "count": 999,
+        "bytes_each": 124
+      },
+      {
+        "field": "result",
+        "count": 3,
+        "bytes_each": 437
+      },
+      {
+        "field": "input",
+        "count": 1,
+        "bytes_each": 47
+      },
+      {
+        "field": "caller",
+        "count": 1,
+        "bytes_each": 54
+      },
+      {
+        "field": "input",
+        "count": 1,
+        "bytes_each": 77
+      }
+    ],
+    "codecs": {
+      "current": {
+        "data_bytes": 1379248,
+        "dictionary_bytes": 2,
+        "total_bytes": 1379250,
+        "gzip1_bytes": 189048,
+        "serialize_cpu_ms": 22.241899000000842,
+        "transform_and_roundtrip_cpu_ms": 0.001639999997138375,
+        "gzip_cpu_ms": 8.50281099999961,
+        "roundtrip": true
+      },
+      "numeric_dictionary": {
+        "data_bytes": 1035731,
+        "dictionary_bytes": 894,
+        "total_bytes": 1036625,
+        "gzip1_bytes": 179775,
+        "serialize_cpu_ms": 22.947660999999897,
+        "transform_and_roundtrip_cpu_ms": 121.50330100000062,
+        "gzip_cpu_ms": 7.309543999998169,
+        "roundtrip": true
+      },
+      "sha256_payload_dictionary": {
+        "data_bytes": 1301188,
+        "dictionary_bytes": 1123,
+        "total_bytes": 1302311,
+        "gzip1_bytes": 188272,
+        "serialize_cpu_ms": 17.260997000001055,
+        "transform_and_roundtrip_cpu_ms": 119.71440700000002,
+        "gzip_cpu_ms": 8.197092999999711,
+        "roundtrip": true
+      },
+      "integer_payload_dictionary": {
+        "data_bytes": 1175062,
+        "dictionary_bytes": 871,
+        "total_bytes": 1175933,
+        "gzip1_bytes": 185575,
+        "serialize_cpu_ms": 16.37033599999782,
+        "transform_and_roundtrip_cpu_ms": 88.50436799999883,
+        "gzip_cpu_ms": 7.754712000000552,
+        "roundtrip": true
+      }
+    },
+    "profile_top_self": [
+      {
+        "file": "encoder.py",
+        "line": 204,
+        "function": "iterencode",
+        "primitive_calls": 32,
+        "calls": 32,
+        "self_seconds": 0.021333261000000003,
+        "cumulative_seconds": 0.021333261000000003
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 394,
+        "function": "step",
+        "primitive_calls": 10002,
+        "calls": 10002,
+        "self_seconds": 0.020306859,
+        "cumulative_seconds": 0.033451496000000004
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 229,
+        "function": "_drain",
+        "primitive_calls": 32,
+        "calls": 32,
+        "self_seconds": 0.017891007,
+        "cumulative_seconds": 0.041271805
+      },
+      {
+        "file": "logs.py",
+        "line": 44,
+        "function": "feed",
+        "primitive_calls": 2000,
+        "calls": 2000,
+        "self_seconds": 0.014325165,
+        "cumulative_seconds": 0.055587964000000004
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'search' of 're.Pattern' objects>",
+        "primitive_calls": 10029,
+        "calls": 10029,
+        "self_seconds": 0.012224865000000001,
+        "cumulative_seconds": 0.012224865000000001
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 555,
+        "function": "__init__",
+        "primitive_calls": 2004,
+        "calls": 2004,
+        "self_seconds": 0.010741428,
+        "cumulative_seconds": 0.016231475000000002
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 121,
+        "function": "summary",
+        "primitive_calls": 10014,
+        "calls": 10062,
+        "self_seconds": 0.009624261,
+        "cumulative_seconds": 0.014001575
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 210,
+        "function": "write",
+        "primitive_calls": 4043,
+        "calls": 4043,
+        "self_seconds": 0.006495637,
+        "cumulative_seconds": 0.049129253000000005
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 362,
+        "function": "_write",
+        "primitive_calls": 4043,
+        "calls": 4043,
+        "self_seconds": 0.006359073000000001,
+        "cumulative_seconds": 0.057691559
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 648,
+        "function": "wrapped",
+        "primitive_calls": 1,
+        "calls": 2004,
+        "self_seconds": 0.0047944350000000005,
+        "cumulative_seconds": 0.17610904700000002
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 157,
+        "function": "call_value",
+        "primitive_calls": 8013,
+        "calls": 8013,
+        "self_seconds": 0.0037651940000000004,
+        "cumulative_seconds": 0.015830468
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 621,
+        "function": "finish",
+        "primitive_calls": 2004,
+        "calls": 2004,
+        "self_seconds": 0.003249262,
+        "cumulative_seconds": 0.028818677
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 600,
+        "function": "begin",
+        "primitive_calls": 2004,
+        "calls": 2004,
+        "self_seconds": 0.00308318,
+        "cumulative_seconds": 0.054665926000000004
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'get' of 'dict' objects>",
+        "primitive_calls": 30055,
+        "calls": 30055,
+        "self_seconds": 0.0030643600000000003,
+        "cumulative_seconds": 0.0030643600000000003
+      },
+      {
+        "file": "logs.py",
+        "line": 146,
+        "function": "read_log",
+        "primitive_calls": 2,
+        "calls": 2,
+        "self_seconds": 0.0030153230000000003,
+        "cumulative_seconds": 0.17497678800000002
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 608,
+        "function": "<dictcomp>",
+        "primitive_calls": 2004,
+        "calls": 2004,
+        "self_seconds": 0.0026101870000000004,
+        "cumulative_seconds": 0.015963903
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<built-in method builtins.len>",
+        "primitive_calls": 24204,
+        "calls": 24204,
+        "self_seconds": 0.002241569,
+        "cumulative_seconds": 0.002241569
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 397,
+        "function": "<dictcomp>",
+        "primitive_calls": 10002,
+        "calls": 10002,
+        "self_seconds": 0.002080013,
+        "cumulative_seconds": 0.004020155
+      },
+      {
+        "file": "diagnostics.py",
+        "line": 567,
+        "function": "<dictcomp>",
+        "primitive_calls": 2004,
+        "calls": 2004,
+        "self_seconds": 0.001946798,
+        "cumulative_seconds": 0.0024168640000000003
+      },
+      {
+        "file": "~",
+        "line": 0,
+        "function": "<method 'append' of 'list' objects>",
+        "primitive_calls": 20133,
+        "calls": 20133,
+        "self_seconds": 0.0019349240000000002,
+        "cumulative_seconds": 0.0019349240000000002
+      }
+    ],
+    "profile_total_seconds": 0.17611335000000003
+  },
+  "valid_cpu_settings": false
+}

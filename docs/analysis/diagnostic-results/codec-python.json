@@ -1,0 +1,230 @@
+[
+  {
+    "mode": "on",
+    "members": 921,
+    "active": 40,
+    "valid_cpu_settings": false,
+    "cold_ms": 53.17452922463417,
+    "results": [
+      {
+        "scenario": "warm_catalog",
+        "p50_ms": 36.5810776129365,
+        "p95_ms": 38.3968073874712,
+        "cpu_ms": 189.8039360000001,
+        "samples": 5
+      },
+      {
+        "scenario": "one_ticket",
+        "p50_ms": 1.623210497200489,
+        "p95_ms": 1.6634222120046616,
+        "cpu_ms": 8.147069000000062,
+        "samples": 5
+      },
+      {
+        "scenario": "telegram_stat",
+        "p50_ms": 103.46834361553192,
+        "p95_ms": 103.62059716135263,
+        "cpu_ms": 509.3492450000001,
+        "samples": 5
+      },
+      {
+        "scenario": "web_overview",
+        "p50_ms": 1296.6270502656698,
+        "p95_ms": 1340.267171151936,
+        "cpu_ms": 6722.8865080000005,
+        "samples": 5
+      },
+      {
+        "scenario": "log_tail_2000_lines",
+        "p50_ms": 95.15611454844475,
+        "p95_ms": 95.79884447157383,
+        "cpu_ms": 483.8377170000001,
+        "samples": 5
+      }
+    ],
+    "rss_kib": 57960,
+    "rss_source": "proc.VmHWM",
+    "records": 438014,
+    "log_errors": 0,
+    "bytes_written": 174414648,
+    "log_bytes": 70028857,
+    "python": "3.9.25",
+    "codec": "v1"
+  },
+  {
+    "mode": "off",
+    "members": 921,
+    "active": 40,
+    "valid_cpu_settings": false,
+    "cold_ms": 52.26029548794031,
+    "results": [
+      {
+        "scenario": "warm_catalog",
+        "p50_ms": 35.039122216403484,
+        "p95_ms": 35.14259960502386,
+        "cpu_ms": 178.73554400000003,
+        "samples": 5
+      },
+      {
+        "scenario": "one_ticket",
+        "p50_ms": 0.6269030272960663,
+        "p95_ms": 0.6276406347751617,
+        "cpu_ms": 3.1469619999999754,
+        "samples": 5
+      },
+      {
+        "scenario": "telegram_stat",
+        "p50_ms": 43.056732043623924,
+        "p95_ms": 43.065776117146015,
+        "cpu_ms": 210.0608879999999,
+        "samples": 5
+      },
+      {
+        "scenario": "web_overview",
+        "p50_ms": 329.3647216632962,
+        "p95_ms": 329.40747775137424,
+        "cpu_ms": 1604.3881399999998,
+        "samples": 5
+      },
+      {
+        "scenario": "log_tail_2000_lines",
+        "p50_ms": 14.005112461745739,
+        "p95_ms": 14.037360437214375,
+        "cpu_ms": 69.8578379999999,
+        "samples": 5
+      }
+    ],
+    "rss_kib": 47784,
+    "rss_source": "proc.VmHWM",
+    "records": 0,
+    "log_errors": 0,
+    "bytes_written": 0,
+    "log_bytes": 0,
+    "python": "3.9.25",
+    "codec": "off"
+  },
+  {
+    "mode": "on",
+    "members": 921,
+    "active": 40,
+    "valid_cpu_settings": false,
+    "cold_ms": 52.72649694234133,
+    "results": [
+      {
+        "scenario": "warm_catalog",
+        "p50_ms": 35.68239510059357,
+        "p95_ms": 35.83933133631945,
+        "cpu_ms": 177.6352459999999,
+        "samples": 5
+      },
+      {
+        "scenario": "one_ticket",
+        "p50_ms": 1.8350239843130112,
+        "p95_ms": 1.880778931081295,
+        "cpu_ms": 9.243324000000053,
+        "samples": 5
+      },
+      {
+        "scenario": "telegram_stat",
+        "p50_ms": 104.24840357154608,
+        "p95_ms": 104.73234672099352,
+        "cpu_ms": 514.8523419999998,
+        "samples": 5
+      },
+      {
+        "scenario": "web_overview",
+        "p50_ms": 1266.160884872079,
+        "p95_ms": 1308.644812554121,
+        "cpu_ms": 6286.451323999998,
+        "samples": 5
+      },
+      {
+        "scenario": "log_tail_2000_lines",
+        "p50_ms": 105.71839474141598,
+        "p95_ms": 105.86237628012896,
+        "cpu_ms": 541.3927429999994,
+        "samples": 5
+      }
+    ],
+    "rss_kib": 72424,
+    "rss_source": "proc.VmHWM",
+    "records": 438014,
+    "log_errors": 0,
+    "bytes_written": 81178492,
+    "log_bytes": 81755726,
+    "python": "3.9.25",
+    "codec": "v2"
+  },
+  {
+    "mode": "on",
+    "members": 921,
+    "active": 40,
+    "valid_cpu_settings": true,
+    "cold_ms": 55.15746492892504,
+    "results": [
+      {
+        "scenario": "web_overview",
+        "p50_ms": 5561.062263324857,
+        "p95_ms": 5699.442486278713,
+        "cpu_ms": 27662.080941,
+        "samples": 5
+      }
+    ],
+    "rss_kib": 58064,
+    "rss_source": "proc.VmHWM",
+    "records": 2285362,
+    "log_errors": 0,
+    "bytes_written": 684244695,
+    "log_bytes": 75966304,
+    "python": "3.9.25",
+    "codec": "v1"
+  },
+  {
+    "mode": "off",
+    "members": 921,
+    "active": 40,
+    "valid_cpu_settings": true,
+    "cold_ms": 51.89747270196676,
+    "results": [
+      {
+        "scenario": "web_overview",
+        "p50_ms": 724.3323437869549,
+        "p95_ms": 752.4453494697809,
+        "cpu_ms": 3474.836969,
+        "samples": 5
+      }
+    ],
+    "rss_kib": 48816,
+    "rss_source": "proc.VmHWM",
+    "records": 0,
+    "log_errors": 0,
+    "bytes_written": 0,
+    "log_bytes": 0,
+    "python": "3.9.25",
+    "codec": "off"
+  },
+  {
+    "mode": "on",
+    "members": 921,
+    "active": 40,
+    "valid_cpu_settings": true,
+    "cold_ms": 48.1564337387681,
+    "results": [
+      {
+        "scenario": "web_overview",
+        "p50_ms": 4690.437004901469,
+        "p95_ms": 5033.005528151989,
+        "cpu_ms": 23986.05125,
+        "samples": 5
+      }
+    ],
+    "rss_kib": 66944,
+    "rss_source": "proc.VmHWM",
+    "records": 2285362,
+    "log_errors": 0,
+    "bytes_written": 237629333,
+    "log_bytes": 70370392,
+    "python": "3.9.25",
+    "codec": "v2"
+  }
+]

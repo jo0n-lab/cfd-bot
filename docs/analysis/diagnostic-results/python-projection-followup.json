@@ -1,0 +1,49 @@
+{
+  "mode": "on",
+  "members": 921,
+  "active": 40,
+  "cold_ms": 63.217345625162125,
+  "results": [
+    {
+      "scenario": "warm_catalog",
+      "p50_ms": 56.25830218195915,
+      "p95_ms": 58.494821190834045,
+      "cpu_ms": 303.4559240000001,
+      "samples": 5
+    },
+    {
+      "scenario": "one_ticket",
+      "p50_ms": 2.26601492613554,
+      "p95_ms": 2.35049519687891,
+      "cpu_ms": 11.31374900000015,
+      "samples": 5
+    },
+    {
+      "scenario": "telegram_stat",
+      "p50_ms": 170.06918787956238,
+      "p95_ms": 173.41135069727898,
+      "cpu_ms": 827.3359889999998,
+      "samples": 5
+    },
+    {
+      "scenario": "web_overview",
+      "p50_ms": 1937.145283445716,
+      "p95_ms": 1957.0322260260582,
+      "cpu_ms": 9500.995600000002,
+      "samples": 5
+    },
+    {
+      "scenario": "log_tail_2000_lines",
+      "p50_ms": 137.52439431846142,
+      "p95_ms": 140.9491654485464,
+      "cpu_ms": 730.7180379999991,
+      "samples": 5
+    }
+  ],
+  "rss_kib": 57784,
+  "records": 438014,
+  "log_errors": 0,
+  "bytes_written": 173296634,
+  "log_bytes": 68777636,
+  "python": "3.9.25"
+}

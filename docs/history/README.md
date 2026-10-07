@@ -4,6 +4,10 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-10-07 | [기본 업무 로그와 상세 함수 로그 분리](2026-10-07-diagnostic-logging-levels.md) | [#30](https://github.com/jo0n-lab/cfd-bot/issues/30) |
+| 2026-10-07 | [숫자 코드·사전 기반 진단 로그 구현](2026-10-07-diagnostic-codec-implementation.md) | [#30](https://github.com/jo0n-lab/cfd-bot/issues/30) |
+| 2026-10-07 | [진단 로그 지연·중복·숫자 코드/해시 사전 검토](2026-10-07-diagnostic-overhead-review.md) | [#30](https://github.com/jo0n-lab/cfd-bot/issues/30) |
+| 2026-10-07 | [전체 시퀀스 진단 로그·ON/OFF·성능 비교](2026-10-07-diagnostic-sequence-logging.md) | [#18](https://github.com/jo0n-lab/cfd-bot/issues/18) |
 | 2026-10-07 | [대기열별 선택·해제·취소](2026-10-07-per-queue-selection.md) | 사용자 요청으로 생략 |
 | 2026-10-07 | [작업 큐 전체 선택·일괄 중단](2026-10-07-bulk-running-job-interruption.md) | 사용자 요청으로 생략 |
 | 2026-10-07 | [monitor 잔류로 인한 중복 종료 알림 제거](2026-10-07-monitor-tail-duplicate-notifications.md) | [#28](https://github.com/jo0n-lab/cfd-bot/issues/28) |

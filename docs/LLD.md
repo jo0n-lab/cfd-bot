@@ -1,5 +1,9 @@
 # CFD bot Low-Level Design — 함수 요청·응답 시퀀스
 
+> #30 수집 수준 분리: ON 기본 `basic`은 업무 경계·사용자 이벤트·티켓/작업 변경·경고/예외를 기록한다. 내부 정상 함수·분기/반복은 `detailed` 전용이다. [설계 이력](history/2026-10-07-diagnostic-logging-levels.md) · [최신 성능](analysis/diagnostic-level-performance.md).
+
+> #18 사후 원인 분석 로그: [설정·기록·읽기](DIAGNOSTICS.md) · [모든 시퀀스 대응표](analysis/diagnostic-flow-coverage.md) · [ON/OFF 실측](analysis/diagnostic-performance.md). 업무 정책 변경 없이 기록만 추가하며 기본 OFF다.
+
 > #20 운영 구조와 #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota, #25 `ofps` monitor CPU 관측, #26 terminal outbox 1회 처리, #27 실행 중단을 반영했다. [#27 변경 이력](history/2026-10-07-running-job-interruption.md).
 
 > 2026-10-04 현행 코드 기준. [기준 버전·유즈케이스 지도](ARCHITECTURE.md) · [HLD](HLD.md) · [실측과 병목 후보](analysis/performance.md). 사용자 요청에 따라 **호출 주체를 가로로 배치한 시퀀스 다이어그램**을 중심으로 구성한다.
@@ -270,3 +274,24 @@ ID만 선택·해제·취소하고 다른 대기열의 선택을 보존한다. T
 Scheduler는 `unpublished_terminal_jobs` 결과만 `terminal_event`로 넘긴다. 이미 outbox가 있는 legacy job은 migration 없이 제외되고, 알림 대상이 아니거나 outbox 저장이 끝난 managed job은 `terminal_event_published=true`가 된다. `Store.event`는 기존 event/recipient만 있으면 쓰기 transaction을 열지 않으므로 반복 start 복구와 external 감시도 `AUTOINCREMENT`를 소비하지 않는다. worker의 solver·monitor·hook 실행 이후 Store 쓰기는 SQLite `locked` 또는 `busy`만 재시도한다. 그동안 child는 계속 실행되며 다른 DB 오류는 기존 오류 경로로 전파된다.
 
 함수 예외의 UI 변환은 각 플랫폼 LLD에 명시했다. 실제 테스트 실행 결과, SVG 렌더링과 링크/함수 검증은 [validation](analysis/validation.md)에 있다. 운영 Telegram/API latency와 실제 OpenFOAM 계산은 이번 문서 검증에 사용하지 않았다.
+
+## 진단 기록의 공통 호출 계약 (#18)
+
+```mermaid
+sequenceDiagram
+    participant U as 기존 UI/백그라운드 caller
+    participant F as 기존 함수
+    participant L as 프로세스 진단 파일
+    U->>F: 기존 인자
+    F-->>L: call ID / parent / 입력 요약
+    Note over F,L: 기존 분기마다 step ID · seq · 시각
+    alt 정상 반환
+      F-->>L: result / duration
+      F-->>U: 기존 반환 객체
+    else 기존 예외
+      F-->>L: exception chain / stack / 최초 오류
+      F-->>U: 같은 예외 전파
+    end
+```
+
+[기계 판독 대응표](../cfd_bot/diagnostic_map.json)는 기존 103개 시퀀스의 모든 노드를 Python/JS/shell 기록 또는 외부 호출 경계에 연결한다. 정적 대응표의 완성도와 실제 환경에서 시나리오를 실행한 검증 범위는 구분한다. #30의 `log.batch.v2`는 함수/event 숫자 코드, 공통 context/call/value 사전, delta 시간/순서, error ID와 공유 stack을 사용한다. decoder는 기존 `log.batch`와 신형 Python/browser/ofps 기록을 모두 읽고 선택한 수집 수준에 포함된 개별 사건을 복원한다. basic에서 생략한 정상 helper 호출/분기는 복원하지 않는다. [정확한 필드 순서와 번호](analysis/diagnostic-codebook.md)를 별도 제공한다. 예외 객체 참조는 요청 종료 시 해제하며, 읽기 DB context 종료는 실제 commit과 다른 code를 쓴다.

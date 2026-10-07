@@ -1,0 +1,42 @@
+{
+  "current": {
+    "data_bytes": 10472259,
+    "dictionary_bytes": 2,
+    "total_bytes": 10472261,
+    "gzip1_bytes": 397800,
+    "serialize_cpu_ms": 233.67853900000003,
+    "transform_and_roundtrip_cpu_ms": 0.0024849999999965178,
+    "gzip_cpu_ms": 55.94519099999995,
+    "roundtrip": true
+  },
+  "numeric_dictionary": {
+    "data_bytes": 5638124,
+    "dictionary_bytes": 58108,
+    "total_bytes": 5696232,
+    "gzip1_bytes": 329135,
+    "serialize_cpu_ms": 245.19818799999982,
+    "transform_and_roundtrip_cpu_ms": 1102.617408,
+    "gzip_cpu_ms": 34.40197400000011,
+    "roundtrip": true
+  },
+  "sha256_payload_dictionary": {
+    "data_bytes": 6296919,
+    "dictionary_bytes": 2240671,
+    "total_bytes": 8537590,
+    "gzip1_bytes": 469834,
+    "serialize_cpu_ms": 181.85998199999975,
+    "transform_and_roundtrip_cpu_ms": 640.085923,
+    "gzip_cpu_ms": 48.395288000000036,
+    "roundtrip": true
+  },
+  "integer_payload_dictionary": {
+    "data_bytes": 6174699,
+    "dictionary_bytes": 2179561,
+    "total_bytes": 8354260,
+    "gzip1_bytes": 328574,
+    "serialize_cpu_ms": 172.02168400000016,
+    "transform_and_roundtrip_cpu_ms": 673.5592549999998,
+    "gzip_cpu_ms": 45.59964700000041,
+    "roundtrip": true
+  }
+}

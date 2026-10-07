@@ -67,7 +67,7 @@ def main():
         for name in ('queue-one', 'queue-two'):
             app.store.enqueue(dict(name=name, _root=str(root / name), command=['./Allrun'], watcher={}))
         running = app.store.enqueue(dict(name='Browser running', _root=str(root / 'running-job'),
-                                         command=['./Allrun'], watcher={}))
+                                         cores=1, cpu_set='0', command=['./Allrun'], watcher={}))
         app.store.update_job(running['id'], status='running', started=4)
         with patch('cfd_bot.ticket_run.snapshot', return_value={'cases': {}, 'raw': 'No active jobs'}):
             server = WebServer(app, 0)

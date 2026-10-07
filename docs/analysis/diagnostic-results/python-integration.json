@@ -1,0 +1,296 @@
+[
+  {
+    "mode": "baseline",
+    "members": 40,
+    "active": 40,
+    "cold_ms": 36.34743206202984,
+    "results": [
+      {
+        "scenario": "warm_catalog",
+        "p50_ms": 2.193151507526636,
+        "p95_ms": 2.4136779829859734,
+        "cpu_ms": 44.430775000000004,
+        "samples": 20
+      },
+      {
+        "scenario": "one_ticket",
+        "p50_ms": 0.6706318818032742,
+        "p95_ms": 0.6926953792572021,
+        "cpu_ms": 13.331705999999999,
+        "samples": 20
+      },
+      {
+        "scenario": "telegram_stat",
+        "p50_ms": 46.785600017756224,
+        "p95_ms": 53.057607263326645,
+        "cpu_ms": 933.787141,
+        "samples": 20
+      },
+      {
+        "scenario": "web_overview",
+        "p50_ms": 85.51184507086873,
+        "p95_ms": 94.97564472258091,
+        "cpu_ms": 1606.3712769999997,
+        "samples": 20
+      },
+      {
+        "scenario": "log_tail_2000_lines",
+        "p50_ms": 18.207816872745752,
+        "p95_ms": 19.53248679637909,
+        "cpu_ms": 365.0553909999998,
+        "samples": 20
+      }
+    ],
+    "rss_kib": 30368,
+    "records": 0,
+    "log_errors": 0,
+    "bytes_written": 0,
+    "log_bytes": 0,
+    "python": "3.9.25"
+  },
+  {
+    "mode": "off",
+    "members": 40,
+    "active": 40,
+    "cold_ms": 33.90640486031771,
+    "results": [
+      {
+        "scenario": "warm_catalog",
+        "p50_ms": 2.4645854718983173,
+        "p95_ms": 2.5507621467113495,
+        "cpu_ms": 48.691754,
+        "samples": 20
+      },
+      {
+        "scenario": "one_ticket",
+        "p50_ms": 0.6782016716897488,
+        "p95_ms": 0.7048789411783218,
+        "cpu_ms": 13.475372000000013,
+        "samples": 20
+      },
+      {
+        "scenario": "telegram_stat",
+        "p50_ms": 49.37194474041462,
+        "p95_ms": 57.28193465620279,
+        "cpu_ms": 992.419585,
+        "samples": 20
+      },
+      {
+        "scenario": "web_overview",
+        "p50_ms": 85.4604528285563,
+        "p95_ms": 97.52588719129562,
+        "cpu_ms": 1602.6743150000002,
+        "samples": 20
+      },
+      {
+        "scenario": "log_tail_2000_lines",
+        "p50_ms": 20.879919175058603,
+        "p95_ms": 22.33877871185541,
+        "cpu_ms": 405.70186500000017,
+        "samples": 20
+      }
+    ],
+    "rss_kib": 31200,
+    "records": 0,
+    "log_errors": 0,
+    "bytes_written": 0,
+    "log_bytes": 0,
+    "python": "3.9.25"
+  },
+  {
+    "mode": "on",
+    "members": 40,
+    "active": 40,
+    "cold_ms": 46.59147933125496,
+    "results": [
+      {
+        "scenario": "warm_catalog",
+        "p50_ms": 3.5495911724865437,
+        "p95_ms": 4.522484727203846,
+        "cpu_ms": 72.99003799999998,
+        "samples": 20
+      },
+      {
+        "scenario": "one_ticket",
+        "p50_ms": 2.226336859166622,
+        "p95_ms": 2.3163268342614174,
+        "cpu_ms": 44.23515499999997,
+        "samples": 20
+      },
+      {
+        "scenario": "telegram_stat",
+        "p50_ms": 170.99601635709405,
+        "p95_ms": 180.06155360490084,
+        "cpu_ms": 3296.995822,
+        "samples": 20
+      },
+      {
+        "scenario": "web_overview",
+        "p50_ms": 256.12219609320164,
+        "p95_ms": 282.0147043094039,
+        "cpu_ms": 5001.231306999999,
+        "samples": 20
+      },
+      {
+        "scenario": "log_tail_2000_lines",
+        "p50_ms": 129.43059438839555,
+        "p95_ms": 138.44952080398798,
+        "cpu_ms": 2560.6575089999988,
+        "samples": 20
+      }
+    ],
+    "rss_kib": 32732,
+    "records": 294961,
+    "log_errors": 0,
+    "bytes_written": 97150934,
+    "log_bytes": 76654237,
+    "python": "3.9.25"
+  },
+  {
+    "mode": "baseline",
+    "members": 921,
+    "active": 40,
+    "cold_ms": 56.45138490945101,
+    "results": [
+      {
+        "scenario": "warm_catalog",
+        "p50_ms": 52.15656757354736,
+        "p95_ms": 61.515843495726585,
+        "cpu_ms": 1053.551028,
+        "samples": 20
+      },
+      {
+        "scenario": "one_ticket",
+        "p50_ms": 0.7179137319326401,
+        "p95_ms": 0.9745322167873383,
+        "cpu_ms": 15.019821999999738,
+        "samples": 20
+      },
+      {
+        "scenario": "telegram_stat",
+        "p50_ms": 51.823053043335676,
+        "p95_ms": 56.95944465696812,
+        "cpu_ms": 1015.5332859999997,
+        "samples": 20
+      },
+      {
+        "scenario": "web_overview",
+        "p50_ms": 496.14127166569233,
+        "p95_ms": 588.136276230216,
+        "cpu_ms": 9155.186654000001,
+        "samples": 20
+      },
+      {
+        "scenario": "log_tail_2000_lines",
+        "p50_ms": 18.525417428463697,
+        "p95_ms": 26.44411940127611,
+        "cpu_ms": 366.93196300000074,
+        "samples": 20
+      }
+    ],
+    "rss_kib": 47408,
+    "records": 0,
+    "log_errors": 0,
+    "bytes_written": 0,
+    "log_bytes": 0,
+    "python": "3.9.25"
+  },
+  {
+    "mode": "off",
+    "members": 921,
+    "active": 40,
+    "cold_ms": 142.93402340263128,
+    "results": [
+      {
+        "scenario": "warm_catalog",
+        "p50_ms": 54.91751665249467,
+        "p95_ms": 76.65896508842707,
+        "cpu_ms": 1101.3623999999998,
+        "samples": 20
+      },
+      {
+        "scenario": "one_ticket",
+        "p50_ms": 0.7222704589366913,
+        "p95_ms": 0.734458677470684,
+        "cpu_ms": 14.275146999999766,
+        "samples": 20
+      },
+      {
+        "scenario": "telegram_stat",
+        "p50_ms": 51.16304475814104,
+        "p95_ms": 68.05287301540375,
+        "cpu_ms": 999.6270279999999,
+        "samples": 20
+      },
+      {
+        "scenario": "web_overview",
+        "p50_ms": 494.6201713755727,
+        "p95_ms": 520.7661679014564,
+        "cpu_ms": 9683.838593,
+        "samples": 20
+      },
+      {
+        "scenario": "log_tail_2000_lines",
+        "p50_ms": 19.852513447403908,
+        "p95_ms": 20.7667239010334,
+        "cpu_ms": 398.78516599999966,
+        "samples": 20
+      }
+    ],
+    "rss_kib": 47780,
+    "records": 0,
+    "log_errors": 0,
+    "bytes_written": 0,
+    "log_bytes": 0,
+    "python": "3.9.25"
+  },
+  {
+    "mode": "on",
+    "members": 921,
+    "active": 40,
+    "cold_ms": 68.91634408384562,
+    "results": [
+      {
+        "scenario": "warm_catalog",
+        "p50_ms": 56.998217944055796,
+        "p95_ms": 73.88809230178595,
+        "cpu_ms": 1184.8848360000002,
+        "samples": 20
+      },
+      {
+        "scenario": "one_ticket",
+        "p50_ms": 2.3620757274329662,
+        "p95_ms": 2.9759714379906654,
+        "cpu_ms": 49.279363999999774,
+        "samples": 20
+      },
+      {
+        "scenario": "telegram_stat",
+        "p50_ms": 165.7521384768188,
+        "p95_ms": 182.3134757578373,
+        "cpu_ms": 3255.019002,
+        "samples": 20
+      },
+      {
+        "scenario": "web_overview",
+        "p50_ms": 2078.0596337281168,
+        "p95_ms": 2159.658999182284,
+        "cpu_ms": 40746.97976499999,
+        "samples": 20
+      },
+      {
+        "scenario": "log_tail_2000_lines",
+        "p50_ms": 144.18590208515525,
+        "p95_ms": 192.62749049812555,
+        "cpu_ms": 2976.4784270000036,
+        "samples": 20
+      }
+    ],
+    "rss_kib": 57284,
+    "records": 983984,
+    "log_errors": 0,
+    "bytes_written": 436803620,
+    "log_bytes": 80579755,
+    "python": "3.9.25"
+  }
+]

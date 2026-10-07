@@ -8,10 +8,20 @@ readonly basilisk_root=${OFPS_BASILISK_ROOT:-$script_dir}
 readonly bot_config=${CFD_BOT_CONFIG:-$project_root/bot.json}
 readonly bot_python=${CFD_BOT_PYTHON:-python3}
 
+source "$script_dir/ofps-diagnostics.sh"
+
 run_bot_command()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[run_bot_command]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:run_bot_command"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" run_bot_command
+    fi
     local command=$1
     shift
+    CFD_BOT_TRACE_ID="${CFD_BOT_TRACE_ID:-shell-$BASHPID}" \
+    CFD_BOT_PARENT_CALL_ID="${_cfd_diag_call:-$BASHPID}" \
     PYTHONPATH="$project_root${PYTHONPATH:+:$PYTHONPATH}" \
         exec "$bot_python" -m cfd_bot --config "$bot_config" "$command" "$@"
 }
@@ -26,6 +36,12 @@ esac
 
 usage()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[usage]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:usage"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" usage
+    fi
     cat <<'EOF'
 Usage: ofps [--watch [SECONDS]]
        ofps --check CPU_SET [--allow-cross-socket]
@@ -99,6 +115,12 @@ fi
 
 cpu_count()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[cpu_count]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:cpu_count"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" cpu_count
+    fi
     local list=$1 item lower upper total=0
     local -a items=()
     IFS=',' read -r -a items <<< "$list"
@@ -116,6 +138,12 @@ cpu_count()
 
 expand_cpu_list()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[expand_cpu_list]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:expand_cpu_list"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" expand_cpu_list
+    fi
     local list=$1 item lower upper cpu
     local -a items=()
     IFS=',' read -r -a items <<< "$list"
@@ -127,9 +155,9 @@ expand_cpu_list()
             lower=$item
             upper=$item
         else
-            return 1
+            { _cfd_diag_result=1; return "$_cfd_diag_result"; }
         fi
-        (( 10#$lower <= 10#$upper )) || return 1
+        (( 10#$lower <= 10#$upper )) || { _cfd_diag_result=1; return "$_cfd_diag_result"; }
         for ((cpu = 10#$lower; cpu <= 10#$upper; ++cpu)); do
             printf '%s\n' "$cpu"
         done
@@ -138,24 +166,42 @@ expand_cpu_list()
 
 cpu_set_contains()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[cpu_set_contains]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:cpu_set_contains"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" cpu_set_contains
+    fi
     local list=$1 needle=$2 cpu
     while IFS= read -r cpu; do
-        [[ $cpu == "$needle" ]] && return 0
+        [[ $cpu == "$needle" ]] && { _cfd_diag_result=0; return "$_cfd_diag_result"; }
     done < <(expand_cpu_list "$list")
-    return 1
+    { _cfd_diag_result=1; return "$_cfd_diag_result"; }
 }
 
 cpu_sets_overlap()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[cpu_sets_overlap]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:cpu_sets_overlap"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" cpu_sets_overlap
+    fi
     local first=$1 second=$2 cpu
     while IFS= read -r cpu; do
-        cpu_set_contains "$second" "$cpu" && return 0
+        cpu_set_contains "$second" "$cpu" && { _cfd_diag_result=0; return "$_cfd_diag_result"; }
     done < <(expand_cpu_list "$first")
-    return 1
+    { _cfd_diag_result=1; return "$_cfd_diag_result"; }
 }
 
 topology_ids()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[topology_ids]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:topology_ids"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" topology_ids
+    fi
     local list=$1 kind=$2 cpu value path unknown=false
     local -a node_paths=()
     local -A seen=()
@@ -185,7 +231,7 @@ topology_ids()
 
     if (( ${#seen[@]} == 0 )); then
         printf '?\n'
-        return
+        { _cfd_diag_result=$?; return "$_cfd_diag_result"; }
     fi
     {
         printf '%s\n' "${!seen[@]}" | sort -n | paste -sd, -
@@ -196,13 +242,19 @@ topology_ids()
 
 is_openfoam_application()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[is_openfoam_application]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:is_openfoam_application"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" is_openfoam_application
+    fi
     local name=$1 executable=$2
     case "$name" in
         *Foam|foamMultiRun*|foamRun*|foamDictionary|foamPostProcess|foamToVTK|\
         blockMesh|checkMesh|createBaffles|createPatch|createZones|\
         decomposePar|reconstructPar*|redistributePar|renumberMesh|\
         setFields|snappyHexMesh|splitMeshRegions|topoSet)
-            return 0
+            { _cfd_diag_result=0; return "$_cfd_diag_result"; }
             ;;
     esac
     [[ $executable == *OpenFOAM* || $executable == */platforms/*/bin/* ]]
@@ -210,12 +262,24 @@ is_openfoam_application()
 
 is_basilisk_application()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[is_basilisk_application]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:is_basilisk_application"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" is_basilisk_application
+    fi
     local executable=$1
     [[ $executable == "$basilisk_root"/* ]]
 }
 
 openfoam_case_from_process()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[openfoam_case_from_process]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:openfoam_case_from_process"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" openfoam_case_from_process
+    fi
     local cwd=$1
     shift
     local candidate=$cwd argument next_is_case=false resolved link parent
@@ -251,7 +315,7 @@ openfoam_case_from_process()
     while [[ $candidate != / && -n $candidate ]]; do
         if [[ -f $candidate/system/controlDict ]]; then
             printf '%s\n' "$candidate"
-            return
+            { _cfd_diag_result=$?; return "$_cfd_diag_result"; }
         fi
         parent=${candidate%/*}
         [[ -n $parent ]] || parent=/
@@ -263,6 +327,12 @@ openfoam_case_from_process()
 
 basilisk_case_from_process()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[basilisk_case_from_process]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:basilisk_case_from_process"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" basilisk_case_from_process
+    fi
     local executable=$1 candidate parent start
     candidate=${executable%/*}
     start=$candidate
@@ -270,7 +340,7 @@ basilisk_case_from_process()
         && [[ $candidate == "$basilisk_root" || $candidate == "$basilisk_root"/* ]]; do
         if [[ -f $candidate/Makefile ]] && compgen -G "$candidate/*.c" >/dev/null; then
             printf '%s\n' "$candidate"
-            return
+            { _cfd_diag_result=$?; return "$_cfd_diag_result"; }
         fi
         parent=${candidate%/*}
         [[ $parent != "$candidate" ]] || break
@@ -281,9 +351,15 @@ basilisk_case_from_process()
 
 monitor_case_from_process()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[monitor_case_from_process]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:monitor_case_from_process"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" monitor_case_from_process
+    fi
     local proc=$1 cwd=$2 entry case_dir="" job_id="" monitor_cpu=""
     local monitored_solver_pid="" candidate resolved derive_from_cwd=false
-    [[ -r $proc/environ ]] || return 1
+    [[ -r $proc/environ ]] || { _cfd_diag_result=1; return "$_cfd_diag_result"; }
 
     while IFS= read -r -d '' entry; do
         case "$entry" in
@@ -297,30 +373,36 @@ monitor_case_from_process()
     done < "$proc/environ"
 
     if [[ -n $case_dir && -n $job_id && -n $monitor_cpu ]]; then
-        [[ $monitor_cpu =~ ^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$ ]] || return 1
+        [[ $monitor_cpu =~ ^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$ ]] || { _cfd_diag_result=1; return "$_cfd_diag_result"; }
         candidate=$case_dir
     elif [[ $monitored_solver_pid =~ ^[0-9]+$ ]]; then
         candidate=${case_dir:-$cwd}
         [[ -n $case_dir ]] || derive_from_cwd=true
     else
-        return 1
+        { _cfd_diag_result=1; return "$_cfd_diag_result"; }
     fi
-    resolved=$(readlink -f -- "$candidate" 2>/dev/null) || return 1
+    resolved=$(readlink -f -- "$candidate" 2>/dev/null) || { _cfd_diag_result=1; return "$_cfd_diag_result"; }
     if [[ ! -f $resolved/system/controlDict ]]; then
-        $derive_from_cwd || return 1
+        $derive_from_cwd || { _cfd_diag_result=1; return "$_cfd_diag_result"; }
         resolved=$(openfoam_case_from_process "$cwd")
-        [[ $resolved != *' [controlDict not found]' ]] || return 1
+        [[ $resolved != *' [controlDict not found]' ]] || { _cfd_diag_result=1; return "$_cfd_diag_result"; }
     fi
-    [[ -f $resolved/system/controlDict ]] || return 1
+    [[ -f $resolved/system/controlDict ]] || { _cfd_diag_result=1; return "$_cfd_diag_result"; }
     case "${cwd%/}/" in
         "${resolved%/}/"*) ;;
-        *) return 1 ;;
+        *) { _cfd_diag_result=1; return "$_cfd_diag_result"; } ;;
     esac
     printf '%s\n' "$resolved"
 }
 
 supervisor_identity()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[supervisor_identity]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:supervisor_identity"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" supervisor_identity
+    fi
     local cwd=$1
     shift
     local argument basename label="" candidate="" resolved
@@ -342,7 +424,7 @@ supervisor_identity()
                 ;;
         esac
     done
-    [[ -n $label ]] || return 1
+    [[ -n $label ]] || { _cfd_diag_result=1; return "$_cfd_diag_result"; }
 
     if [[ $label == run_case.py ]]; then
         local supervised=false
@@ -351,7 +433,7 @@ supervisor_identity()
                 --worker|--foreground) supervised=true ;;
             esac
         done
-        $supervised || return 1
+        $supervised || { _cfd_diag_result=1; return "$_cfd_diag_result"; }
     fi
 
     if [[ -n $candidate ]]; then
@@ -361,13 +443,19 @@ supervisor_identity()
     fi
     if [[ -z $candidate ]]; then
         candidate=$(openfoam_case_from_process "$cwd" "$@")
-        [[ $candidate != *'[controlDict not found]'* ]] || return 1
+        [[ $candidate != *'[controlDict not found]'* ]] || { _cfd_diag_result=1; return "$_cfd_diag_result"; }
     fi
     printf '%s\t%s\n' "$candidate" "$label"
 }
 
 scan_supervisors()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[scan_supervisors]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:scan_supervisors"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" scan_supervisors
+    fi
     local output_file=$1 proc pid cwd ppid elapsed identity case_dir label
     local -a argv=()
     : > "$output_file"
@@ -386,6 +474,9 @@ scan_supervisors()
         [[ -n $ppid ]] || ppid=?
         elapsed=$(ps -o etime= -p "$pid" 2>/dev/null | tr -d '[:space:]')
         [[ -n $elapsed ]] || elapsed=?
+        if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+            _cfd_diag_write shell.process.observed 0 "pid=$pid ppid=$ppid case=$case_dir"
+        fi
         case_dir=${case_dir//$'\t'/ }
         case_dir=${case_dir//$'\n'/ }
         printf '%s\t%s\t%s\t%s\t%s\n' \
@@ -395,6 +486,12 @@ scan_supervisors()
 
 thread_affinity_union()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[thread_affinity_union]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:thread_affinity_union"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" thread_affinity_union
+    fi
     local pid=$1
     awk '
         /^Cpus_allowed_list:/ {
@@ -432,6 +529,12 @@ thread_affinity_union()
 
 scan_once()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[scan_once]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:scan_once"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" scan_once
+    fi
     local output_file=$1 proc pid cwd executable name engine case_dir role
     local ppid elapsed threads affinity_record affinity_count affinity
     local argument socket_ids node_ids
@@ -497,6 +600,9 @@ scan_once()
             role=MPI
         fi
 
+        if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+            _cfd_diag_write shell.process.observed 0 "pid=$pid ppid=$ppid case=$case_dir cpu_list=$affinity threads=$threads engine=$engine"
+        fi
         case_dir=${case_dir//$'\t'/ }
         case_dir=${case_dir//$'\n'/ }
         printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
@@ -507,7 +613,7 @@ scan_once()
 
     if [[ ! -s $output_file && ! -s $supervisors_file ]]; then
         printf 'No active OpenFOAM, TCB Basilisk, or cfd-bot monitor processes found.\n'
-        return
+        { _cfd_diag_result=$?; return "$_cfd_diag_result"; }
     fi
 
     if [[ -s $output_file ]]; then
@@ -602,6 +708,12 @@ scan_once()
 
 check_cpu_set()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[check_cpu_set]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:check_cpu_set"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" check_cpu_set
+    fi
     local requested=$1 records_path=$2 sockets nodes count
     local engine case_dir pid ppid process mode threads active_count active_set
     local active_sockets active_nodes elapsed status=0
@@ -610,7 +722,7 @@ check_cpu_set()
         || ! expand_cpu_list "$requested" >/dev/null \
         || ! taskset -c "$requested" true 2>/dev/null; then
         echo "BLOCKED: invalid or unavailable CPU_SET: $requested" >&2
-        return 2
+        { _cfd_diag_result=2; return "$_cfd_diag_result"; }
     fi
 
     count=$(cpu_count "$requested")
@@ -654,12 +766,20 @@ check_cpu_set()
             echo "SAFE: no active TCB affinity overlap; requested CPUs stay within one socket and NUMA node"
         fi
     fi
-    return "$status"
+    { _cfd_diag_result="$status"; return "$_cfd_diag_result"; }
 }
 
 sync_ticket_state()
 {
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[sync_ticket_state]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:sync_ticket_state"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" sync_ticket_state
+    fi
     local snapshot_file=$1
+    CFD_BOT_TRACE_ID="${CFD_BOT_TRACE_ID:-shell-$BASHPID}" \
+    CFD_BOT_PARENT_CALL_ID="${_cfd_diag_call:-$BASHPID}" \
     PYTHONPATH="$project_root${PYTHONPATH:+:$PYTHONPATH}" \
         "$bot_python" - "$bot_config" "$snapshot_file" <<'PY'
 import sys
@@ -687,6 +807,13 @@ PY
 
 scan_and_sync()
 {
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then _cfd_diag_rotate; fi
+    local _cfd_diag_result=""
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[scan_and_sync]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}}
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:scan_and_sync"
+        _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" scan_and_sync
+    fi
     local snapshot_file="$scratch_dir/snapshot.txt" scan_status=0
     scan_once "$records_file" > "$snapshot_file" || scan_status=$?
     cat "$snapshot_file"
@@ -694,14 +821,25 @@ scan_and_sync()
         && grep -Eq '^(ENGINE: |No active )' "$snapshot_file"; then
         sync_ticket_state "$snapshot_file" || true
     fi
-    return "$scan_status"
+    { _cfd_diag_result="$scan_status"; return "$_cfd_diag_result"; }
 }
 
 readonly scratch_dir=$(mktemp -d -t tcb-processes.XXXXXX)
 readonly records_file="$scratch_dir/records.tsv"
 readonly supervisors_file="$scratch_dir/supervisors.tsv"
-cleanup() { rm -rf -- "$scratch_dir"; }
-trap cleanup EXIT
+cleanup() {
+    if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 && ( ${CFD_BOT_DIAGNOSTICS_LEVEL:-basic} == detailed || ${_cfd_diag_basic_functions[cleanup]:-0} == 1 ) ]]; then
+        local _cfd_diag_parent=${_cfd_diag_call:-${CFD_BOT_PARENT_CALL_ID:-}} _cfd_diag_result=""
+        local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:cleanup"
+        _cfd_diag_write shell.call 0 'argc=0' cleanup
+    fi
+    rm -rf -- "$scratch_dir"
+}
+if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    trap '_cfd_diag_exit "$?"; cleanup' EXIT
+else
+    trap cleanup EXIT
+fi
 trap 'exit 130' INT
 trap 'exit 143' TERM
 

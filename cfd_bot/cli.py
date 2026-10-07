@@ -1,3 +1,4 @@
+from . import diagnostics as _diagnostics
 import argparse
 import json
 import logging
@@ -15,6 +16,7 @@ from .report import queue_text
 from .storage import Store
 
 
+@_diagnostics.trace
 def parser():
     p = argparse.ArgumentParser(description='ofps 확장: OpenFOAM 상태, 로컬 대기 큐, Telegram 알림')
     p.add_argument('--config', default='bot.json', help='봇 설정 JSON')
@@ -44,18 +46,24 @@ def parser():
     return p
 
 
+@_diagnostics.trace
 def main(argv=None):
     args = parser().parse_args(argv)
+    _diagnostics.component(args.command)
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
     if args.command == '_worker':
+        _diagnostics.configure(state_dir=args.state, component='worker')
+        if _diagnostics.detailed: _diagnostics.step('cli.main:L50:then')
         from .jobs import worker
         return worker(args.state, args.job)
     if args.command == 'gui':
+        if _diagnostics.detailed: _diagnostics.step('cli.main:L53:then')
         from .gui import launch
         try:
             launch(Path(args.config).resolve().parent / 'tickets', args.config)
             return 0
         except RuntimeError as exc:
+            if _diagnostics.enabled: _diagnostics.step('cli.main:L58:except')
             print('오류: ' + str(exc), file=sys.stderr)
             return 2
     try:
@@ -63,10 +71,13 @@ def main(argv=None):
         from .texts import load_text
         load_text(config.get('_text_file'))
         if args.command == 'check':
+            if _diagnostics.detailed: _diagnostics.step('cli.main:L65:then')
             cases = cases_for(config, force=True)
             if args.mpi_probe and not args.execution_env:
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L67:then')
                 raise ValueError('--mpi-probe에는 --execution-env가 필요합니다.')
             if args.execution_env:
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L69:then')
                 import subprocess
                 from .execution import (clean_service_environment, openfoam_environment,
                                         validate_openfoam_environment)
@@ -75,14 +86,18 @@ def main(argv=None):
                 binaries = validate_openfoam_environment(env)
                 probes = [(name, [binaries[name], '-help']) for name in ('foamDictionary', 'decomposePar', 'foamRun')]
                 if args.mpi_probe:
+                    if _diagnostics.detailed: _diagnostics.step('cli.main:L77:then')
                     probes.append(('MPI foamRun -help', [binaries['mpirun'], '-np', '1', binaries['foamRun'], '-help']))
                 for label, command in probes:
+                    if _diagnostics.detailed: _diagnostics.step('cli.main:L79:loop', label=label, command=command)
                     try:
-                        probe = subprocess.run(command, env=env, stdin=subprocess.DEVNULL,
+                        probe = _diagnostics.run_process(command, env=env, stdin=subprocess.DEVNULL,
                                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
                     except subprocess.TimeoutExpired:
+                        if _diagnostics.enabled: _diagnostics.step('cli.main:L83:except')
                         raise ValueError(f'{label} 실행 확인 시간 초과') from None
                     if probe.returncode:
+                        if _diagnostics.detailed: _diagnostics.step('cli.main:L85:then')
                         detail = probe.stderr.decode(errors='replace')[-1200:]
                         raise ValueError(f'{label} 실행 확인 실패: 종료 코드 {probe.returncode}\n{detail}')
                     print(f'실행 확인 정상: {label}')
@@ -90,12 +105,15 @@ def main(argv=None):
                 print(f'MPI 환경 정상: {binaries["mpirun"]}')
             print(f"설정 정상: {len(cases)}개 케이스 · 자동 실행 {'켜짐' if config['scheduler']['enabled'] else '꺼짐'}")
             for case in cases:
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L92:loop', case=case)
                 print(f"  {case['name']} · {case['_config']}")
             return 0
         if args.command == 'identify':
+            if _diagnostics.detailed: _diagnostics.step('cli.main:L95:then')
             from .telegram import Telegram
             token = os.environ.get(config['telegram']['token_env'])
             if not token:
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L98:then')
                 raise ValueError(f"{config['telegram']['token_env']} 환경변수를 설정하세요.")
             api = Telegram(token)
             me = api.call('getMe', {})
@@ -103,28 +121,35 @@ def main(argv=None):
             updates = api.updates(0)
             found = set()
             for update in updates:
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L105:loop', update=update)
                 message = update.get('message', {})
                 user = message.get('from', {}).get('id')
                 chat = message.get('chat', {}).get('id')
                 if user and chat and (user, chat) not in found:
+                    if _diagnostics.detailed: _diagnostics.step('cli.main:L109:then')
                     print(f'user_id={user} chat_id={chat}')
                     found.add((user, chat))
             if not found:
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L112:then')
                 print('Telegram에서 이 봇에 /start를 보낸 후 다시 실행하세요.')
             return 0
         store = Store(config['state_dir'])
         if args.command == 'web':
+            if _diagnostics.detailed: _diagnostics.step('cli.main:L116:then')
             from .web import serve as serve_web
             serve_web(config, store, args.port)
         elif args.command == 'status':
+            if _diagnostics.detailed: _diagnostics.step('cli.main:L119:then')
             snap = snapshot(config['ofps_command'])
             snap['at'] = time.time()
             from .tickets import sync_ticket_states
             sync_ticket_states(config, store, snap)
             if args.json:
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L124:then')
                 from .logs import estimate
                 jobs = store.jobs()
                 for job in jobs:
+                    if _diagnostics.detailed: _diagnostics.step('cli.main:L127:loop', job=job)
                     job['estimate'] = estimate(job['case'], job.get('telemetry', {}),
                                                time.time() - job.get('started', time.time()),
                                                store.runtime_history(job['case'], job.get('actual_cores')))
@@ -133,48 +158,63 @@ def main(argv=None):
                                       scheduler=config['scheduler'], queue_paused=store.get('queue_paused', False)),
                                  ensure_ascii=False, indent=2))
             else:
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L124:else')
                 from .bot import Bot
                 store.put('snapshot', snap)
                 print(Bot(config, store, None).status())
         elif args.command == 'queue':
+            if _diagnostics.detailed: _diagnostics.step('cli.main:L139:then')
             print(queue_text(store, config['scheduler']['enabled'] and not store.get('queue_paused', False)))
         elif args.command == 'enqueue':
+            if _diagnostics.detailed: _diagnostics.step('cli.main:L141:then')
             cases = cases_for(config)
             selected = Path(args.case).resolve()
             case = next((c for c in cases if selected in (Path(c['_root']), Path(c['_config']))), None)
             if case is None:
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L145:then')
                 raise ValueError('bot.json에 등록된 케이스 경로를 지정하세요.')
             job = store.enqueue(case)
             print(f"대기 큐 등록: {job['id']} · {case['name']}")
         elif args.command == 'cancel':
+            if _diagnostics.detailed: _diagnostics.step('cli.main:L149:then')
             result = cancel_queued_jobs(store, args.job)
             if not result['cancelled']:
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L151:then')
                 raise ValueError('대기 중인 작업만 취소할 수 있습니다.')
             print(f"대기 취소: {len(result['cancelled'])}개" +
                   (f" · 상태 변경 {len(result['unavailable'])}개 제외" if result['unavailable'] else ''))
         elif args.command in ('pause', 'resume'):
+            if _diagnostics.detailed: _diagnostics.step('cli.main:L155:then')
             store.put('queue_paused', args.command == 'pause')
             print('큐 일시 정지' if args.command == 'pause' else '큐 재개 (scheduler.enabled 설정 적용)')
         elif args.command in ('monitor', 'serve'):
+            if _diagnostics.detailed: _diagnostics.step('cli.main:L158:then')
             stop = threading.Event()
             for sig in (signal.SIGINT, signal.SIGTERM):
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L160:loop', sig=sig)
                 signal.signal(sig, lambda *_: stop.set())
             if args.command == 'serve':
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L162:then')
                 from .bot import serve
                 serve(config, store, stop)
             else:
+                if _diagnostics.detailed: _diagnostics.step('cli.main:L162:else')
                 from .monitor import Monitor
                 monitor = Monitor(config, store)
                 with DaemonLock(store.root / 'daemon.lock'):
                     while not stop.is_set():
+                        if _diagnostics.detailed: _diagnostics.step('cli.main:L169:loop')
                         ok = monitor.run_once()
                         if args.once:
+                            if _diagnostics.detailed: _diagnostics.step('cli.main:L171:then')
                             if not ok:
+                                if _diagnostics.detailed: _diagnostics.step('cli.main:L172:then')
                                 print(store.get('monitor_error')['message'], file=sys.stderr)
                             return 0 if ok else 1
                         stop.wait(config['poll_seconds'])
         return 0
     except (OSError, ValueError, RuntimeError) as exc:
+        if _diagnostics.enabled: _diagnostics.step('cli.main:L177:except')
         print(str(exc), file=sys.stderr)
         return 2
 

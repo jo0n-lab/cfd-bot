@@ -1,0 +1,236 @@
+[
+  {
+    "mode": "off",
+    "level": "basic",
+    "members": 921,
+    "active": 40,
+    "valid_cpu_settings": false,
+    "cold_ms": 43.83708070963621,
+    "results": [
+      {
+        "scenario": "warm_catalog",
+        "p50_ms": 35.237815231084824,
+        "p95_ms": 35.38884129375219,
+        "cpu_ms": 175.238491,
+        "samples": 5
+      },
+      {
+        "scenario": "one_ticket",
+        "p50_ms": 0.5145864561200142,
+        "p95_ms": 0.5213990807533264,
+        "cpu_ms": 2.588774000000016,
+        "samples": 5
+      },
+      {
+        "scenario": "telegram_stat",
+        "p50_ms": 35.14725062996149,
+        "p95_ms": 35.364532843232155,
+        "cpu_ms": 171.74307799999988,
+        "samples": 5
+      },
+      {
+        "scenario": "web_overview",
+        "p50_ms": 331.1112318187952,
+        "p95_ms": 333.0934913828969,
+        "cpu_ms": 1602.5039980000004,
+        "samples": 5
+      },
+      {
+        "scenario": "log_tail_2000_lines",
+        "p50_ms": 13.915866613388062,
+        "p95_ms": 13.96273821592331,
+        "cpu_ms": 69.69712500000026,
+        "samples": 5
+      }
+    ],
+    "rss_kib": 48744,
+    "rss_source": "proc.VmHWM",
+    "records": 0,
+    "log_errors": 0,
+    "bytes_written": 0,
+    "log_bytes": 0,
+    "python": "3.9.25",
+    "collection": "off"
+  },
+  {
+    "mode": "on",
+    "level": "basic",
+    "members": 921,
+    "active": 40,
+    "valid_cpu_settings": false,
+    "cold_ms": 59.14922710508108,
+    "results": [
+      {
+        "scenario": "warm_catalog",
+        "p50_ms": 42.80897602438927,
+        "p95_ms": 43.17781515419483,
+        "cpu_ms": 199.706555,
+        "samples": 5
+      },
+      {
+        "scenario": "one_ticket",
+        "p50_ms": 0.8388850837945938,
+        "p95_ms": 0.8398052304983139,
+        "cpu_ms": 4.167193999999985,
+        "samples": 5
+      },
+      {
+        "scenario": "telegram_stat",
+        "p50_ms": 50.173262134194374,
+        "p95_ms": 50.247861072421074,
+        "cpu_ms": 245.1648569999999,
+        "samples": 5
+      },
+      {
+        "scenario": "web_overview",
+        "p50_ms": 551.8039828166366,
+        "p95_ms": 552.5095667690039,
+        "cpu_ms": 2705.063147,
+        "samples": 5
+      },
+      {
+        "scenario": "log_tail_2000_lines",
+        "p50_ms": 14.459853060543537,
+        "p95_ms": 14.61889874190092,
+        "cpu_ms": 71.9949350000002,
+        "samples": 5
+      }
+    ],
+    "rss_kib": 55996,
+    "rss_source": "proc.VmHWM",
+    "records": 43029,
+    "log_errors": 0,
+    "bytes_written": 15190032,
+    "log_bytes": 15953289,
+    "python": "3.9.25",
+    "collection": "basic"
+  },
+  {
+    "mode": "on",
+    "level": "detailed",
+    "members": 921,
+    "active": 40,
+    "valid_cpu_settings": false,
+    "cold_ms": 59.616321697831154,
+    "results": [
+      {
+        "scenario": "warm_catalog",
+        "p50_ms": 36.732397973537445,
+        "p95_ms": 36.753357388079166,
+        "cpu_ms": 182.28908499999986,
+        "samples": 5
+      },
+      {
+        "scenario": "one_ticket",
+        "p50_ms": 1.9125966355204582,
+        "p95_ms": 1.9340552389621735,
+        "cpu_ms": 9.503458999999825,
+        "samples": 5
+      },
+      {
+        "scenario": "telegram_stat",
+        "p50_ms": 107.47778974473476,
+        "p95_ms": 107.76497796177864,
+        "cpu_ms": 530.2188859999997,
+        "samples": 5
+      },
+      {
+        "scenario": "web_overview",
+        "p50_ms": 1152.3580392822623,
+        "p95_ms": 1166.0212483257055,
+        "cpu_ms": 5910.349008000001,
+        "samples": 5
+      },
+      {
+        "scenario": "log_tail_2000_lines",
+        "p50_ms": 125.49963686615229,
+        "p95_ms": 134.4328187406063,
+        "cpu_ms": 626.5668640000008,
+        "samples": 5
+      }
+    ],
+    "rss_kib": 63356,
+    "rss_source": "proc.VmHWM",
+    "records": 438014,
+    "log_errors": 0,
+    "bytes_written": 81185614,
+    "log_bytes": 81986918,
+    "python": "3.9.25",
+    "collection": "detailed"
+  },
+  {
+    "mode": "off",
+    "level": "basic",
+    "members": 921,
+    "active": 40,
+    "valid_cpu_settings": true,
+    "cold_ms": 47.03788552433252,
+    "results": [
+      {
+        "scenario": "web_overview",
+        "p50_ms": 635.8585394918919,
+        "p95_ms": 726.1522337794304,
+        "cpu_ms": 3346.65442,
+        "samples": 5
+      }
+    ],
+    "rss_kib": 48624,
+    "rss_source": "proc.VmHWM",
+    "records": 0,
+    "log_errors": 0,
+    "bytes_written": 0,
+    "log_bytes": 0,
+    "python": "3.9.25",
+    "collection": "off"
+  },
+  {
+    "mode": "on",
+    "level": "basic",
+    "members": 921,
+    "active": 40,
+    "valid_cpu_settings": true,
+    "cold_ms": 66.01422466337681,
+    "results": [
+      {
+        "scenario": "web_overview",
+        "p50_ms": 685.82399841398,
+        "p95_ms": 799.8412968590856,
+        "cpu_ms": 3554.5846819999997,
+        "samples": 5
+      }
+    ],
+    "rss_kib": 57544,
+    "rss_source": "proc.VmHWM",
+    "records": 12042,
+    "log_errors": 0,
+    "bytes_written": 1535684,
+    "log_bytes": 2298941,
+    "python": "3.9.25",
+    "collection": "basic"
+  },
+  {
+    "mode": "on",
+    "level": "detailed",
+    "members": 921,
+    "active": 40,
+    "valid_cpu_settings": true,
+    "cold_ms": 67.43119284510612,
+    "results": [
+      {
+        "scenario": "web_overview",
+        "p50_ms": 5021.935511380434,
+        "p95_ms": 5048.591252416372,
+        "cpu_ms": 24313.125338,
+        "samples": 5
+      }
+    ],
+    "rss_kib": 66512,
+    "rss_source": "proc.VmHWM",
+    "records": 2285362,
+    "log_errors": 0,
+    "bytes_written": 237641845,
+    "log_bytes": 70626608,
+    "python": "3.9.25",
+    "collection": "detailed"
+  }
+]

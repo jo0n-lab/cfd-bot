@@ -1,5 +1,9 @@
 # CFD bot High-Level Design
 
+> #30 수집 수준 분리: ON 기본 `basic`은 업무 경계·사용자 이벤트·티켓/작업 변경·경고/예외를 기록한다. 내부 정상 함수·분기/반복은 `detailed` 전용이다. [설계 이력](history/2026-10-07-diagnostic-logging-levels.md) · [최신 성능](analysis/diagnostic-level-performance.md).
+
+> #18 사후 원인 분석 로그: [설정·기록·읽기](DIAGNOSTICS.md) · [모든 시퀀스 대응표](analysis/diagnostic-flow-coverage.md) · [ON/OFF 실측](analysis/diagnostic-performance.md). 업무 정책 변경 없이 기록만 추가하며 기본 OFF다.
+
 > #20 운영 구조에 #21 이름 있는 대기열·동적 매크로, #22 `.process-core` CPU binding, #24 코어 수 기반 자동 quota, #25 `ofps` monitor CPU 관측, #26 SQLite lock 격리, #27 실행 중단을 반영했다. [#27 설계](history/2026-10-07-running-job-interruption.md).
 
 > #20 운영 반영, 2026-10-04 · [기준 버전·플랫폼/UC 지도](ARCHITECTURE.md) · [함수 수준 LLD](LLD.md) · [근거와 성능 실험](analysis/performance.md). 개선 제안은 8절에 별도로 표시한다.
@@ -30,6 +34,10 @@ Linux 호스트의 OpenFOAM/Basilisk 계산과 cfd-bot 전용 monitor 프로세�
 | UI 공용 정책 | 세 adapter는 TicketService/domain helper 사용 | [현행 우회 경로·미지원 기능](ARCHITECTURE.md#4-현행과-설계-원칙의-차이) 존재 |
 
 ## 2. 시스템 컨텍스트와 배포
+
+![사후 분석 로그의 관측 경계](diagrams/diagnostic-logging.svg)
+
+진단 기록은 업무 DB와 분리된 프로세스별 파일 및 브라우저 로컬 버퍼로 간다. 동일 trace/parent를 통해 기존 실행 흐름을 관측한다. #30은 정적 숫자 코드·batch 값/예외 참조를 사용하고 browser는 export 시 JSON으로 변환한다. [별도 코드 사전](analysis/diagnostic-codebook.md)과 schema 1/2 decoder를 제공한다. 기록의 생성·직렬화·회전 외에는 실행 정책을 추가하지 않는다.
 
 ![프로세스·저장소·외부 경계](hld-system-design.svg)
 

@@ -1,0 +1,25 @@
+digraph diagnostics {
+  graph [rankdir=LR, bgcolor="white", pad="0.3", nodesep="0.5", fontname="Noto Sans CJK KR"];
+  node [shape=box, style="rounded,filled", fillcolor="#ecfdf5", color="#047857", fontname="Noto Sans CJK KR", fontsize=13];
+  edge [fontname="Noto Sans CJK KR", fontsize=11, color="#475569"];
+  ui [label="Telegram · GUI · web · CLI\n조작 / actor / 요청"];
+  domain [label="기존 공용 함수 · Store\n업무 호출 / 반환 / 변경 / 예외"];
+  process [label="ofps · worker · hooks\nPID / CPU / 출력 / 종료"];
+  log [label="숫자 code · 공유 값/예외 · batch\ncall · parent · trace · 시각", fillcolor="#eff6ff", color="#2563eb"];
+  browser [label="브라우저 숫자 순환 buffer\nUI → Promise → server trace\nexport 시 JSON 변환", fillcolor="#eff6ff", color="#2563eb"];
+  map [label="HLD/LLD 103개 시퀀스\nsource map + JSON/문서 코드 사전\nschema 1/2 decoder", fillcolor="#fff7ed", color="#ea580c"];
+  control [label="공통 OFF / basic / detailed\nON 기본 basic · env 우선", fillcolor="#fff7ed", color="#ea580c"];
+  ui -> domain -> process;
+  ui -> log [style=dashed, label="기록"];
+  domain -> log [style=dashed];
+  process -> log [style=dashed];
+  ui -> browser [style=dashed];
+  log -> map [dir=none, label="사후 연결"];
+  browser -> map [dir=none];
+  detail [label="detailed 추가 기록\n내부 정상 함수 / 분기 / 반복", fillcolor="#f8fafc"];
+  domain -> detail [style=dashed];
+  detail -> log [style=dashed];
+  control -> detail [style=dotted];
+  control -> log [style=dotted];
+  control -> browser [style=dotted];
+}
