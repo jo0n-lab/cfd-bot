@@ -112,7 +112,7 @@ def compact_status(run, ui=None):
     ui = _catalog(run, ui)
     context = _context(run, ui)
     owner = context['owner']
-    if run['status'] not in ('starting', 'running', 'postprocessing'):
+    if run['status'] not in ('starting', 'running', 'postprocessing', 'stopping'):
         owner = f"{context['status']} · {owner}"
     return ui.text('scenarios.status.compact', case_name=context['case_name'], owner=owner,
                    cores=context['cores'], cpu_list=context['cpu_list'],
@@ -126,7 +126,7 @@ def compact_unobserved(case, ui=None):
 
 def queue_text(store, enabled=True, ui=None):
     ui = ui or load_ui()
-    jobs = store.jobs(('queued', 'starting', 'running', 'postprocessing'))
+    jobs = store.jobs(('queued', 'starting', 'running', 'postprocessing', 'stopping'))
     lines = [ui.text('menus.queue.title') + ('' if enabled else ui.text('menus.queue.paused_suffix'))]
     if not jobs:
         return lines[0] + '\n' + ui.text('menus.queue.empty')

@@ -10,7 +10,7 @@ from .config import cases_for, tickets_for
 from .catalog import ticket_index
 from .monitor import Monitor
 from .processes import DaemonLock, snapshot as process_snapshot
-from .queue_control import cancel_queued_jobs
+from .queue_control import cancel_queued_jobs, interrupt_running_job
 from .queueing import job_queue_id
 from .run_views import case_id_for_root, running_macro_views, tracking_registry
 from .report import compact_status, macro_queue_text, queue_text, render_run
@@ -317,11 +317,15 @@ class Bot:
                                           queue=job_queue_id(j)),
                              'cancel:' + j['id'])]
                      for j in self.store.jobs(('queued',))[:20]]
+            rows += [[button(self.ui.text('menus.queue.interrupt_case',
+                                          case_name=j['case']['name']),
+                             'stop:' + j['id'])]
+                     for j in jobs if j['status'] in ('starting', 'running', 'postprocessing')][:20]
             rows += [[button(self.ui.text('menus.queue.result_data', case_name=j['case']['name']),
                              'case:' + registry[j['case_root']]['case_id'])]
                      for j in jobs if j['status'] == 'running' and j['case_root'] in registry]
             recent = [j for j in reversed(jobs) if j['status'] not in
-                      ('queued', 'starting', 'running', 'postprocessing')
+                      ('queued', 'starting', 'running', 'postprocessing', 'stopping')
                       and j['case_root'] in registry][:5]
             rows += [[button(self.ui.text('menus.queue.recent_result', case_name=j['case']['name']),
                              'case:' + registry[j['case_root']]['case_id'])] for j in recent]
@@ -384,6 +388,23 @@ class Bot:
             result = cancel_queued_jobs(self.store, [parts[1]], ui=self.ui)
             self.send(chat, self.ui.text('menus.queue.cancelled' if result['cancelled']
                                          else 'menus.queue.cancel_unavailable'))
+            return
+        if parts[0] == 'stop' and len(parts) == 2:
+            job = self.store.job(parts[1])
+            if job['status'] not in ('starting', 'running', 'postprocessing'):
+                self.send(chat, self.ui.text('menus.queue.interrupt_unavailable'))
+                return
+            self.send(
+                chat,
+                self.ui.text('menus.queue.interrupt_confirm', case_name=job['case']['name']),
+                keyboard([[button(self.ui.text('menus.queue.interrupt_confirm_button'),
+                                  'stopyes:' + job['id']),
+                           button(self.ui.text('strings.common.cancel'), 'queue')]]))
+            return
+        if parts[0] == 'stopyes' and len(parts) == 2:
+            stopped = interrupt_running_job(self.store, parts[1], ui=self.ui)
+            self.send(chat, self.ui.text('menus.queue.interrupt_requested' if stopped else
+                                         'menus.queue.interrupt_unavailable'))
             return
         if len(parts) < 2:
             raise ValueError(self.ui.text('menus.home.unknown_button'))

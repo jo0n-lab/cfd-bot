@@ -688,6 +688,30 @@
     "error": "OSError/ValueError/RuntimeError → stderr, exit 2; _worker는 별도 worker 반환"
   },
   {
+    "key": "UC-28-tg",
+    "title": "실행 중 managed 작업 중단",
+    "platform": "Telegram",
+    "trigger": "queue → stop:id → stopyes:id",
+    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+  },
+  {
+    "key": "UC-28-gui",
+    "title": "실행 중 managed 작업 중단",
+    "platform": "cfd-ticket-gui",
+    "trigger": "Tk event → interrupt_active_job",
+    "outcome": "Tk status / widget / dialog 반영",
+    "error": "ValueError/OSError → messagebox; 초안 유지"
+  },
+  {
+    "key": "UC-28-web",
+    "title": "실행 중 managed 작업 중단",
+    "platform": "web",
+    "trigger": "action(stop-job) → /api/queue",
+    "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
+    "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
+  },
+  {
     "key": "BG-01",
     "title": "solver·monitor CPU를 합치는 scanner",
     "platform": "Bash + Python",
@@ -720,6 +744,14 @@
     "error": "동기화 중 새 제출의 request_id가 바뀌면 보존·재시도; DB/JSON 분리 장애는 journal 재생"
   },
   {
+    "key": "D-16",
+    "title": "실행 중 managed 작업 안전 중단",
+    "platform": "공용",
+    "trigger": "interrupt_running_job(store, jid)",
+    "outcome": "stopping 동안 CPU·case unique 예약 유지; worker가 TERM 후 필요 시 KILL하고 interrupted 확정",
+    "error": "queued/terminal/external ofps-only job은 변경 없음; PID identity 불일치는 신호 생략"
+  },
+  {
     "key": "BG-04",
     "title": "현재 head 기반 quota·동적 borrow admission",
     "platform": "Monitor thread",
@@ -732,8 +764,8 @@
     "title": "worker·solver·hooks·판정",
     "platform": "detached process",
     "trigger": "cli.main(_worker)",
-    "outcome": "다음 Scheduler.tick이 미발행 terminal만 outbox 접수; worker는 직접 Telegram 전송 안 함",
-    "error": "preprocess 실패 solver 시작 안 함; DB locked/busy는 child 유지+재시도; 그 밖의 except는 child cleanup+failed"
+    "outcome": "다음 Scheduler.tick이 미발행 terminal만 outbox 접수; 중단은 interrupted가 solver 판정보다 우선",
+    "error": "preprocess 실패 solver 시작 안 함; DB locked/busy는 child 유지+재시도; stopping이면 child cleanup+interrupted"
   },
   {
     "key": "BG-06",
@@ -748,7 +780,7 @@
     "title": "worker 소실·재시작 복구",
     "platform": "Monitor / Scheduler",
     "trigger": "Scheduler.recover",
-    "outcome": "starting 60초 grace; hook/solver 살아 있으면 예약 유지; 죽은 실행은 로그로 판정",
+    "outcome": "starting 60초 grace; stopping은 모든 process 소멸 뒤 interrupted; 그 밖의 죽은 실행은 로그 판정",
     "error": "preprocess/startup 소실은 failed; PID 재사용은 boot/starttick identity로 구분"
   },
   {

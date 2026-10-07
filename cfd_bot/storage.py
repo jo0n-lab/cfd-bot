@@ -10,8 +10,9 @@ from pathlib import Path
 from .ui import load_ui
 from .queueing import queue_profile
 
-ACTIVE = ('queued', 'starting', 'running', 'postprocessing')
-LIVE = ('starting', 'running', 'postprocessing')
+STOPPABLE = ('starting', 'running', 'postprocessing')
+LIVE = STOPPABLE + ('stopping',)
+ACTIVE = ('queued',) + LIVE
 TERMINAL = ('succeeded', 'failed', 'interrupted', 'cancelled')
 
 
@@ -46,7 +47,7 @@ class Store:
                     status TEXT NOT NULL, created REAL NOT NULL, body TEXT NOT NULL
                 );
                 CREATE UNIQUE INDEX IF NOT EXISTS one_active_case ON jobs(case_root)
-                    WHERE status IN ('queued','starting','running','postprocessing');
+                    WHERE status IN ('queued','starting','running','postprocessing','stopping');
                 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, body TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS outbox (
                     id INTEGER PRIMARY KEY AUTOINCREMENT, event_key TEXT NOT NULL,
@@ -83,6 +84,15 @@ class Store:
                     INSERT OR IGNORE INTO observed_tracking VALUES (substr(NEW.key, 10));
                 END;
             ''')
+            active_index = db.execute(
+                "SELECT sql FROM sqlite_master WHERE type='index' AND name='one_active_case'"
+            ).fetchone()
+            if active_index and "'stopping'" not in (active_index[0] or ''):
+                db.executescript('''
+                    DROP INDEX one_active_case;
+                    CREATE UNIQUE INDEX one_active_case ON jobs(case_root)
+                        WHERE status IN ('queued','starting','running','postprocessing','stopping');
+                ''')
             # One-time recovery also covers old workers that know only jobs/kv.
             db.execute('BEGIN IMMEDIATE')
             if not db.execute("SELECT 1 FROM kv WHERE key='ticket_index_migrated'").fetchone():
@@ -344,6 +354,25 @@ class Store:
                            (job['status'], json.dumps(job), jid))
                 cancelled.append(jid)
         return dict(cancelled=cancelled, unavailable=unavailable)
+
+    def request_interruption(self, jid, reason, requested_at=None):
+        """Atomically reserve a live job while its process groups are stopped."""
+        requested_at = time.time() if requested_at is None else requested_at
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute('SELECT body FROM jobs WHERE id=?', (jid,)).fetchone()
+            if row is None:
+                return None
+            job = json.loads(row[0])
+            if job['status'] == 'stopping':
+                return job
+            if job['status'] not in STOPPABLE:
+                return None
+            job.update(status='stopping', reason=reason,
+                       interruption_requested=requested_at)
+            db.execute('UPDATE jobs SET status=?, body=? WHERE id=?',
+                       (job['status'], json.dumps(job), jid))
+        return job
 
     def event(self, key, chats, payload):
         chats = list(dict.fromkeys(chats))

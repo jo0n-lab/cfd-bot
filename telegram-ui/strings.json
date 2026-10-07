@@ -4,9 +4,10 @@
     "starting": "시작 준비",
     "running": "실행 중",
     "postprocessing": "후처리 중",
+    "stopping": "중단 처리 중",
     "succeeded": "정상 종료",
     "failed": "실패",
-    "interrupted": "예기치 않은 종료",
+    "interrupted": "중단",
     "cancelled": "대기 취소"
   },
   "common": {

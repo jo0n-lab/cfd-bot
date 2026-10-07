@@ -6,9 +6,7 @@ from pathlib import Path
 from statistics import median
 
 from .logs import estimate, recent_case_log
-
-
-ACTIVE = ('queued', 'starting', 'running', 'postprocessing')
+from .storage import ACTIVE
 
 
 def case_id_for_root(root):
@@ -104,7 +102,7 @@ def running_macro_views(macros, cases, jobs, store, now=None):
             if not remaining_known and job['status'] == 'queued':
                 continue
             prediction, remaining = _remaining(case, job, store, now)
-            if job['status'] in ('starting', 'running', 'postprocessing'):
+            if job['status'] in ('starting', 'running', 'postprocessing', 'stopping'):
                 active_name = case['name']
                 progress = prediction.get('progress')
                 if isinstance(progress, (int, float)) and math.isfinite(progress):

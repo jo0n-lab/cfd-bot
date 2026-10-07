@@ -1,5 +1,5 @@
 digraph system {
- graph [rankdir=LR,bgcolor="white",pad=0.3,nodesep=0.45,ranksep=0.8,fontname="Noto Sans CJK KR",fontsize=24,label="CFD bot HLD · solver와 monitor CPU의 단일 snapshot (#25)",labelloc=t];
+ graph [rankdir=LR,bgcolor="white",pad=0.3,nodesep=0.45,ranksep=0.8,fontname="Noto Sans CJK KR",fontsize=24,label="CFD bot HLD · 안전한 managed 작업 중단 (#27)",labelloc=t];
  node [shape=box,style="rounded,filled",fillcolor="#eff6ff",color="#93c5fd",fontname="Noto Sans CJK KR",fontsize=16,margin="0.18,0.12"];
  edge [fontname="Noto Sans CJK KR",fontsize=13,color="#475569"];
  tg [label="Telegram 사용자 / Bot API",fillcolor="#dcfce7"];
@@ -16,7 +16,7 @@ digraph system {
  }
  web [label="cfd-bot-web.service\nThreadingHTTPServer / loopback\nMonitor·Scheduler 없음"];
  scan [label="bin/ofps 프로세스\n/proc solver + 표식 monitor scan\nCASE별 affinity 합집합",fillcolor="#fef3c7"];
- worker [label="Detached worker process\n설정 → hooks → solver → verdict\nDB locked/busy는 child 유지+재시도"];
+ worker [label="Detached worker process\n설정 → hooks → solver → verdict\nstopping이면 TERM → timeout KILL → interrupted"];
  calc [label="계산 프로세스\nsolver + monitor\nbot 표식 또는 TCB solver PID 표식",fillcolor="#fef3c7"];
  db [shape=cylinder,label="SQLite (WAL)\njobs / terminal published marker\ndrain claim / outbox / history / observed",fillcolor="#f1f5f9"];
  tickets [shape=folder,label="tickets/*.json\nqueue id / cores / dynamic cores\n폴더 flock / revision / replace",fillcolor="#f1f5f9"];
@@ -34,6 +34,8 @@ digraph system {
  worker -> calc [label="taskset / wait"];
  scan -> calc [label="/proc affinity 관측",style=dashed,dir=back];
  main -> db;mon -> db;web -> db;gui -> db;worker -> db;
+ stop [label="공용 중단 제어\nPID identity 재검증\nCPU 예약은 process 소멸까지 유지",fillcolor="#fee2e2",color="#f87171"];
+ main -> stop;web -> stop;gui -> stop;stop -> db;stop -> calc [label="verified process group TERM"];
  db -> delivery [label="pending"];delivery -> tg [label="send / retry"];
  index [label="TicketIndex (프로세스별)\nfull path → ticket / membership set\ninotify 변경 감지 · fallback metadata"];
  main -> index;mon -> index;web -> index;gui -> index;index -> tickets;

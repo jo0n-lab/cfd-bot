@@ -17,7 +17,8 @@ from .logs import (case_logs, finish_log, read_log, recent_case_log,
                    select_case_log, start_cursor)
 from .outcomes import decide, wants_event
 from .processes import check_cpus, identity, snapshot
-from .storage import LIVE, TERMINAL, Store
+from .storage import LIVE, STOPPABLE, TERMINAL, Store
+from .queue_control import interrupt_process_groups
 from .queueing import (borrowing_plan, job_queue_id, queue_heads,
                        registered_profiles)
 from .ui import load_ui
@@ -168,6 +169,19 @@ class Scheduler:
         self.children = [p for p in self.children if p.poll() is None]
         for job in self.store.jobs(LIVE):
             now = time.time()
+            if job['status'] == 'stopping':
+                interrupt_process_groups(job)
+                worker_alive = (job.get('worker_identity') and
+                                identity(job.get('worker_pid')) == job['worker_identity'])
+                child_alive = any(
+                    job.get(kind + '_identity') and
+                    identity(job.get(kind + '_pid')) == job[kind + '_identity']
+                    for kind in ('hook', 'monitor', 'solver'))
+                if not worker_alive and not child_alive:
+                    self.store.update_job(
+                        job['id'], expected=('stopping',), status='interrupted', finished=now,
+                        reason=self.ui.text('scenarios.jobs.user_interrupted'))
+                continue
             if job['status'] == 'starting' and now - job.get('claimed', now) < 60:
                 continue
             alive = job.get('worker_identity') and identity(job.get('worker_pid')) == job['worker_identity']
@@ -462,12 +476,16 @@ def run_case_hooks(case, stage, store, jid, folder, env):
             output.write((f'[{label}] {shlex.join(command)}\n').encode())
             output.flush()
             try:
+                def record_hook(child):
+                    current = _retry_locked(
+                        store.update_job, jid, expected=LIVE,
+                        hook_pid=child.pid, hook_identity=identity(child.pid))
+                    if current is None or current['status'] == 'stopping':
+                        _stop_child(child)
+
                 run_hook(['taskset', '-c', case['cpu_set']] + command, case['_root'],
                          hook['timeout_seconds'], output, env=env, label=label,
-                         ui=ui,
-                         on_start=lambda child: _retry_locked(
-                             store.update_job, jid, expected=LIVE,
-                             hook_pid=child.pid, hook_identity=identity(child.pid)))
+                         ui=ui, on_start=record_hook)
             except (OSError, RuntimeError) as exc:
                 if stage == 'preprocess':
                     raise
@@ -535,17 +553,22 @@ def worker(state_dir, jid):
         runner_log = folder / 'command.log'
         telemetry = None
         wrapper_telemetry = None
-        _retry_locked(store.update_job, jid, expected=('running',), phase='solver')
+        phase_job = _retry_locked(store.update_job, jid, expected=LIVE, phase='solver')
+        if phase_job is None or phase_job['status'] == 'stopping':
+            raise InterruptedError(ui.text('scenarios.jobs.user_interrupted'))
         with runner_log.open('wb') as output:
             # Inherited affinity also constrains programs launched by Allrun.
             command = ['taskset', '-c', case['cpu_set']] + case['command']
             solver = subprocess.Popen(command, cwd=case['_root'], env=env, stdin=subprocess.DEVNULL,
                                       stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
-            _retry_locked(store.update_job, jid, expected=('running',),
-                          solver_pid=solver.pid, solver_identity=identity(solver.pid))
+            current_job = _retry_locked(store.update_job, jid, expected=LIVE,
+                                        solver_pid=solver.pid,
+                                        solver_identity=identity(solver.pid))
+            if current_job is None or current_job['status'] == 'stopping':
+                _stop_child(solver)
             monitoring = case.get('monitoring')
             monitor_ended_early = False
-            if monitoring:
+            if monitoring and solver.poll() is None:
                 monitor_env = dict(env, TCB_MONITORED_SOLVER_PID=str(solver.pid),
                                    CFD_BOT_MONITOR_CPU=case['monitor_cpu'])
                 monitor_command = (['taskset', '-c', case['monitor_cpu']] +
@@ -557,9 +580,12 @@ def worker(state_dir, jid):
                     monitor_command, cwd=case['_root'], env=monitor_env,
                     stdin=subprocess.DEVNULL, stdout=monitor_output,
                     stderr=subprocess.STDOUT, start_new_session=True)
-                _retry_locked(store.update_job, jid, expected=('running',),
-                              monitor_pid=monitor.pid, monitor_identity=identity(monitor.pid),
-                              monitor_cpu=case['monitor_cpu'])
+                current_job = _retry_locked(
+                    store.update_job, jid, expected=LIVE,
+                    monitor_pid=monitor.pid, monitor_identity=identity(monitor.pid),
+                    monitor_cpu=case['monitor_cpu'])
+                if current_job is None or current_job['status'] == 'stopping':
+                    _stop_child(monitor)
             if wants_event(case, 'started'):
                 notice = ('scenarios.notifications.queue_started_monitor'
                           if monitoring else 'scenarios.notifications.queue_started')
@@ -584,8 +610,10 @@ def worker(state_dir, jid):
                     current, log_path = telemetry, str(configured_log)
                 else:
                     current, log_path = wrapper_telemetry, str(runner_log)
-                _retry_locked(store.update_job, jid, expected=('running',),
-                              telemetry=current, log_path=log_path)
+                current_job = _retry_locked(store.update_job, jid, expected=LIVE,
+                                            telemetry=current, log_path=log_path)
+                if current_job is None or current_job['status'] == 'stopping':
+                    _stop_child(solver)
                 if rc is not None:
                     break
                 if monitor is not None and monitor.poll() is not None:
@@ -607,7 +635,7 @@ def worker(state_dir, jid):
                 monitor_errors.append(ui.text(
                     'scenarios.jobs.hook_exit', label=ui.text('scenarios.jobs.monitor'),
                     code=monitor_rc, command=shlex.join(monitoring['command'])))
-            _retry_locked(store.update_job, jid, expected=('running',),
+            _retry_locked(store.update_job, jid, expected=LIVE,
                           monitor_returncode=monitor_rc, monitor_finished=time.time(),
                           monitor_errors=monitor_errors)
             monitor_output.close()
@@ -618,26 +646,53 @@ def worker(state_dir, jid):
         errors = current.get('errors', []) + wrapper_telemetry.get('errors', [])
         current['errors'] = list(dict.fromkeys(errors))[-12:]
         status, reason = decide(case, current, now, returncode=rc)
-        _retry_locked(store.update_job, jid, expected=('running',), telemetry=current,
-                      returncode=rc, solver_finished=time.time())
+        current_job = _retry_locked(store.update_job, jid, expected=LIVE, telemetry=current,
+                                    returncode=rc, solver_finished=time.time())
+        if current_job is not None and current_job['status'] == 'stopping':
+            status = 'interrupted'
+            reason = ui.text('scenarios.jobs.user_interrupted')
         post_errors = []
         if status == 'succeeded' and case['postprocess']:
-            _retry_locked(store.update_job, jid, expected=('running',),
-                          status='postprocessing', phase='postprocess')
-            post_errors = run_case_hooks(case, 'postprocess', store, jid, folder, env)
+            post_job = _retry_locked(store.update_job, jid, expected=('running',),
+                                     status='postprocessing', phase='postprocess')
+            if post_job is None and _retry_locked(store.job, jid)['status'] == 'stopping':
+                status = 'interrupted'
+                reason = ui.text('scenarios.jobs.user_interrupted')
+            elif post_job is not None:
+                post_errors = run_case_hooks(case, 'postprocess', store, jid, folder, env)
         # Freeze files before publishing the terminal state (which releases queue slots).
         files, notes = freeze_exports(case, store.root / 'events' / jid, now,
                                       status)
         job = _retry_locked(store.job, jid)
+        if job['status'] == 'stopping':
+            status = 'interrupted'
+            reason = ui.text('scenarios.jobs.user_interrupted')
         job.update(status=status, finished=time.time(), reason=reason, telemetry=current,
                    postprocess_errors=post_errors, monitor_errors=monitor_errors,
                    monitor_returncode=monitor_rc, returncode=rc)
         _retry_locked(store.put, 'event:' + jid,
                       dict(kind='terminal', run=job, files=files, notes=notes))
-        _retry_locked(store.update_job, jid, expected=LIVE, status=status,
-                      finished=job['finished'], reason=reason, telemetry=current,
-                      postprocess_errors=post_errors, monitor_errors=monitor_errors,
-                      monitor_returncode=monitor_rc, returncode=rc)
+        finalized = _retry_locked(
+            store.update_job, jid,
+            expected=('stopping',) if status == 'interrupted' else STOPPABLE,
+            status=status, finished=job['finished'], reason=reason, telemetry=current,
+            postprocess_errors=post_errors, monitor_errors=monitor_errors,
+            monitor_returncode=monitor_rc, returncode=rc)
+        if finalized is None:
+            latest = _retry_locked(store.job, jid)
+            if latest['status'] == 'stopping':
+                status = 'interrupted'
+                reason = ui.text('scenarios.jobs.user_interrupted')
+                job.update(status=status, reason=reason, finished=time.time())
+                _retry_locked(store.put, 'event:' + jid,
+                              dict(kind='terminal', run=job, files=files, notes=notes))
+                finalized = _retry_locked(
+                    store.update_job, jid, expected=('stopping',), status=status,
+                    finished=job['finished'], reason=reason, telemetry=current,
+                    postprocess_errors=post_errors, monitor_errors=monitor_errors,
+                    monitor_returncode=monitor_rc, returncode=rc)
+            if finalized is None:
+                return 1
         _retry_locked(store.remember_run, job)
         return 0 if status == 'succeeded' else 1
     except Exception as exc:
@@ -645,7 +700,10 @@ def worker(state_dir, jid):
         _stop_child(monitor)
         if monitor_output is not None:
             monitor_output.close()
-        _retry_locked(store.update_job, jid, expected=LIVE, status='failed',
-                      finished=time.time(),
-                      reason=ui.text('scenarios.jobs.worker_error', error=exc))
+        current_job = _retry_locked(store.job, jid)
+        interrupted = current_job['status'] == 'stopping' or isinstance(exc, InterruptedError)
+        _retry_locked(store.update_job, jid, expected=LIVE,
+                      status='interrupted' if interrupted else 'failed', finished=time.time(),
+                      reason=(ui.text('scenarios.jobs.user_interrupted') if interrupted else
+                              ui.text('scenarios.jobs.worker_error', error=exc)))
         return 1

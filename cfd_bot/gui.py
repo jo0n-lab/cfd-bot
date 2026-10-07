@@ -5,7 +5,7 @@ from pathlib import Path
 from .artifacts import export_files, residual_files
 from .patterns import DEFAULT_NAME, PatternLibrary
 from .control import control_times
-from .queue_control import cancel_queued_jobs
+from .queue_control import cancel_queued_jobs, interrupt_running_job
 from .run_views import job_view, running_macro_views, tracking_registry
 from .tickets import STATES, discover_cases, has_postprocessing, ticket_name
 from .queueing import job_queue_id
@@ -1000,6 +1000,8 @@ class TicketEditor:
             anchor='w', pady=(14, 4))
         self.queue_active_listbox = self.tk.Listbox(frame, exportselection=False, height=5)
         self.queue_active_listbox.pack(fill='x')
+        self.ttk.Button(frame, text='선택 작업 중단', command=self.interrupt_active_job).pack(
+            anchor='e', pady=(8, 0))
         self.ttk.Label(frame, text='3. 실행 이력', font=('TkDefaultFont', 11, 'bold')).pack(
             anchor='w', pady=(14, 4))
         self.ttk.Label(frame, text='[추적 가능]으로 표시된 실행 이력에서 결과 데이터를 열 수 있습니다.').pack(
@@ -1038,7 +1040,8 @@ class TicketEditor:
         cases = cases_for(self.queue_config)
         self.queue_registry = tracking_registry(cases)
         jobs = self.queue_store.jobs()
-        active = [job for job in jobs if job['status'] in ('starting', 'running', 'postprocessing')]
+        active = [job for job in jobs if job['status'] in
+                  ('starting', 'running', 'postprocessing', 'stopping')]
         self.queue_active_jobs = [job_view(job, self.queue_registry) for job in active]
         self.queue_active_listbox.delete(0, 'end')
         for item in self.queue_active_jobs:
@@ -1051,7 +1054,7 @@ class TicketEditor:
             if index < len(self.queue_result_jobs):
                 selected_result = self.queue_result_jobs[index]['id']
         history = [job for job in jobs if job['status'] not in
-                   ('queued', 'starting', 'running', 'postprocessing')]
+                   ('queued', 'starting', 'running', 'postprocessing', 'stopping')]
         self.queue_result_jobs = [job_view(job, self.queue_registry) for job in reversed(history)][:100]
         self.queue_result_listbox.delete(0, 'end')
         for index, item in enumerate(self.queue_result_jobs):
@@ -1081,6 +1084,30 @@ class TicketEditor:
         hours, rest = divmod(seconds, 3600)
         minutes, seconds = divmod(rest, 60)
         return f'{hours}시간 {minutes}분' if hours else f'{minutes}분 {seconds}초'
+
+    def interrupt_active_job(self):
+        indexes = (self.queue_active_listbox.curselection()
+                   if self.queue_active_listbox is not None else ())
+        if len(indexes) != 1:
+            self.queue_status.set('중단할 실행 작업 하나를 선택하세요.')
+            return
+        job = self.queue_active_jobs[indexes[0]]
+        if job['status'] == 'stopping':
+            self.queue_status.set('이미 중단 처리 중인 작업입니다.')
+            return
+        if not self.messagebox.askyesno(
+                '실행 작업 중단', f"{job['name']} 계산을 중단할까요?",
+                parent=self.queue_window):
+            return
+        try:
+            stopped = interrupt_running_job(self.queue_store, job['id'])
+            if stopped is None:
+                self.queue_status.set('이미 종료되었거나 중단할 수 없는 작업입니다.')
+            else:
+                self.queue_status.set(f"{job['name']} 중단을 요청했습니다.")
+            self.refresh_queue_manager()
+        except (OSError, ValueError) as exc:
+            self.messagebox.showerror('작업 중단 실패', str(exc), parent=self.queue_window)
 
     def open_queue_result_data(self, _event=None):
         indexes = self.queue_result_listbox.curselection() if self.queue_result_listbox is not None else ()

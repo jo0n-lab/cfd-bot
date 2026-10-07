@@ -198,6 +198,11 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     await page.locator('[data-action="resume-queue"]').waitFor();
     await page.locator('[data-action="resume-queue"]').click();
     await page.locator('[data-action="pause-queue"]').waitFor();
+    const runningRow=page.locator('tr').filter({hasText:'Browser running'});
+    await runningRow.locator('[data-action="stop-job"]').click();
+    await page.locator('#modal-actions [data-action="confirm-modal"]').click();
+    await page.waitForFunction(()=>!document.querySelector('[data-action="stop-job"]'));
+    assert.equal(await page.locator('tr').filter({hasText:'Browser running'}).locator('.status.interrupted').count(),1);
     await page.locator('[data-action="select-all-queue"]').click();
     assert.equal(await page.locator('[data-queue-select]:checked').count(),2);
     await page.locator('[data-action="clear-queue-selection"]').click();
@@ -213,6 +218,6 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     await page.screenshot({path:'/tmp/cfd-web-mobile.png',fullPage:true});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
     assert.deepEqual(errors,[]);
-    console.log('Browser checks passed: ticket and queue select all/clear, bulk queue cancel, single execution settings, edit, file picker, child-relative macro exports, clone/delete, macro discovery/order/queue, data preview, queue pause/resume, mobile.');
+    console.log('Browser checks passed: ticket and queue select all/clear, bulk queue cancel, running job stop, single execution settings, edit, file picker, child-relative macro exports, clone/delete, macro discovery/order/queue, data preview, queue pause/resume, mobile.');
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});

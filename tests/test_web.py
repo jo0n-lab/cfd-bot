@@ -72,6 +72,8 @@ class WebTests(Environment):
                 source = body.decode()
                 self.assertNotIn('queue_cpu_set', source)
                 self.assertIn('코어 수로 자동 결정', source)
+                self.assertIn("case 'stop-job'", source)
+                self.assertIn("action:'interrupt'", source)
         for platform in ('Windows', 'macOS'):
             status, body, headers = self.request(f'/downloads/CFD-Control-Room-{platform}.zip')
             self.assertEqual(status, 200)
@@ -186,6 +188,8 @@ class WebTests(Environment):
         self.assertFalse(self.store.get('queue_paused'))
         self.store.update_job(jobs[0]['id'], status='running')
         self.assertEqual(self.request('/api/queue', dict(action='cancel', id=jobs[0]['id']))[0], 400)
+        interrupted = self.post('/api/queue', dict(action='interrupt', id=jobs[0]['id']))
+        self.assertEqual(interrupted['status'], 'interrupted')
         self.store.update_job(jobs[0]['id'], status='queued')
         self.post('/api/queue', dict(action='cancel', id=jobs[0]['id']))
         self.assertEqual(self.store.job(jobs[0]['id'])['status'], 'cancelled')
