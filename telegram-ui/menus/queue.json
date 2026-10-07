@@ -45,5 +45,8 @@
   "running_selection_title": "실행 작업 다중 선택 · {selected}/{total}개 선택\n전체 선택 후 한 번에 중단할 수 있습니다.",
   "interrupt_many": "선택 중단 ({count}개)",
   "interrupt_many_confirm": "선택한 실행 작업 {count}개를 중단할까요?\n이미 종료된 작업은 건너뜁니다.\n\n{names}",
-  "interrupt_many_result": "중단 요청: {cancelled}개 · 이미 종료/변경 {unavailable}개"
+  "interrupt_many_result": "중단 요청: {cancelled}개 · 이미 종료/변경 {unavailable}개",
+  "choose_group": "작업을 선택할 대기열을 고르세요.",
+  "change_group": "다른 대기열 선택",
+  "selection_scope": "대기열: {queue}"
 }

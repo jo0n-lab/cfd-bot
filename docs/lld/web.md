@@ -59,7 +59,7 @@ stableOverview는 동일 실행의 일시적으로 사라진 ETA/progress를 유
 - [UC-18-web — 즉시 실행·이름 있는 대기열 등록](#uc-18)
 - [UC-19-web — 큐·이력·매크로 진행](#uc-19)
 - [UC-20-web — 자동 시작 pause/resume](#uc-20)
-- [UC-21-web — 대기 작업 선택·취소](#uc-21)
+- [UC-21-web — 대기열 카드별 선택·취소](#uc-21)
 - [UC-22-web — 실패 패턴 템플릿](#uc-22)
 - [UC-23-web — 폴더·파일 선택](#uc-23)
 - [UC-24-web — 초안 폐기·modal 취소](#uc-24)
@@ -131,7 +131,7 @@ stableOverview는 동일 실행의 일시적으로 사라진 ETA/progress를 유
 **정상 결과:** JSON → api Promise → 해당 DOM / toast / modal 반영.
 **실패/취소:** 403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면.
 
-**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L371), [web.WebApp.get](../../cfd_bot/web.py#L211), [web.WebApp.detail](../../cfd_bot/web.py#L118), [web.WebApp.case](../../cfd_bot/web.py#L106), [logs.recent_case_log](../../cfd_bot/logs.py#L216), [bot.Bot.latest_run](../../cfd_bot/bot.py#L236), [logs.estimate](../../cfd_bot/logs.py#L226), [storage.Store.runtime_history](../../cfd_bot/storage.py#L303).
+**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L371), [web.WebApp.get](../../cfd_bot/web.py#L211), [web.WebApp.detail](../../cfd_bot/web.py#L118), [web.WebApp.case](../../cfd_bot/web.py#L106), [logs.recent_case_log](../../cfd_bot/logs.py#L216), [bot.Bot.latest_run](../../cfd_bot/bot.py#L262), [logs.estimate](../../cfd_bot/logs.py#L226), [storage.Store.runtime_history](../../cfd_bot/storage.py#L303).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py), [test_web.py](../../tests/test_web.py).
 
@@ -409,7 +409,7 @@ stableOverview는 동일 실행의 일시적으로 사라진 ETA/progress를 유
 
 
 <a id="uc-21"></a>
-## UC-21-web — 대기 작업 선택·취소
+## UC-21-web — 대기열 카드별 선택·취소
 
 진입: `action(cancel-selected-jobs / cancel-job) → /api/queue`.
 

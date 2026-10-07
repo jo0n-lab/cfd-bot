@@ -73,7 +73,7 @@ Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message
 **정상 결과:** check는 검증/stdout만; identify는 Telegram 조회; gui는 config 분기 전에 launch.
 **실패/취소:** OSError/ValueError/RuntimeError → stderr, exit 2; _worker는 별도 worker 반환.
 
-**코드 연결:** [cli.main](../../cfd_bot/cli.py#L47), [config.load_bot](../../cfd_bot/config.py#L362), [config.cases_for](../../cfd_bot/config.py#L420), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [storage.Store.enqueue](../../cfd_bot/storage.py#L217), [monitor.Monitor.run_once](../../cfd_bot/monitor.py#L229), [bot.serve](../../cfd_bot/bot.py#L565), [web.serve](../../cfd_bot/web.py#L439).
+**코드 연결:** [cli.main](../../cfd_bot/cli.py#L47), [config.load_bot](../../cfd_bot/config.py#L362), [config.cases_for](../../cfd_bot/config.py#L420), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [storage.Store.enqueue](../../cfd_bot/storage.py#L217), [monitor.Monitor.run_once](../../cfd_bot/monitor.py#L229), [bot.serve](../../cfd_bot/bot.py#L602), [web.serve](../../cfd_bot/web.py#L439).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py), [test_web.py](../../tests/test_web.py).
 
@@ -179,7 +179,7 @@ Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message
 **정상 결과:** recipient별 pending/완료; API 성공 후 offset 저장 사이 crash는 중복 전송 가능.
 **실패/취소:** TelegramError → retry_after+backoff; 첨부 파일 유실 → skip 안내; 기타 오류도 retry.
 
-**코드 연결:** [bot.deliver](../../cfd_bot/bot.py#L521), [storage.Store.pending](../../cfd_bot/storage.py#L400), [report.render_run](../../cfd_bot/report.py#L98), [storage.Store.save_delivery](../../cfd_bot/storage.py#L415), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.file](../../cfd_bot/telegram.py#L94), [storage.Store.delivered](../../cfd_bot/storage.py#L406), [storage.Store.retry](../../cfd_bot/storage.py#L410).
+**코드 연결:** [bot.deliver](../../cfd_bot/bot.py#L558), [storage.Store.pending](../../cfd_bot/storage.py#L400), [report.render_run](../../cfd_bot/report.py#L98), [storage.Store.save_delivery](../../cfd_bot/storage.py#L415), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.file](../../cfd_bot/telegram.py#L94), [storage.Store.delivered](../../cfd_bot/storage.py#L406), [storage.Store.retry](../../cfd_bot/storage.py#L410).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_queue_tickets.py](../../tests/test_queue_tickets.py), [test_scripts.py](../../tests/test_scripts.py).
 

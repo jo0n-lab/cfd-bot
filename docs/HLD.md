@@ -6,6 +6,9 @@
 
 ## 1. 목적·범위·품질 요구
 
+대기 작업의 전체 선택·해제·취소 범위는 queue_id별이다. Web 카드, GUI 탭, Telegram
+대기열 선택 화면이 같은 작업 ID를 기존 공용 취소 함수에 전달한다.
+
 실행 작업 중단은 세 UI 모두 개별·다중 선택·전체 선택을 지원한다. 공용 batch helper가
 선택한 ID만 기존 중단 함수로 전달한다. [설계 이력](history/2026-10-07-bulk-running-job-interruption.md).
 

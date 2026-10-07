@@ -571,21 +571,21 @@
     "key": "UC-21-tg",
     "title": "대기 작업 선택·취소",
     "platform": "Telegram",
-    "trigger": "qselect/qall/qnone/qcancel/qcancelyes/cancel:id",
+    "trigger": "qselect/qgroup:id/qall/qnone/qcancel/qcancelyes",
     "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
     "key": "UC-21-gui",
-    "title": "대기 작업 선택·취소",
+    "title": "대기열별 선택·취소",
     "platform": "cfd-ticket-gui",
-    "trigger": "Tk event → cancel_queue_selection",
+    "trigger": "Tk event → cancel_queue_selection(queue_id)",
     "outcome": "Tk status / widget / dialog 반영",
     "error": "ValueError/OSError → messagebox; 초안 유지"
   },
   {
     "key": "UC-21-web",
-    "title": "대기 작업 선택·취소",
+    "title": "대기열 카드별 선택·취소",
     "platform": "web",
     "trigger": "action(cancel-selected-jobs / cancel-job) → /api/queue",
     "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",

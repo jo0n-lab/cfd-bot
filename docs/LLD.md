@@ -219,6 +219,10 @@ pause/resume은 `Store.put('queue_paused', bool)`이며 Telegram/web/CLI에 존�
 
 ![실행 중단 요청·반환](diagrams/D-16.svg)
 
+대기 선택은 `job_queue_id` 기준으로 분리한다. Web 카드와 GUI 탭의 버튼은 해당 대기열
+ID만 선택·해제·취소하고 다른 대기열의 선택을 보존한다. Telegram은 `qgroup:<id>`로
+선택 범위를 저장하고 `set_queue_selection`이 그 범위의 ID만 교체한다.
+
 `interrupt_running_jobs(store, ids)`는 중복 ID를 제거하고 기존 단일 중단 함수를 호출해
 `interrupted`(요청 접수 ID)와 `unavailable` 목록을 반환한다. Telegram은 확인 화면의 ID를
 고정하고, GUI/web도 선택한 목록만 전달한다. 이후 새로 시작된 작업은 포함하지 않는다.

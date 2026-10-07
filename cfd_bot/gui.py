@@ -981,21 +981,11 @@ class TicketEditor:
         self.ttk.Label(frame, text='1. 대기 작업 선택', font=('TkDefaultFont', 11, 'bold')).pack(anchor='w')
         self.ttk.Label(frame, text='Ctrl / Shift 또는 아래 전체 선택 버튼으로 여러 작업을 선택하세요.').pack(
             anchor='w', pady=(4, 10))
-        listing = self.ttk.Frame(frame)
-        listing.pack(fill='x')
-        box = self.tk.Listbox(listing, exportselection=False, selectmode='extended', height=10)
-        box.pack(side='left', fill='both', expand=True)
-        scroll = self.ttk.Scrollbar(listing, command=box.yview)
-        scroll.pack(side='right', fill='y')
-        box.configure(yscrollcommand=scroll.set)
-        self.queue_listboxes['all'] = box
-        self.queue_listbox = box
-        controls = self.ttk.Frame(frame)
-        controls.pack(fill='x', pady=(10, 0))
-        self.ttk.Button(controls, text='전체 선택', command=self.select_all_queue).pack(side='left')
-        self.ttk.Button(controls, text='전체 해제', command=self.clear_queue_selection).pack(side='left', padx=6)
-        self.ttk.Button(controls, text='선택 취소', command=self.cancel_queue_selection).pack(side='left')
-        self.ttk.Button(controls, text='새로고침', command=self.refresh_queue_manager).pack(side='right')
+        self.queue_notebook = self.ttk.Notebook(frame)
+        self.queue_notebook.pack(fill='x')
+        self.queue_listboxes = {}
+        self.queue_jobs_by_lane = {}
+        self.ttk.Button(frame, text='새로고침', command=self.refresh_queue_manager).pack(anchor='e')
         self.ttk.Label(frame, text='2. 실행 중', font=('TkDefaultFont', 11, 'bold')).pack(
             anchor='w', pady=(14, 4))
         self.queue_active_listbox = self.tk.Listbox(frame, exportselection=False, selectmode='extended', height=5)
@@ -1025,15 +1015,37 @@ class TicketEditor:
         self.refresh_queue_manager()
 
     def refresh_queue_manager(self):
-        if not self.queue_listboxes or not self.queue_listbox.winfo_exists():
+        if self.queue_window is None or not self.queue_window.winfo_exists():
             return
         selected = {self.queue_jobs_by_lane[lane][index]['id']
                     for lane, box in self.queue_listboxes.items()
                     for index in box.curselection()
                     if index < len(self.queue_jobs_by_lane[lane])}
         self.queue_jobs = self.queue_store.jobs(('queued',))
+        for lane in sorted({job_queue_id(job) for job in self.queue_jobs}):
+            if lane in self.queue_listboxes:
+                continue
+            tab = self.ttk.Frame(self.queue_notebook, padding=6)
+            self.queue_notebook.add(tab, text=lane)
+            listing = self.ttk.Frame(tab)
+            listing.pack(fill='x')
+            box = self.tk.Listbox(listing, exportselection=False, selectmode='extended', height=8)
+            box.pack(side='left', fill='both', expand=True)
+            scroll = self.ttk.Scrollbar(listing, command=box.yview)
+            scroll.pack(side='right', fill='y')
+            box.configure(yscrollcommand=scroll.set)
+            self.queue_listboxes[lane] = box
+            self.queue_jobs_by_lane[lane] = []
+            self.queue_listbox = next(iter(self.queue_listboxes.values()))
+            controls = self.ttk.Frame(tab)
+            controls.pack(fill='x', pady=(6, 0))
+            for label, callback in [('전체 선택', self.select_all_queue),
+                                    ('전체 해제', self.clear_queue_selection),
+                                    ('선택 취소', self.cancel_queue_selection)]:
+                self.ttk.Button(controls, text=label,
+                                command=lambda q=lane, cb=callback: cb(q)).pack(side='left', padx=3)
         for lane, box in self.queue_listboxes.items():
-            self.queue_jobs_by_lane[lane] = list(self.queue_jobs)
+            self.queue_jobs_by_lane[lane] = [job for job in self.queue_jobs if job_queue_id(job) == lane]
             box.delete(0, 'end')
             for index, job in enumerate(self.queue_jobs_by_lane[lane]):
                 box.insert('end', f"{job_queue_id(job)} · {index + 1}. {job['case']['name']} · {job['id']} · {job['case_root']}")
@@ -1161,18 +1173,23 @@ class TicketEditor:
         for line in lines:
             listing.insert('end', line)
 
-    def select_all_queue(self):
-        for box in self.queue_listboxes.values():
+    def select_all_queue(self, queue_id=None):
+        for lane, box in self.queue_listboxes.items():
+            if queue_id is not None and lane != queue_id:
+                continue
             if box.size():
                 box.selection_set(0, 'end')
 
-    def clear_queue_selection(self):
-        for box in self.queue_listboxes.values():
+    def clear_queue_selection(self, queue_id=None):
+        for lane, box in self.queue_listboxes.items():
+            if queue_id is not None and lane != queue_id:
+                continue
             box.selection_clear(0, 'end')
 
-    def cancel_queue_selection(self):
+    def cancel_queue_selection(self, queue_id=None):
         ids = [self.queue_jobs_by_lane[lane][index]['id']
                for lane, box in self.queue_listboxes.items()
+               if queue_id is None or lane == queue_id
                for index in box.curselection()]
         if not ids:
             self.queue_status.set('취소할 대기 작업을 하나 이상 선택하세요.')

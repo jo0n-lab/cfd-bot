@@ -4,6 +4,7 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-10-07 | [대기열별 선택·해제·취소](2026-10-07-per-queue-selection.md) | 사용자 요청으로 생략 |
 | 2026-10-07 | [작업 큐 전체 선택·일괄 중단](2026-10-07-bulk-running-job-interruption.md) | 사용자 요청으로 생략 |
 | 2026-10-07 | [monitor 잔류로 인한 중복 종료 알림 제거](2026-10-07-monitor-tail-duplicate-notifications.md) | [#28](https://github.com/jo0n-lab/cfd-bot/issues/28) |
 | 2026-10-07 | [실행 중인 managed 계산 중단](2026-10-07-running-job-interruption.md) | [#27](https://github.com/jo0n-lab/cfd-bot/issues/27) |

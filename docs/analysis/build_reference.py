@@ -86,7 +86,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 | queue(편집 화면), mode, setmode, role, execsource, cpupolicy, toggle | UC-17 |
 | runstate, runreview, runyes / prepare:cid, enqueue:cid | UC-18 / UC-18-legacy |
 | /queue, queue(일반 dispatcher), pause, resume | UC-19 / 20 |
-| qselect,qback,qpage,qtoggle,qall,qnone,qcancel,qcancelyes,cancel:id | UC-21 |
+| qselect,qgroup:id,qback,qpage,qtoggle,qall,qnone,qcancel,qcancelyes,cancel:id | UC-21 |
 | stop:id, stopyes:id | UC-28 |
 | templates,template,savetemplate | UC-22 |
 | browse,bp,bd,bup,bf,bapply,bcancel; exports,xe,xnew,xkind,xapply,xdelete | UC-23 / UC-10 exports |

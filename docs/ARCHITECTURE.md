@@ -47,7 +47,7 @@
 | UC-18 즉시 실행·이름 있는 대기열 등록 | runstate/runreview/runyes | 즉시 실행·queue 등록 | requestRun(mode) → /api/run | enqueue: 직접 DB 등록 | 동적 macro는 첫 child로 즉시 실행 판정, 최대 child는 전체 한도만 검사 · [실행](LLD.md#run) |
 | UC-19 큐·이력·매크로 진행 조회 | `/queue`, queue; 결과 버튼 | 큐 창·새로고침·결과 목록 | queue/history·live_macros | queue, status --json | [큐](LLD.md#queue) |
 | UC-20 자동 시작 pause/resume | pause/resume | **N/A: 버튼 없음** | pause-queue/resume-queue | pause/resume | [큐](LLD.md#queue) |
-| UC-21 대기 작업 선택·취소 | cancel, qselect/qall/qnone/qcancel | 전체 선택/해제·선택 취소 | 개별·선택 취소 | cancel JOB… | [큐](LLD.md#queue) |
+| UC-21 대기열별 작업 선택·취소 | qgroup으로 대기열 선택 후 전체 선택/해제·취소 | 대기열별 탭에서 전체 선택/해제·취소 | 대기열 카드마다 전체 선택/해제·취소 | cancel JOB… | [큐](LLD.md#queue) |
 | UC-22 실패 패턴 템플릿 적용·저장 | templates/template/savetemplate | apply_pattern/save_pattern | apply-preset/save-preset | N/A | [필드](LLD.md#fields) |
 | UC-23 폴더·로그·Residual·export 경로 입력 | browser(폴더/로그/Residual); export는 텍스트 | filedialog 및 export 편집 dialog | browse modal; 매크로는 child 검색 후 첫 child 기준 | N/A | [필드](LLD.md#fields) |
 | UC-24 입력 취소·초안 폐기·뒤로가기 | `/cancel`, backinput, discard, bcancel, stopscan | dialog 취소·confirm_switch·close | modal 취소·confirmDiscard·beforeunload | Ctrl-C는 프로세스 종료 | [취소](LLD.md#cancel) |
