@@ -1,6 +1,7 @@
 import json
 import io
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -318,7 +319,13 @@ class StoreTests(Environment):
 
     def test_outbox_per_recipient_dedup_and_retry(self):
         self.store.event('done', [20, 30], dict(kind='text', text='done'))
+        with self.store.connect() as db:
+            sequence = db.execute(
+                "SELECT seq FROM sqlite_sequence WHERE name='outbox'").fetchone()[0]
         self.store.event('done', [20, 30], dict(kind='text', text='done'))
+        with self.store.connect() as db:
+            self.assertEqual(db.execute(
+                "SELECT seq FROM sqlite_sequence WHERE name='outbox'").fetchone()[0], sequence)
         pending = self.store.pending()
         self.assertEqual(len(pending), 2)
         self.store.delivered(pending[0]['id'])
@@ -328,6 +335,12 @@ class StoreTests(Environment):
         with restored.connect() as db:
             self.assertEqual(db.execute('SELECT COUNT(*) FROM outbox WHERE sent=1').fetchone()[0], 1)
 
+    def test_existing_terminal_outbox_excludes_legacy_job_from_replay(self):
+        job = self.store.enqueue(self.case)
+        self.store.update_job(job['id'], status='failed')
+        self.store.event(job['id'] + ':terminal', [20], {'kind': 'text', 'text': 'old'})
+        self.assertEqual(self.store.unpublished_terminal_jobs(), [])
+
     def test_single_daemon_lock(self):
         with DaemonLock(self.store.root / 'daemon.lock'):
             with self.assertRaises(RuntimeError):
@@ -336,6 +349,27 @@ class StoreTests(Environment):
 
 
 class WorkerTests(Environment):
+    def test_transient_database_lock_does_not_stop_solver(self):
+        self.case_data['command'] = [
+            sys.executable, '-c',
+            "import time; time.sleep(.8); print('Time = 10\\nEnd')"]
+        self.write_case()
+        job = self.claim()
+        original = Store.update_job
+        injected = {'done': False}
+
+        def transient_lock(instance, jid, expected=None, **changes):
+            if ('telemetry' in changes and 'returncode' not in changes
+                    and not injected['done']):
+                injected['done'] = True
+                raise sqlite3.OperationalError('database is locked')
+            return original(instance, jid, expected=expected, **changes)
+
+        with patch.object(Store, 'update_job', transient_lock):
+            self.assertEqual(worker(self.store.root, job['id']), 0)
+        self.assertTrue(injected['done'])
+        self.assertEqual(self.store.job(job['id'])['status'], 'succeeded')
+
     def test_monitor_runs_on_reserved_cpu_with_solver_pid(self):
         marker = self.case_root / 'monitor.json'
         self.case_data['command'] = [
@@ -497,10 +531,27 @@ class SchedulerTests(Environment):
         self.assertEqual(self.store.job(job['id'])['status'], 'succeeded')
         restarted = Scheduler(self.config, Store(self.config['state_dir']))
         restarted.tick({})
+        with self.store.connect() as db:
+            sequence = db.execute(
+                "SELECT seq FROM sqlite_sequence WHERE name='outbox'").fetchone()[0]
         restarted.tick({})
+        with self.store.connect() as db:
+            self.assertEqual(db.execute(
+                "SELECT seq FROM sqlite_sequence WHERE name='outbox'").fetchone()[0], sequence)
         self.assertEqual(len(self.store.pending()), 2)
         self.assertEqual({item['event_key'] for item in self.store.pending()},
                          {job['id'] + ':start', job['id'] + ':terminal'})
+        self.assertTrue(self.store.job(job['id'])['terminal_event_published'])
+
+    def test_terminal_job_without_notification_is_marked_once(self):
+        self.case_data['notifications'] = {'events': ['started']}
+        self.write_case()
+        job = self.store.enqueue(self.case)
+        self.store.update_job(job['id'], status='failed')
+        scheduler = Scheduler(self.config, self.store)
+        scheduler.tick({})
+        self.assertTrue(self.store.job(job['id'])['terminal_event_published'])
+        self.assertEqual(self.store.unpublished_terminal_jobs(), [])
 
     def test_worker_pid_reuse_and_boot_id_do_not_mask_loss(self):
         j = self.claim()

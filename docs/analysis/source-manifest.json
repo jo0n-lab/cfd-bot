@@ -1,5 +1,5 @@
 {
-  "head": "a38ebc145faf504754c5fd3a8d7bbade1328fd43",
+  "head": "516e28ffa5e7e58b042cc3fb9b1f241789255b24",
   "date": "2026-10-07",
   "working_tree": true,
   "sha256": {
@@ -15,7 +15,7 @@
     "cfd_bot/editor.py": "ecbf372c1ab9e0318d8f86ef593d280c8191da857aad233d0cd39b2f1902966e",
     "cfd_bot/execution.py": "2f74b19ed5b1d981b478f5354bc55b9276cfaecf126707c83574c1ea38c40a05",
     "cfd_bot/gui.py": "1bc74c7a73b59619d78aed6df3c2c1b5b51135e95e6a4b78c9976b606c6f2e3e",
-    "cfd_bot/jobs.py": "6eeb16874cf3b90c70ab5c703977e725332fd4190338b9c82cf36b4a8912ca65",
+    "cfd_bot/jobs.py": "5263e4f537f2b36dde9c319bb9f87865bdf657bd76e338627b1498a8681a290b",
     "cfd_bot/logs.py": "a228d12e61e966c963bfedb44e17b2889bb9bffb411918ea3f1e15f2fedaf534",
     "cfd_bot/monitor.py": "46774515bc06f70ff5349de1ad6e14c9e1d9fb961d37a1b42de86471e2f8a227",
     "cfd_bot/outcomes.py": "d978dc8002d966ffa3ddaa0b76b2f3cb6f26b59aa81b890fd876fe204b31e96c",
@@ -25,7 +25,7 @@
     "cfd_bot/queueing.py": "6a06b135aa476cfc4b360e5b659a40fd1d8af785590e295f44bd949d31a8c3e9",
     "cfd_bot/report.py": "251938d73f75c71f4a939a7bf99d655ab10b0ce17f80abb2e8e5d161842027c9",
     "cfd_bot/run_views.py": "e9f599c852f6c088000af80a02c516b5ccd769566d307b89a1ba10b59260ad62",
-    "cfd_bot/storage.py": "6d2e39f94931a98ba135f0e33663000dcc3505ede3e479246e5d947e235c4fb2",
+    "cfd_bot/storage.py": "ec692cad4a94889c8fb15439f23b1f549f3544dc4fe22390187679e190f5527c",
     "cfd_bot/telegram.py": "7c82239acd2ec071f96b9fc9881edee6917dc5864fec8a47ae61b453e69fb60f",
     "cfd_bot/texts.py": "af1352adcacdff1c4aea5958dea9eb2399e3e8ca0a2412a3ebbd7ad21224b723",
     "cfd_bot/ticket_chat.py": "bd1e7438e0a7c0da4c9e5ca8a85d06d024deadaf61db9e6c3450f9eee6f19224",
@@ -34,7 +34,7 @@
     "cfd_bot/ui.py": "338b7b3c1baf6839a2579460e2664d99b30f56f71694bbd887b9bf2e922d87d0",
     "cfd_bot/web.py": "cd8fcfa6797b69773311b6988f02903f10aa7a5f018d4245f8114429cc2411c1",
     "cfd_bot/web_static/app.js": "44c6eab911374f027e08b8b2ee587d7faca175868a9eb58a625a5ee4d48f3f70",
-    "bin/ofps": "40c4848f5bf0d268812529331a054affe218750b3fc03f7c243688fbcc3f19ac",
+    "bin/ofps": "e075f6fa4ecf97516cb16134b219e0950632cfc14d12e65faf2d9be1bf12412d",
     "bin/cfd-web-tunnel": "2d61dd42f6a75bd72d100d0430a2797bf8670fa44416e921e5ea48a8dd37105a",
     "clients/macos/ssh-hosts.sh": "60fc990e81824448316f2bd488976539071fc0d7c4b645a7096883fbd6a4f4ec",
     "clients/windows/cfd-client.ps1": "264fcc272d03cc6f3fcde36ea87a6e9037a5a16ea7235620484acffccf1c3a5b",

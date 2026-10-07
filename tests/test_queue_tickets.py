@@ -14,6 +14,7 @@ from cfd_bot.editor import TicketService
 from cfd_bot.ticket_run import TicketRunner
 from cfd_bot.jobs import Scheduler, worker
 from cfd_bot.outcomes import decide
+from cfd_bot.processes import parse_snapshot
 from cfd_bot.storage import Store
 from cfd_bot.tickets import (accept_submissions, checkpoint_time, discover_cases,
                              postprocess_time, publish_macro, sync_ticket_states, ticket_name)
@@ -535,6 +536,129 @@ class QueueTicketTests(Environment):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn(str(folder), result.stdout)
         self.assertNotIn('[controlDict not found]', result.stdout)
+
+    def test_integrated_ofps_includes_marked_monitor_and_blocks_its_cpu(self):
+        wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'
+        case_root = self.case_dir('marked-monitor')
+        env = dict(os.environ, CFD_BOT_CASE_DIR=str(case_root),
+                   CFD_BOT_JOB_ID='test-monitor-job', CFD_BOT_MONITOR_CPU=self.cpu,
+                   TCB_MONITORED_SOLVER_PID='999999')
+        monitor = subprocess.Popen(
+            ['monitor_flow.py', '30'], executable=shutil.which('sleep'),
+            cwd=case_root, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        try:
+            os.sched_setaffinity(monitor.pid, {int(self.cpu)})
+            ready = False
+            for _ in range(100):
+                cmdline = Path(f'/proc/{monitor.pid}/cmdline')
+                environ = Path(f'/proc/{monitor.pid}/environ')
+                if (cmdline.exists()
+                        and cmdline.read_bytes().split(b'\0', 1)[0] == b'monitor_flow.py'
+                        and b'CFD_BOT_MONITOR_CPU=' in environ.read_bytes()):
+                    ready = True
+                    break
+                if monitor.poll() is not None:
+                    self.fail(monitor.stderr.read().decode())
+                time.sleep(0.01)
+            self.assertTrue(ready, 'monitor fixture did not become visible in /proc')
+            result = subprocess.run(
+                [str(wrapper), '--check', self.cpu],
+                env=dict(os.environ, CFD_BOT_OFPS_MANAGED='1'),
+                capture_output=True, text=True, timeout=10)
+        finally:
+            monitor.terminate()
+            monitor.wait(timeout=5)
+            monitor.stderr.close()
+        self.assertEqual(result.returncode, 4, result.stderr)
+        self.assertIn('ENGINE: Monitor', result.stdout)
+        self.assertIn('CASE: ' + str(case_root), result.stdout)
+        self.assertIn(str(monitor.pid), result.stdout)
+        self.assertIn(f'overlaps PID {monitor.pid} (Monitor/monitor_flow.py)', result.stderr)
+        record = parse_snapshot(result.stdout)[str(case_root)]
+        self.assertEqual(record['engines'], ['Monitor'])
+        self.assertEqual(record['actual_cores'], 1)
+        self.assertEqual(record['actual_cpu_list'], self.cpu)
+        self.assertEqual(record['processes'][0]['mode'], 'monitor')
+
+    def test_integrated_ofps_ignores_monitor_without_complete_marker(self):
+        wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'
+        case_root = self.case_dir('unmarked-monitor')
+        env = dict(os.environ, CFD_BOT_CASE_DIR=str(case_root),
+                   CFD_BOT_JOB_ID='test-monitor-job')
+        monitor = subprocess.Popen(
+            ['monitor_flow.py', '30'], executable=shutil.which('sleep'),
+            cwd=case_root, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        try:
+            for _ in range(100):
+                cmdline = Path(f'/proc/{monitor.pid}/cmdline')
+                if (cmdline.exists()
+                        and cmdline.read_bytes().split(b'\0', 1)[0] == b'monitor_flow.py'):
+                    break
+                time.sleep(0.01)
+            result = subprocess.run(
+                [str(wrapper)], env=dict(os.environ, CFD_BOT_OFPS_MANAGED='1'),
+                capture_output=True, text=True, timeout=10)
+        finally:
+            monitor.terminate()
+            monitor.wait(timeout=5)
+            monitor.stderr.close()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn(str(case_root), result.stdout)
+
+    def test_integrated_ofps_includes_external_tcb_internal_monitor(self):
+        wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'
+        case_root = self.case_dir('external-tcb-monitor')
+        monitor = subprocess.Popen(
+            ['plot_residuals_live.py', '30'], executable=shutil.which('sleep'),
+            cwd=case_root, env=dict(os.environ, TCB_MONITORED_SOLVER_PID='999999'),
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        try:
+            os.sched_setaffinity(monitor.pid, {int(self.cpu)})
+            ready = False
+            for _ in range(100):
+                cmdline = Path(f'/proc/{monitor.pid}/cmdline')
+                environ = Path(f'/proc/{monitor.pid}/environ')
+                if (cmdline.exists()
+                        and cmdline.read_bytes().split(b'\0', 1)[0]
+                        == b'plot_residuals_live.py'
+                        and b'TCB_MONITORED_SOLVER_PID=' in environ.read_bytes()):
+                    ready = True
+                    break
+                if monitor.poll() is not None:
+                    self.fail(monitor.stderr.read().decode())
+                time.sleep(0.01)
+            self.assertTrue(ready, 'TCB monitor fixture did not become visible in /proc')
+            result = subprocess.run(
+                [str(wrapper), '--check', self.cpu],
+                env=dict(os.environ, CFD_BOT_OFPS_MANAGED='1'),
+                capture_output=True, text=True, timeout=10)
+        finally:
+            monitor.terminate()
+            monitor.wait(timeout=5)
+            monitor.stderr.close()
+        self.assertEqual(result.returncode, 4, result.stderr)
+        self.assertIn('ENGINE: Monitor', result.stdout)
+        self.assertIn('CASE: ' + str(case_root), result.stdout)
+        self.assertIn(str(monitor.pid), result.stdout)
+        self.assertIn(f'overlaps PID {monitor.pid} (Monitor/plot_residuals_live.py)',
+                      result.stderr)
+
+    def test_snapshot_merges_solver_and_monitor_affinity_for_same_case(self):
+        case_root = self.case_dir('solver-with-monitor')
+        raw = f'''ENGINE: OpenFOAM
+CASE: {case_root}
+  PID PPID PROCESS MODE THREADS CPU_COUNT CPU_LIST SOCKETS NUMA ELAPSED
+  900001 1 foamRun MPI 1 2 0-1 0 0 00:10
+
+ENGINE: Monitor
+CASE: {case_root}
+  PID PPID PROCESS MODE THREADS CPU_COUNT CPU_LIST SOCKETS NUMA ELAPSED
+  900002 1 monitor.py monitor 1 1 4 0 0 00:09
+'''
+        record = parse_snapshot(raw)[str(case_root)]
+        self.assertEqual(record['engines'], ['OpenFOAM', 'Monitor'])
+        self.assertEqual(record['actual_cores'], 3)
+        self.assertEqual(record['actual_cpu_list'], '0-1,4')
 
     def test_ofps_symlink_directory_is_not_an_implicit_basilisk_root(self):
         wrapper = Path(__file__).resolve().parents[1] / 'bin/ofps'

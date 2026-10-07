@@ -144,6 +144,35 @@ class Store:
                 rows = db.execute('SELECT body FROM jobs ORDER BY created').fetchall()
         return [json.loads(r[0]) for r in rows]
 
+    def unpublished_terminal_jobs(self):
+        """Terminal managed jobs whose notification decision has not been persisted."""
+        with self.connect() as db:
+            rows = db.execute('''
+                SELECT job.body FROM jobs AS job
+                WHERE status IN ('succeeded','failed','interrupted')
+                  AND COALESCE(json_extract(job.body, '$.terminal_event_published'), 0) != 1
+                  AND NOT EXISTS (
+                      SELECT 1 FROM outbox
+                      WHERE event_key = job.id || ':terminal'
+                  )
+                ORDER BY created
+            ''').fetchall()
+        return [json.loads(row[0]) for row in rows]
+
+    def mark_terminal_published(self, jid):
+        """Persist terminal handling for a managed job; ignore external/synthetic runs."""
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute('SELECT body FROM jobs WHERE id=?', (jid,)).fetchone()
+            if row is None:
+                return False
+            job = json.loads(row[0])
+            if job['status'] not in ('succeeded', 'failed', 'interrupted'):
+                return False
+            job['terminal_event_published'] = True
+            db.execute('UPDATE jobs SET body=? WHERE id=?', (json.dumps(job), jid))
+        return True
+
     def jobs_for_roots(self, roots):
         roots = list(set(roots))
         result = []
@@ -317,10 +346,27 @@ class Store:
         return dict(cancelled=cancelled, unavailable=unavailable)
 
     def event(self, key, chats, payload):
+        chats = list(dict.fromkeys(chats))
+        if not chats:
+            return
+        placeholders = ','.join('?' for _ in chats)
         with self.connect() as db:
-            for chat in chats:
-                db.execute('INSERT OR IGNORE INTO outbox(event_key,chat_id,body) VALUES (?,?,?)',
-                           (key, chat, json.dumps(payload)))
+            rows = db.execute(
+                f'SELECT chat_id FROM outbox WHERE event_key=? AND chat_id IN ({placeholders})',
+                (key, *chats)).fetchall()
+        missing = [chat for chat in chats if chat not in {row[0] for row in rows}]
+        if not missing:
+            return
+        body = json.dumps(payload)
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            # Recheck after acquiring the writer lock so concurrent producers
+            # cannot insert the same recipient between the read and the write.
+            for chat in missing:
+                if db.execute('SELECT 1 FROM outbox WHERE event_key=? AND chat_id=?',
+                              (key, chat)).fetchone() is None:
+                    db.execute('INSERT INTO outbox(event_key,chat_id,body) VALUES (?,?,?)',
+                               (key, chat, body))
 
     def pending(self, limit=10):
         with self.connect() as db:

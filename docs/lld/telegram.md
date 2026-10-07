@@ -83,7 +83,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 **정상 결과:** 메시지/패널 반영 → handle 반환 → serve가 offset 저장.
 **실패/취소:** 입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행.
 
-**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [ui.UiCatalog.value](../../cfd_bot/ui.py#L90), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L344).
+**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [ui.UiCatalog.value](../../cfd_bot/ui.py#L90), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L390).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py), [test_web.py](../../tests/test_web.py).
 
@@ -102,7 +102,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 
 **내부 로직·비용:** ofps 실행 시간 제한 45초는 뒤의 catalog/membership 시간 제한이 아니다. 현재 표본은 scan 약 1.06초, membership만 16.56~19.68초. [측정 범위](../analysis/live-bottlenecks.md).
 
-**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [bot.Bot.fresh_runs](../../cfd_bot/bot.py#L108), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [catalog.ticket_index](../../cfd_bot/catalog.py#L280), [catalog.TicketIndex.cases](../../cfd_bot/catalog.py#L239), [bot.Bot.active_runs](../../cfd_bot/bot.py#L80), [bot.Bot.status](../../cfd_bot/bot.py#L155), [storage.Store.runtime_history](../../cfd_bot/storage.py#L264), [report.compact_status](../../cfd_bot/report.py#L111), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L344).
+**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [bot.Bot.fresh_runs](../../cfd_bot/bot.py#L108), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [catalog.ticket_index](../../cfd_bot/catalog.py#L280), [catalog.TicketIndex.cases](../../cfd_bot/catalog.py#L239), [bot.Bot.active_runs](../../cfd_bot/bot.py#L80), [bot.Bot.status](../../cfd_bot/bot.py#L155), [storage.Store.runtime_history](../../cfd_bot/storage.py#L293), [report.compact_status](../../cfd_bot/report.py#L111), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L390).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_web.py](../../tests/test_web.py).
 
@@ -119,7 +119,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 **정상 결과:** 메시지/패널 반영 → handle 반환 → serve가 offset 저장.
 **실패/취소:** 입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행.
 
-**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [bot.Bot.show_cases](../../cfd_bot/bot.py#L194), [bot.Bot.cases](../../cfd_bot/bot.py#L56), [config.cases_for](../../cfd_bot/config.py#L420), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L344), [bot.Bot.case_menu](../../cfd_bot/bot.py#L207), [ticket_run.TicketRunner.state](../../cfd_bot/ticket_run.py#L123).
+**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [bot.Bot.show_cases](../../cfd_bot/bot.py#L194), [bot.Bot.cases](../../cfd_bot/bot.py#L56), [config.cases_for](../../cfd_bot/config.py#L420), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L390), [bot.Bot.case_menu](../../cfd_bot/bot.py#L207), [ticket_run.TicketRunner.state](../../cfd_bot/ticket_run.py#L123).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py), [test_web.py](../../tests/test_web.py).
 
@@ -136,7 +136,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 **정상 결과:** 메시지/패널 반영 → handle 반환 → serve가 offset 저장.
 **실패/취소:** 입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행.
 
-**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [bot.Bot.latest_run](../../cfd_bot/bot.py#L233), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [storage.Store.get](../../cfd_bot/storage.py#L106), [storage.Store.runtime_history](../../cfd_bot/storage.py#L264), [report.render_run](../../cfd_bot/report.py#L98), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L344).
+**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [bot.Bot.latest_run](../../cfd_bot/bot.py#L233), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [storage.Store.get](../../cfd_bot/storage.py#L106), [storage.Store.runtime_history](../../cfd_bot/storage.py#L293), [report.render_run](../../cfd_bot/report.py#L98), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L390).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py), [test_web.py](../../tests/test_web.py).
 
@@ -391,7 +391,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 **정상 결과:** 메시지/패널 반영 → handle 반환 → serve가 offset 저장.
 **실패/취소:** 입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행.
 
-**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [ticket_run.TicketRunner.state](../../cfd_bot/ticket_run.py#L123), [ticket_run.TicketRunner._snapshot](../../cfd_bot/ticket_run.py#L21), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [storage.Store.put](../../cfd_bot/storage.py#L127), [execution.execution_case](../../cfd_bot/execution.py#L163), [storage.Store.enqueue](../../cfd_bot/storage.py#L178), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L344).
+**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [ticket_run.TicketRunner.state](../../cfd_bot/ticket_run.py#L123), [ticket_run.TicketRunner._snapshot](../../cfd_bot/ticket_run.py#L21), [processes.snapshot](../../cfd_bot/processes.py#L179), [processes.parse_snapshot](../../cfd_bot/processes.py#L140), [processes.identity](../../cfd_bot/processes.py#L22), [processes.owner_label](../../cfd_bot/processes.py#L71), [processes.cpu_layout](../../cfd_bot/processes.py#L112), [storage.Store.put](../../cfd_bot/storage.py#L127), [execution.execution_case](../../cfd_bot/execution.py#L163), [storage.Store.enqueue](../../cfd_bot/storage.py#L207), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L390).
 
 **관련 검증:** [test_ticket_run.py](../../tests/test_ticket_run.py), [test_named_queues.py](../../tests/test_named_queues.py).
 
@@ -410,7 +410,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 
 **내부 로직·비용:** 전체 큐 본문은 별도 페이지 제한 없이 순차 sendMessage한다. 마지막 조각에만 keyboard가 붙는다. [큐 내부 상세](../diagrams/D-13.svg).
 
-**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [bot.Bot.cases](../../cfd_bot/bot.py#L56), [config.cases_for](../../cfd_bot/config.py#L420), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [config.tickets_for](../../cfd_bot/config.py#L445), [run_views.running_macro_views](../../cfd_bot/run_views.py#L62), [report.queue_text](../../cfd_bot/report.py#L127), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L344).
+**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [bot.Bot.cases](../../cfd_bot/bot.py#L56), [config.cases_for](../../cfd_bot/config.py#L420), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [config.tickets_for](../../cfd_bot/config.py#L445), [run_views.running_macro_views](../../cfd_bot/run_views.py#L62), [report.queue_text](../../cfd_bot/report.py#L127), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L390).
 
 **관련 검증:** [test_run_views.py](../../tests/test_run_views.py), [test_named_queues.py](../../tests/test_named_queues.py).
 
@@ -427,7 +427,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 **정상 결과:** 메시지/패널 반영 → handle 반환 → serve가 offset 저장.
 **실패/취소:** 입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행.
 
-**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [storage.Store.put](../../cfd_bot/storage.py#L127), [bot.Bot.cases](../../cfd_bot/bot.py#L56), [config.cases_for](../../cfd_bot/config.py#L420), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [config.tickets_for](../../cfd_bot/config.py#L445), [run_views.running_macro_views](../../cfd_bot/run_views.py#L62), [report.queue_text](../../cfd_bot/report.py#L127), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L344).
+**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [storage.Store.put](../../cfd_bot/storage.py#L127), [bot.Bot.cases](../../cfd_bot/bot.py#L56), [config.cases_for](../../cfd_bot/config.py#L420), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [config.tickets_for](../../cfd_bot/config.py#L445), [run_views.running_macro_views](../../cfd_bot/run_views.py#L62), [report.queue_text](../../cfd_bot/report.py#L127), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L390).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py).
 
@@ -444,7 +444,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 **정상 결과:** 메시지/패널 반영 → handle 반환 → serve가 offset 저장.
 **실패/취소:** 입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행.
 
-**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [bot.Bot.queue_selection](../../cfd_bot/bot.py#L124), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [storage.Store.get](../../cfd_bot/storage.py#L106), [queue_control.cancel_queued_jobs](../../cfd_bot/queue_control.py#L6), [bot.Bot.show_queue_selection](../../cfd_bot/bot.py#L131), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L344).
+**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [bot.Bot.queue_selection](../../cfd_bot/bot.py#L124), [storage.Store.jobs](../../cfd_bot/storage.py#L138), [storage.Store.get](../../cfd_bot/storage.py#L106), [queue_control.cancel_queued_jobs](../../cfd_bot/queue_control.py#L6), [bot.Bot.show_queue_selection](../../cfd_bot/bot.py#L131), [bot.Bot.send](../../cfd_bot/bot.py#L70), [telegram.Telegram.send](../../cfd_bot/telegram.py#L84), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [bot.Bot._remember](../../cfd_bot/bot.py#L62), [storage.Store.remember_message](../../cfd_bot/storage.py#L390).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_web.py](../../tests/test_web.py).
 
@@ -512,7 +512,7 @@ TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까
 **정상 결과:** 메시지/패널 반영 → handle 반환 → serve가 offset 저장.
 **실패/취소:** 입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행.
 
-**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [storage.Store.chat_messages](../../cfd_bot/storage.py#L357), [telegram.Telegram.delete_messages](../../cfd_bot/telegram.py#L113), [telegram.Telegram._delete_batch](../../cfd_bot/telegram.py#L122), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [storage.Store.clear_messages](../../cfd_bot/storage.py#L368), [ticket_chat.TicketChat.forget_panels](../../cfd_bot/ticket_chat.py#L71).
+**코드 연결:** [bot.Bot.handle](../../cfd_bot/bot.py#L244), [bot.Bot.dispatch](../../cfd_bot/bot.py#L276), [storage.Store.chat_messages](../../cfd_bot/storage.py#L403), [telegram.Telegram.delete_messages](../../cfd_bot/telegram.py#L113), [telegram.Telegram._delete_batch](../../cfd_bot/telegram.py#L122), [telegram.Telegram.call](../../cfd_bot/telegram.py#L39), [storage.Store.clear_messages](../../cfd_bot/storage.py#L414), [ticket_chat.TicketChat.forget_panels](../../cfd_bot/ticket_chat.py#L71).
 
 **관련 검증:** [test_core.py](../../tests/test_core.py).
 

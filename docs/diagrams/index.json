@@ -689,11 +689,11 @@
   },
   {
     "key": "BG-01",
-    "title": "scanner managed / standalone",
+    "title": "solver·monitor CPU를 합치는 scanner",
     "platform": "Bash + Python",
     "trigger": "bin/ofps options",
-    "outcome": "managed는 stdout만; --check는 scan 뒤 check_cpu_set; --watch는 반복",
-    "error": "유효 case root 없는 후보 제외; standalone sync 실패가 CPU 검사 exit를 덮어쓰지 않음"
+    "outcome": "managed는 stdout만; --check는 monitor CPU overlap도 거절; --watch는 반복",
+    "error": "유효 case root 또는 지원하는 monitor 표식이 없는 후보 제외; standalone sync 실패가 CPU 검사 exit를 덮어쓰지 않음"
   },
   {
     "key": "BG-02",
@@ -724,7 +724,7 @@
     "title": "현재 head 기반 quota·동적 borrow admission",
     "platform": "Monitor thread",
     "trigger": "Scheduler.tick(observed)",
-    "outcome": "즉시 실행 macro도 active child가 없을 때 현재 child 하나만 admission; child NP만큼 확보; 서로 다른 queue는 겹치지 않는 CPU에서 병렬 실행",
+    "outcome": "terminal event는 job당 한 번; 즉시 실행 macro도 active child가 없을 때 현재 child 하나만 admission; 서로 다른 queue는 겹치지 않는 CPU에서 병렬 실행",
     "error": "환경/CPU 실패 queued 유지; 전체 관리 용량 초과는 대기; worker spawn OSError → failed + terminal_event"
   },
   {
@@ -732,8 +732,8 @@
     "title": "worker·solver·hooks·판정",
     "platform": "detached process",
     "trigger": "cli.main(_worker)",
-    "outcome": "다음 Scheduler.tick이 terminal_event로 outbox 접수; worker는 직접 Telegram 전송 안 함",
-    "error": "preprocess 실패 solver 시작 안 함; except → child cleanup, failed; monitor/post 오류는 별도"
+    "outcome": "다음 Scheduler.tick이 미발행 terminal만 outbox 접수; worker는 직접 Telegram 전송 안 함",
+    "error": "preprocess 실패 solver 시작 안 함; DB locked/busy는 child 유지+재시도; 그 밖의 except는 child cleanup+failed"
   },
   {
     "key": "BG-06",

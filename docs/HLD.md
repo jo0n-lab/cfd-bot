@@ -1,12 +1,12 @@
 # CFD bot High-Level Design
 
-> #20 운영 구조에 #21 이름 있는 대기열·동적 매크로, #22 `.process-core` CPU binding, #24 코어 수 기반 자동 quota를 반영했다. [#24 설계](history/2026-10-07-derived-queue-quota.md).
+> #20 운영 구조에 #21 이름 있는 대기열·동적 매크로, #22 `.process-core` CPU binding, #24 코어 수 기반 자동 quota, #25 `ofps` monitor CPU 관측, #26 SQLite lock 격리를 반영했다. [#25 설계](history/2026-10-07-ofps-monitor-cpu-observation.md) · [#26 설계](history/2026-10-07-terminal-event-db-lock.md).
 
 > #20 운영 반영, 2026-10-04 · [기준 버전·플랫폼/UC 지도](ARCHITECTURE.md) · [함수 수준 LLD](LLD.md) · [근거와 성능 실험](analysis/performance.md). 개선 제안은 8절에 별도로 표시한다.
 
 ## 1. 목적·범위·품질 요구
 
-Linux 호스트의 OpenFOAM/Basilisk 프로세스를 `ofps`로 관측하고, Telegram·Tk GUI·localhost web에서 티켓과 실행 큐를 관리한다. 티켓이 없는 외부 계산도 관측한다. solver는 이 시스템 밖에서 이미 실행 중일 수도 있고 detached worker가 시작할 수도 있다.
+Linux 호스트의 OpenFOAM/Basilisk 계산과 cfd-bot 전용 monitor 프로세스를 `ofps`로 관측하고, Telegram·Tk GUI·localhost web에서 티켓과 실행 큐를 관리한다. 티켓이 없는 외부 계산도 관측한다. solver는 이 시스템 밖에서 이미 실행 중일 수도 있고 detached worker가 시작할 수도 있다.
 
 설계 검토의 목적은 UC별 응답 지연을 설명하고, UI 응답에 필요하지 않은 작업·중복 읽기·직렬화·공유 자원 경합을 찾아 개선하는 것이다. 현재 p50/p95 운영 SLA는 정의되어 있지 않다. 45초 subprocess timeout이나 30초 SQLite busy timeout을 목표 응답 시간으로 해석하지 않는다.
 
@@ -43,6 +43,8 @@ flowchart TB
     WEB --> SCAN
     GUI --> SCAN
     BOT --> WORKER[detached worker → hooks / solver / optional monitor]
+    WORKER --> MP[표식 있는 monitor process]
+    MP -. 같은 CASE의 affinity .-> SCAN
     WORKER <--> DB
     WORKER --> CASE[case settings / logs / artifacts]
     BOT --> CASE
@@ -78,14 +80,14 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 
 | 데이터 | 진실 원천 / writer | 독자 | 일관성·주의 |
 |---|---|---|---|
-| 현재 실행 CASE | `/proc` → fresh ofps | stat/Monitor/실행 검사/web | 시점별 snapshot; DB 과거 상태가 실행 목록을 제한하지 않음 |
+| 현재 실행 CASE | `/proc` → fresh ofps | stat/Monitor/실행 검사/web | OpenFOAM/Basilisk와 표식 있는 bot monitor를 case별 병합; 시점별 snapshot |
 | 저장된 snapshot | Monitor·TicketRunner._snapshot·CLI·standalone ofps의 `kv.snapshot` | 편집 버튼·fallback | 여러 프로세스가 overwrite, 요청 간 단일 관측 시점 보장 없음 |
 | 티켓 설정 | `tickets/*.json`, TicketService/publish_macro | catalog·UI·Scheduler | 폴더 flock + 파일별 replace; revision으로 사용자 편집 충돌 검사 |
 | 티켓 queue 표시 | sync_ticket_states, request, accept_submissions | UI | 저장과 제출 분리; mode(run/queue), queue id·dynamic 여부를 보존하고 CPU 위치는 admission 때 배정 |
 | jobs | Store + Scheduler + worker | 모든 UI·Monitor | active case unique index, 상태 CAS, 즉시 요청 우선 + 이름 있는 대기열별 FIFO |
 | queue drain/fair turn | Scheduler의 SQLite kv | Scheduler | oversized 동적 head 하나의 donor drain claim, 실행 뒤 donor 대기열별 1회 우선권 |
 | 외부 observed | Monitor의 `kv.observed:<root>` | 상세·실행 guard·동기화 | 연속 소멸 확인 후 종료; scan 실패는 소멸로 간주하지 않음 |
-| outbox | Monitor/Scheduler의 Store.event | Delivery | event+recipient unique, retry/checkpoint |
+| outbox | Monitor/Scheduler의 Store.event | Delivery | 기존 event+recipient는 read 단계에서 종료; 신규 recipient만 INSERT·retry/checkpoint; Scheduler는 outbox/발행 marker가 없는 terminal job만 처리 |
 | 성공 이력 | Store.remember_run | ETA/run_views | 케이스별 최대 20개 저장, 비교 가능한 최근 5개 사용 |
 | 종료 파일 snapshot | worker/terminal_event의 state/events | Delivery | 다음 계산의 덮어쓰기와 분리 |
 | UI session | Telegram kv / GUI 메모리 / web S.draft | 해당 adapter | Telegram은 재시작 복원; GUI/web draft는 지속 저장 아님 |
@@ -100,7 +102,7 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 | `SNAPSHOT_LOCK` | Python 프로세스 내부 threading.Lock | subprocess.run만; parse는 lock 밖 | 같은 봇의 stat/Monitor/검색 순차화; web/CLI/worker와 전역 공유 안 됨. lock 대기 timeout 없음 |
 | `.tickets.lock` | 폴더별 flock, 프로세스 간 | catalog 변경 조회·cold 읽기, open/save/delete/request, 상태 파일 갱신 | 읽기도 배타 lock. 저장 검증·fsync·macro child 반복이 다른 읽기를 대기시킴 |
 | `TicketChat.lock` | TicketChat 인스턴스 RLock | handle 전체, 검색 결과 반영, render의 API 호출 포함 | 한 사용자의 느린 API 호출이 다른 session 처리·검색 결과 반영에 영향 |
-| SQLite writer | DB 파일; connect마다 timeout=30, WAL | BEGIN IMMEDIATE 또는 쓰기 transaction | 별도 연결/프로세스도 writer 경쟁. WAL이 동시 writer를 만들지는 않음 |
+| SQLite writer | DB 파일; connect마다 timeout=30, WAL | BEGIN IMMEDIATE 또는 쓰기 transaction | 별도 연결/프로세스도 writer 경쟁. live child를 가진 worker는 locked/busy를 재시도해 DB 경합으로 solver를 종료하지 않음 |
 | daemon.lock | state 디렉터리 flock NB | bot/monitor 전체 생애 | 중복 scheduler 프로세스 방지; web은 별도 lock 미사용 |
 | API 네트워크 | Telegram.call | 일반 30초, upload 90초; updates 20초 | main 요청/파일 전송 및 Delivery batch의 순차 대기 |
 | GUI/Web 조작 상태 | run_busy/scan_in_progress, S.busy/S.refreshing | 같은 UI 동작 재진입 제한 | 서버 공용 lock과 다른 개념; browser 탭 사이 scan 합치기 없음 |
@@ -117,8 +119,11 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 | UC-18 공용 실행 | fresh scan → 51-core 용량·멤버·revision 검사 → 동적 macro는 첫 child NP로 즉시 실행 판정·전체 최대 NP로 실행 가능성 검사 → mode 제출 → 응답 | Monitor 접수 → 현재 batch head NP에서 quota/CPU 자동 배정 → 독립 병렬 worker |
 | UC-02 web refresh | fresh scan+sync → live logs/ETA → 티켓별 state → jobs/macros → JSON → DOM | 다음 visible/idle 10초 polling |
 | BG-02 종료 | 연속 missing → 최신 로그·control 판정 → frozen payload → outbox | Delivery retry와 메시지/첨부 전송 |
+| BG-04 managed 종료 알림 | 미발행 terminal job 조회 → frozen payload 재사용 → outbox → 발행 marker | 다음 tick부터 outbox 또는 marker로 제외 |
 
 세부 함수·반환 계약은 [LLD](LLD.md)에 있다. 큐 등록 응답은 solver 시작/완료가 아니다. `TicketRunner.request`의 성공은 JSON 제출의 기록 완료이며 DB 큐 접수도 아직 아닐 수 있다.
+
+monitor는 worker가 전달한 case/job/monitor CPU 표식 또는 TCB `Allrun`이 전달한 `TCB_MONITORED_SOLVER_PID` 표식으로 `ofps`에 잡힌다. 후자는 외부에서 시작한 TCB 계산에도 적용된다. scanner는 유효한 `system/controlDict`와 process cwd를 확인한 뒤 `ENGINE: Monitor`로 출력한다. 같은 CASE의 solver와 monitor affinity는 `parse_snapshot`에서 합쳐지므로 `/stat`, web 현황, scheduler 및 `ofps --check`가 동일한 실제 CPU 집합을 사용한다. active job DB의 monitor 예약은 보조 상태이며 CPU 집합은 중복 합산되지 않는다.
 
 매크로의 로그·Residual·요청 데이터 pattern은 각 child case root에 적용되는 공통 상대경로다. Web 파일 선택기는 하위 케이스 검색이 끝난 뒤 첫 child를 기준으로 경로를 만들며, child가 없는 새 매크로에서는 부모 디렉터리를 대신 사용하지 않고 선택을 막는다.
 
@@ -134,6 +139,7 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 - Web은 loopback Host/Origin/Fetch-Site, POST CSRF·JSON·2 MiB body를 검사한다. 파일은 선언된 artifact 목록과 열린 descriptor를 다시 검증하며 최대 49 MiB다.
 - scanner 오류는 빈 정상 결과로 숨기지 않는다. web overview만 명시적 error와 함께 마지막 snapshot을 반환한다. Telegram stat의 timeout 예외 처리 범위는 [Telegram LLD](lld/telegram.md#uc-02)에 별도 기록했다.
 - worker가 사라져도 solver/hook identity가 살아 있으면 CPU 예약을 유지한다. 시작 grace는 60초다. pause는 새 실행 admission만 막고 실행 중 solver를 중단하지 않는다.
+- worker가 live solver·monitor·hook 상태를 저장할 때 SQLite locked/busy가 발생하면 같은 DB 쓰기를 재시도한다. 저장소 경합을 계산 실패로 판정하거나 child 종료 조건으로 사용하지 않는다.
 - 정상 종료는 stopAt와 최신 Time 수치 및 실패 증거로 판정한다. 실제 코드의 ticket end_time override 및 legacy export 첨부 예외는 [차이 목록](ARCHITECTURE.md#4-현행과-설계-원칙의-차이)에 적었다.
 - token은 환경변수로 주입하고 worker 환경에서 제거한다. 문서·계측에는 token/인증값·운영 티켓 내용을 포함하지 않는다.
 - outbox 전송 offset 저장 전 프로세스가 종료되면 이미 성공한 API 호출을 반복할 수 있다. retry는 지수 backoff 및 retry_after를 더한다.

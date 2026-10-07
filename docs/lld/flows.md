@@ -54,7 +54,7 @@
 | D-12 | [수치 기반 종료 판정](../diagrams/D-12.svg) |
 | D-13 | [큐 전체 ETA 조회 · 대량 응답 생성](../diagrams/D-13.svg) |
 | D-14 | [매크로 진행 ETA · 큐 본문과 중복 조회](../diagrams/D-14.svg) |
-| BG-01 | [scanner managed / standalone](../diagrams/BG-01.svg) |
+| BG-01 | [solver·monitor CPU를 합치는 scanner](../diagrams/BG-01.svg) |
 | BG-02 | [현재 CASE · 이전 실행/종료 확인 중 CASE 감시](../diagrams/BG-02.svg) |
 | BG-03 | [변경된 제출 티켓 접수](../diagrams/BG-03.svg) |
 | D-15 | [증분 상태 반영 · 종료 child와 부모 macro 재시도](../diagrams/D-15.svg) |

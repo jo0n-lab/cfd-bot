@@ -130,7 +130,7 @@ stableOverview는 동일 실행의 일시적으로 사라진 ETA/progress를 유
 **정상 결과:** JSON → api Promise → 해당 DOM / toast / modal 반영.
 **실패/취소:** 403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면.
 
-**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L364), [web.WebApp.get](../../cfd_bot/web.py#L211), [web.WebApp.detail](../../cfd_bot/web.py#L118), [web.WebApp.case](../../cfd_bot/web.py#L106), [logs.recent_case_log](../../cfd_bot/logs.py#L216), [bot.Bot.latest_run](../../cfd_bot/bot.py#L233), [logs.estimate](../../cfd_bot/logs.py#L226), [storage.Store.runtime_history](../../cfd_bot/storage.py#L264).
+**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L364), [web.WebApp.get](../../cfd_bot/web.py#L211), [web.WebApp.detail](../../cfd_bot/web.py#L118), [web.WebApp.case](../../cfd_bot/web.py#L106), [logs.recent_case_log](../../cfd_bot/logs.py#L216), [bot.Bot.latest_run](../../cfd_bot/bot.py#L233), [logs.estimate](../../cfd_bot/logs.py#L226), [storage.Store.runtime_history](../../cfd_bot/storage.py#L293).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py), [test_web.py](../../tests/test_web.py).
 

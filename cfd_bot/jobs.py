@@ -2,6 +2,7 @@
 import os
 import signal
 import shlex
+import sqlite3
 import subprocess
 import sys
 import time
@@ -28,6 +29,7 @@ def terminal_event(store, job, chats, ui=None):
         return
     store.remember_run(job)
     if not wants_event(job['case'], job['status']):
+        store.mark_terminal_published(job['id'])
         return
     # Attachment snapshots are taken before the next FIFO job is admitted.
     payload = store.get('event:' + job['id'])
@@ -37,6 +39,7 @@ def terminal_event(store, job, chats, ui=None):
         payload = dict(kind='terminal', run=job, files=files, notes=notes)
         store.put('event:' + job['id'], payload)
     store.event(job['id'] + ':terminal', chats, payload)
+    store.mark_terminal_published(job['id'])
 
 
 def scheduling_candidates(jobs, active=()):
@@ -214,7 +217,7 @@ class Scheduler:
 
     def tick(self, observed):
         self.recover()
-        for job in self.store.jobs(('succeeded', 'failed', 'interrupted')):
+        for job in self.store.unpublished_terminal_jobs():
             terminal_event(self.store, job, self.config['telegram']['chat_ids'], self.ui)
         active = self.store.jobs(LIVE)
         if not self.config['scheduler']['enabled'] or self.store.get('queue_paused', False):
@@ -406,6 +409,18 @@ class Scheduler:
                 terminal_event(self.store, failed, self.config['telegram']['chat_ids'], self.ui)
 
 
+def _retry_locked(operation, *args, **kwargs):
+    """Keep a live child running while a transient SQLite writer lock clears."""
+    while True:
+        try:
+            return operation(*args, **kwargs)
+        except sqlite3.OperationalError as exc:
+            message = str(exc).lower()
+            if 'locked' not in message and 'busy' not in message:
+                raise
+            time.sleep(0.5)
+
+
 def run_hook(command, root, timeout, output, *, env=None, label=None, on_start=None, ui=None):
     ui = ui or load_ui()
     label = label or ui.text('scenarios.jobs.postprocess')
@@ -450,14 +465,16 @@ def run_case_hooks(case, stage, store, jid, folder, env):
                 run_hook(['taskset', '-c', case['cpu_set']] + command, case['_root'],
                          hook['timeout_seconds'], output, env=env, label=label,
                          ui=ui,
-                         on_start=lambda child: store.update_job(
-                             jid, expected=LIVE, hook_pid=child.pid, hook_identity=identity(child.pid)))
+                         on_start=lambda child: _retry_locked(
+                             store.update_job, jid, expected=LIVE,
+                             hook_pid=child.pid, hook_identity=identity(child.pid)))
             except (OSError, RuntimeError) as exc:
                 if stage == 'preprocess':
                     raise
                 errors.append(str(exc))
             finally:
-                store.update_job(jid, expected=LIVE, hook_pid=None, hook_identity=None)
+                _retry_locked(store.update_job, jid, expected=LIVE,
+                              hook_pid=None, hook_identity=None)
     return errors
 
 
@@ -518,14 +535,14 @@ def worker(state_dir, jid):
         runner_log = folder / 'command.log'
         telemetry = None
         wrapper_telemetry = None
-        store.update_job(jid, expected=('running',), phase='solver')
+        _retry_locked(store.update_job, jid, expected=('running',), phase='solver')
         with runner_log.open('wb') as output:
             # Inherited affinity also constrains programs launched by Allrun.
             command = ['taskset', '-c', case['cpu_set']] + case['command']
             solver = subprocess.Popen(command, cwd=case['_root'], env=env, stdin=subprocess.DEVNULL,
                                       stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
-            store.update_job(jid, expected=('running',), solver_pid=solver.pid,
-                             solver_identity=identity(solver.pid))
+            _retry_locked(store.update_job, jid, expected=('running',),
+                          solver_pid=solver.pid, solver_identity=identity(solver.pid))
             monitoring = case.get('monitoring')
             monitor_ended_early = False
             if monitoring:
@@ -540,17 +557,18 @@ def worker(state_dir, jid):
                     monitor_command, cwd=case['_root'], env=monitor_env,
                     stdin=subprocess.DEVNULL, stdout=monitor_output,
                     stderr=subprocess.STDOUT, start_new_session=True)
-                store.update_job(jid, expected=('running',), monitor_pid=monitor.pid,
-                                 monitor_identity=identity(monitor.pid),
-                                 monitor_cpu=case['monitor_cpu'])
+                _retry_locked(store.update_job, jid, expected=('running',),
+                              monitor_pid=monitor.pid, monitor_identity=identity(monitor.pid),
+                              monitor_cpu=case['monitor_cpu'])
             if wants_event(case, 'started'):
                 notice = ('scenarios.notifications.queue_started_monitor'
                           if monitoring else 'scenarios.notifications.queue_started')
-                store.event(jid + ':start', job.get('notification_chats', []),
-                            dict(kind='text', text=ui.text(
-                                notice, case_name=case['name'], cores=case['cores'],
-                                cpu_list=case['cpu_set'], monitor_cpu=case.get('monitor_cpu', ''),
-                                job_id=jid)))
+                _retry_locked(
+                    store.event, jid + ':start', job.get('notification_chats', []),
+                    dict(kind='text', text=ui.text(
+                        notice, case_name=case['name'], cores=case['cores'],
+                        cpu_list=case['cpu_set'], monitor_cpu=case.get('monitor_cpu', ''),
+                        job_id=jid)))
             while True:
                 rc = solver.poll()
                 wrapper_telemetry = read_log(runner_log, wrapper_telemetry,
@@ -566,7 +584,8 @@ def worker(state_dir, jid):
                     current, log_path = telemetry, str(configured_log)
                 else:
                     current, log_path = wrapper_telemetry, str(runner_log)
-                store.update_job(jid, expected=('running',), telemetry=current, log_path=log_path)
+                _retry_locked(store.update_job, jid, expected=('running',),
+                              telemetry=current, log_path=log_path)
                 if rc is not None:
                     break
                 if monitor is not None and monitor.poll() is not None:
@@ -588,8 +607,9 @@ def worker(state_dir, jid):
                 monitor_errors.append(ui.text(
                     'scenarios.jobs.hook_exit', label=ui.text('scenarios.jobs.monitor'),
                     code=monitor_rc, command=shlex.join(monitoring['command'])))
-            store.update_job(jid, expected=('running',), monitor_returncode=monitor_rc,
-                             monitor_finished=time.time(), monitor_errors=monitor_errors)
+            _retry_locked(store.update_job, jid, expected=('running',),
+                          monitor_returncode=monitor_rc, monitor_finished=time.time(),
+                          monitor_errors=monitor_errors)
             monitor_output.close()
             monitor_output = None
         current = finish_log(log_path, current, watcher=watcher)
@@ -598,30 +618,34 @@ def worker(state_dir, jid):
         errors = current.get('errors', []) + wrapper_telemetry.get('errors', [])
         current['errors'] = list(dict.fromkeys(errors))[-12:]
         status, reason = decide(case, current, now, returncode=rc)
-        store.update_job(jid, expected=('running',), telemetry=current, returncode=rc, solver_finished=time.time())
+        _retry_locked(store.update_job, jid, expected=('running',), telemetry=current,
+                      returncode=rc, solver_finished=time.time())
         post_errors = []
         if status == 'succeeded' and case['postprocess']:
-            store.update_job(jid, expected=('running',), status='postprocessing', phase='postprocess')
+            _retry_locked(store.update_job, jid, expected=('running',),
+                          status='postprocessing', phase='postprocess')
             post_errors = run_case_hooks(case, 'postprocess', store, jid, folder, env)
         # Freeze files before publishing the terminal state (which releases queue slots).
         files, notes = freeze_exports(case, store.root / 'events' / jid, now,
                                       status)
-        job = store.job(jid)
+        job = _retry_locked(store.job, jid)
         job.update(status=status, finished=time.time(), reason=reason, telemetry=current,
                    postprocess_errors=post_errors, monitor_errors=monitor_errors,
                    monitor_returncode=monitor_rc, returncode=rc)
-        store.put('event:' + jid, dict(kind='terminal', run=job, files=files, notes=notes))
-        store.update_job(jid, expected=LIVE, status=status, finished=job['finished'], reason=reason,
-                         telemetry=current, postprocess_errors=post_errors,
-                         monitor_errors=monitor_errors, monitor_returncode=monitor_rc,
-                         returncode=rc)
-        store.remember_run(job)
+        _retry_locked(store.put, 'event:' + jid,
+                      dict(kind='terminal', run=job, files=files, notes=notes))
+        _retry_locked(store.update_job, jid, expected=LIVE, status=status,
+                      finished=job['finished'], reason=reason, telemetry=current,
+                      postprocess_errors=post_errors, monitor_errors=monitor_errors,
+                      monitor_returncode=monitor_rc, returncode=rc)
+        _retry_locked(store.remember_run, job)
         return 0 if status == 'succeeded' else 1
     except Exception as exc:
         _stop_child(solver)
         _stop_child(monitor)
         if monitor_output is not None:
             monitor_output.close()
-        store.update_job(jid, expected=LIVE, status='failed', finished=time.time(),
-                         reason=ui.text('scenarios.jobs.worker_error', error=exc))
+        _retry_locked(store.update_job, jid, expected=LIVE, status='failed',
+                      finished=time.time(),
+                      reason=ui.text('scenarios.jobs.worker_error', error=exc))
         return 1

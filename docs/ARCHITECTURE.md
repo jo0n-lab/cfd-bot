@@ -1,6 +1,6 @@
 # CFD bot 아키텍처 — 유즈케이스와 플랫폼 지도
 
-> #20 공용 티켓 색인·증분 감시, #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota와 현재 head admission을 반영한다. [#24 quota 설계](history/2026-10-07-derived-queue-quota.md) · [#24 head admission 보완](history/2026-10-07-dynamic-macro-head-admission.md) · [GitHub #24](https://github.com/jo0n-lab/cfd-bot/issues/24).
+> #20 공용 티켓 색인·증분 감시, #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota와 현재 head admission, #25 `ofps` monitor CPU 관측, #26 SQLite lock 격리를 반영한다. [#25 설계](history/2026-10-07-ofps-monitor-cpu-observation.md) · [#26 설계](history/2026-10-07-terminal-event-db-lock.md).
 
 ## 1. 문서 탐색
 
@@ -61,11 +61,11 @@
 
 | ID | 트리거 | 호출 경로 | 사용자가 보는 결과 | 명세 |
 |---|---|---|---|---|
-| BG-01 프로세스 snapshot | `/stat`, Monitor, web fresh, 실행 전 검사, ofps | `processes.snapshot → bin/ofps → parse_snapshot` | 현재 CASE·소유자·CPU | [scan](lld/runtime.md#bg-01) |
+| BG-01 프로세스 snapshot | `/stat`, Monitor, web fresh, 실행 전 검사, ofps | `processes.snapshot → bin/ofps → parse_snapshot`; 같은 CASE의 solver·표식 monitor affinity 병합 | 현재 CASE·소유자·실제 전체 CPU | [scan](lld/runtime.md#bg-01) |
 | BG-02 외부 계산 감시 | Monitor 주기 | `Monitor.run_once → tick → observe → decide → terminal_event` | 시작/종료 알림·저장된 상태 | [monitor](lld/runtime.md#bg-02) |
 | BG-03 JSON 제출 접수·동기화 | Monitor tick | `accept_submissions → Store.enqueue_batch`; `sync_ticket_states` | 기다리는 티켓이 DB 큐에 반영 | [접수](lld/runtime.md#bg-03) |
-| BG-04 CPU 검사·병렬 시작 | Monitor 안의 Scheduler | `Scheduler.tick → scheduling_candidates(batch별 현재 head) → queue_heads → borrowing_plan/drain/fair turn → allocate_cpus/check_cpus → Popen` | queued 이유 또는 서로 다른 queue의 복수 starting | [scheduler](lld/runtime.md#bg-04) |
-| BG-05 계산·후처리·판정 | detached worker | `worker → .process-core → Allrun(cpu-list:ordered, ODLS spawn 1) → hooks → decide → freeze_exports` | 진행·최종 상태 | [worker](lld/runtime.md#bg-05) |
+| BG-04 CPU 검사·병렬 시작 | Monitor 안의 Scheduler | `Scheduler.tick → unpublished terminal event → scheduling_candidates(batch별 현재 head) → queue_heads → borrowing_plan/drain/fair turn → allocate_cpus/check_cpus → Popen` | 종료 알림 1회 또는 queued 이유·서로 다른 queue의 복수 starting | [scheduler](lld/runtime.md#bg-04) |
+| BG-05 계산·후처리·판정 | detached worker | `worker → .process-core → Allrun(cpu-list:ordered, ODLS spawn 1) → hooks → lock 재시도 → decide → freeze_exports` | DB 경합 중 계산 유지·진행·최종 상태 | [worker](lld/runtime.md#bg-05) |
 | BG-06 알림 전달·재시도 | delivery loop | `deliver → Store.pending → Telegram.send/file → save_delivery` | 요약·첨부 | [delivery](lld/runtime.md#bg-06) |
 | BG-07 복구 | Monitor/Scheduler tick·서비스 재시작 | `Scheduler.recover`, 저장된 session/offset/outbox 복원 | 중복 제출 억제·작업 추적 지속 | [recovery](lld/runtime.md#bg-07) |
 

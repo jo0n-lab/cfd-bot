@@ -31,7 +31,8 @@ Usage: ofps [--watch [SECONDS]]
        ofps --check CPU_SET [--allow-cross-socket]
        ofps --status | --json | --queue | --enqueue CASE | --bot
 
-Show active OpenFOAM and TCB Basilisk applications grouped by engine and case.
+Show active OpenFOAM, TCB Basilisk, and cfd-bot monitor processes grouped by
+engine and case.
 For OpenMP applications, CPU_COUNT/CPU_LIST are the union of every thread's
 affinity rather than only the main thread's mask. SOCKETS and NUMA are derived
 from that union. When an Allrun/Allrun.solve or run_case.py supervisor exists,
@@ -278,6 +279,46 @@ basilisk_case_from_process()
     printf '%s [Basilisk case not found]\n' "$start"
 }
 
+monitor_case_from_process()
+{
+    local proc=$1 cwd=$2 entry case_dir="" job_id="" monitor_cpu=""
+    local monitored_solver_pid="" candidate resolved derive_from_cwd=false
+    [[ -r $proc/environ ]] || return 1
+
+    while IFS= read -r -d '' entry; do
+        case "$entry" in
+            CFD_BOT_CASE_DIR=*) case_dir=${entry#CFD_BOT_CASE_DIR=} ;;
+            CFD_BOT_JOB_ID=*) job_id=${entry#CFD_BOT_JOB_ID=} ;;
+            CFD_BOT_MONITOR_CPU=*) monitor_cpu=${entry#CFD_BOT_MONITOR_CPU=} ;;
+            TCB_MONITORED_SOLVER_PID=*)
+                monitored_solver_pid=${entry#TCB_MONITORED_SOLVER_PID=}
+                ;;
+        esac
+    done < "$proc/environ"
+
+    if [[ -n $case_dir && -n $job_id && -n $monitor_cpu ]]; then
+        [[ $monitor_cpu =~ ^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$ ]] || return 1
+        candidate=$case_dir
+    elif [[ $monitored_solver_pid =~ ^[0-9]+$ ]]; then
+        candidate=${case_dir:-$cwd}
+        [[ -n $case_dir ]] || derive_from_cwd=true
+    else
+        return 1
+    fi
+    resolved=$(readlink -f -- "$candidate" 2>/dev/null) || return 1
+    if [[ ! -f $resolved/system/controlDict ]]; then
+        $derive_from_cwd || return 1
+        resolved=$(openfoam_case_from_process "$cwd")
+        [[ $resolved != *' [controlDict not found]' ]] || return 1
+    fi
+    [[ -f $resolved/system/controlDict ]] || return 1
+    case "${cwd%/}/" in
+        "${resolved%/}/"*) ;;
+        *) return 1 ;;
+    esac
+    printf '%s\n' "$resolved"
+}
+
 supervisor_identity()
 {
     local cwd=$1
@@ -418,6 +459,8 @@ scan_once()
             engine=Basilisk
             case_dir=$(basilisk_case_from_process "$executable")
             [[ $case_dir != *' [Basilisk case not found]' ]] || continue
+        elif case_dir=$(monitor_case_from_process "$proc" "$cwd" 2>/dev/null); then
+            engine=Monitor
         else
             continue
         fi
@@ -441,7 +484,11 @@ scan_once()
         [[ -n $elapsed ]] || elapsed=?
 
         role=serial
-        if [[ $threads != "?" ]] && (( threads > 1 )); then role=OpenMP; fi
+        if [[ $engine == Monitor ]]; then
+            role=monitor
+        elif [[ $threads != "?" ]] && (( threads > 1 )); then
+            role=OpenMP
+        fi
         if [[ $engine == OpenFOAM ]]; then
             for argument in "${argv[@]}"; do
                 if [[ $argument == -parallel ]]; then role=MPI; break; fi
@@ -459,7 +506,7 @@ scan_once()
     done
 
     if [[ ! -s $output_file && ! -s $supervisors_file ]]; then
-        printf 'No active OpenFOAM or TCB Basilisk application processes found.\n'
+        printf 'No active OpenFOAM, TCB Basilisk, or cfd-bot monitor processes found.\n'
         return
     fi
 

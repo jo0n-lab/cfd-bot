@@ -4,6 +4,8 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-10-07 | [종료 이벤트 재처리로 인한 SQLite lock 제거](2026-10-07-terminal-event-db-lock.md) | [#26](https://github.com/jo0n-lab/cfd-bot/issues/26) |
+| 2026-10-07 | [`ofps`의 전용 모니터링 CPU 관측](2026-10-07-ofps-monitor-cpu-observation.md) | [#25](https://github.com/jo0n-lab/cfd-bot/issues/25) |
 | 2026-10-07 | [동적 매크로의 현재 head 기준 실행 판정](2026-10-07-dynamic-macro-head-admission.md) | [#24](https://github.com/jo0n-lab/cfd-bot/issues/24) 재오픈 |
 | 2026-10-07 | [케이스 코어 수에서 대기열 quota 파생](2026-10-07-derived-queue-quota.md) | [#24](https://github.com/jo0n-lab/cfd-bot/issues/24) |
 | 2026-10-07 | [매크로 파일 선택기의 부모 경로 fallback 차단](2026-10-07-macro-export-relative-path.md) | [#23](https://github.com/jo0n-lab/cfd-bot/issues/23) |

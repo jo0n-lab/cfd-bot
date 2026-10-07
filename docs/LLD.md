@@ -1,6 +1,6 @@
 # CFD bot Low-Level Design — 함수 요청·응답 시퀀스
 
-> #20 운영 구조와 #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota를 반영했다. [#24 변경 이력](history/2026-10-07-derived-queue-quota.md).
+> #20 운영 구조와 #21 이름 있는 대기열·동적 매크로, #24 코어 수 기반 자동 quota, #25 `ofps` monitor CPU 관측, #26 terminal outbox 1회 처리를 반영했다. [#25 변경 이력](history/2026-10-07-ofps-monitor-cpu-observation.md) · [#26 변경 이력](history/2026-10-07-terminal-event-db-lock.md).
 
 > 2026-10-04 현행 코드 기준. [기준 버전·유즈케이스 지도](ARCHITECTURE.md) · [HLD](HLD.md) · [실측과 병목 후보](analysis/performance.md). 사용자 요청에 따라 **호출 주체를 가로로 배치한 시퀀스 다이어그램**을 중심으로 구성한다.
 
@@ -31,10 +31,10 @@
 | FormValues | `_source: dict`, 입력용 문자열·bool·list; `queue_id`, `dynamic_cores`, macro row별 `cores` | form_values ↔ form_document |
 | Draft | `values, filename, current: str|None, revision: str|None, dirty: bool` | TicketService.new/open/duplicate → adapter |
 | Snapshot | `raw: str`, `cases: dict[root, ProcessRecord]`; caller가 `at: float` 부여 | processes.snapshot; 저장 여부는 caller별로 다름 |
-| ProcessRecord | `root, engines[], processes[], supervisors[], owner, actual_cores, actual_cpu_list` | parse_snapshot → UI/Monitor/CPU admission |
+| ProcessRecord | `root, engines[OpenFOAM|Basilisk|Monitor], processes[], supervisors[], owner, actual_cores, actual_cpu_list`; 같은 root의 solver·monitor affinity 합집합 | parse_snapshot → UI/Monitor/CPU admission |
 | RunState | `state`, `run_enabled`, `queue_enabled`, `capacity/used/free/required`, `queue_id/queue_quota/queue_required/queue_max_required/queue_dynamic`, `availability_message` | TicketRunner.state/_state → 세 UI 실행·큐 버튼; 동적 macro의 required는 현재 head, max는 전체 설정 검사 |
 | RunResult | `already_queued: bool`, `request_id: str|None`, 신규 수락 시 `count: int`, queue mode이면 저장된 profile 사용 | TicketRunner.request → UI; 아직 DB job이 아닐 수 있음 |
-| Job | `id, case_root, status, created, case, telemetry`, `queue_id, dynamic_cores`, admission 뒤 `queue_cpu_set`, optional `borrowed_queues, batch, started, finished, phase, *_pid, *_identity` | Store ↔ Scheduler/worker |
+| Job | `id, case_root, status, created, case, telemetry`, `queue_id, dynamic_cores`, admission 뒤 `queue_cpu_set`, optional `borrowed_queues, batch, started, finished, phase, *_pid, *_identity, terminal_event_published` | Store ↔ Scheduler/worker |
 | Observed | Job 유사 + `external=True, missing:int, log_path, owner/CPU` | Monitor.observe → kv |
 | Telemetry | `time, execution, clock, rate_samples, errors, tail`, `inode, offset, backlog, missing, log_path` 등 | logs.read_log/recent_case_log |
 | Estimate | `remaining_seconds:number|None, progress:number|None, basis:str`, optional target/expected_seconds | logs.estimate → report/run_views/web |
@@ -236,11 +236,15 @@ pause/resume은 `Store.put('queue_paused', bool)`이며 Telegram/web/CLI에 존�
 | get/get_many | JSON 값 또는 기본값; get_many는 한 연결에서 500개씩 조회 |
 | enqueue/enqueue_batch | BEGIN IMMEDIATE, active case unique; request key 멱등, Job/Job[] |
 | update_job | BEGIN IMMEDIATE, expected 상태 불일치 None; 성공 Job |
-| event | INSERT OR IGNORE `(event_key,chat_id)`; None |
+| unpublished_terminal_jobs | succeeded/failed/interrupted 중 발행 marker와 기존 terminal outbox가 모두 없는 Job[] |
+| mark_terminal_published | managed terminal job body에 발행 완료 marker 저장; external/synthetic run은 False |
+| event | 기존 `(event_key,chat_id)`를 먼저 조회; 없는 recipient만 writer lock 아래 재확인 후 INSERT; None |
 | pending | 미전송·next_attempt 도래 최대 10개, id 순서 |
 | retry | attempts 증가, next_attempt=now+retry_after+지수 backoff(최대 300초) |
 | remember_run/runtime_history | root별 최대 20개 저장; 실행 profile/CPU가 맞는 최근 5개 반환 |
 
 테이블은 jobs, kv, outbox, chat_messages, run_history다. kv 주요 키는 snapshot, monitor_error, observed:root, auto_observed_roots, telegram_offset, queue_paused, queue_drain_claim, queue_fair_turns, outage_id, event:run-id, ticket-editor:chat:user, queue-selection:chat:user, enqueue:request다. DB state와 ticket queue는 별도 상태 계층이다.
+
+Scheduler는 `unpublished_terminal_jobs` 결과만 `terminal_event`로 넘긴다. 이미 outbox가 있는 legacy job은 migration 없이 제외되고, 알림 대상이 아니거나 outbox 저장이 끝난 managed job은 `terminal_event_published=true`가 된다. `Store.event`는 기존 event/recipient만 있으면 쓰기 transaction을 열지 않으므로 반복 start 복구와 external 감시도 `AUTOINCREMENT`를 소비하지 않는다. worker의 solver·monitor·hook 실행 이후 Store 쓰기는 SQLite `locked` 또는 `busy`만 재시도한다. 그동안 child는 계속 실행되며 다른 DB 오류는 기존 오류 경로로 전파된다.
 
 함수 예외의 UI 변환은 각 플랫폼 LLD에 명시했다. 실제 테스트 실행 결과, SVG 렌더링과 링크/함수 검증은 [validation](analysis/validation.md)에 있다. 운영 Telegram/API latency와 실제 OpenFOAM 계산은 이번 문서 검증에 사용하지 않았다.
