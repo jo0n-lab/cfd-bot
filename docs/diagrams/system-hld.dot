@@ -1,5 +1,5 @@
 digraph system {
- graph [rankdir=LR,bgcolor="white",pad=0.3,nodesep=0.45,ranksep=0.8,fontname="Noto Sans CJK KR",fontsize=24,label="CFD bot HLD · 안전한 managed 작업 중단 (#27)",labelloc=t];
+ graph [rankdir=LR,bgcolor="white",pad=0.3,nodesep=0.45,ranksep=0.8,fontname="Noto Sans CJK KR",fontsize=24,label="CFD bot HLD · 계산 감시와 실행 제어 (#28)",labelloc=t];
  node [shape=box,style="rounded,filled",fillcolor="#eff6ff",color="#93c5fd",fontname="Noto Sans CJK KR",fontsize=16,margin="0.18,0.12"];
  edge [fontname="Noto Sans CJK KR",fontsize=13,color="#475569"];
  tg [label="Telegram 사용자 / Bot API",fillcolor="#dcfce7"];
@@ -10,7 +10,7 @@ digraph system {
  subgraph cluster_bot {
   label="cfd-bot.service · Python process";color="#94a3b8";style=rounded;
   main [label="Main thread\nserve → Bot.handle → dispatch\n요청과 일반 전송 순차 처리"];
-  mon [label="Monitor thread\n관측 → 접수 → 미발행 종료 이벤트\n→ queue별 Scheduler → sync"];
+  mon [label="Monitor thread\nmonitor-only 신규 실행 제외\n미발행 종료 → Scheduler → sync"];
   delivery [label="Delivery thread\noutbox 순차 전송 / checkpoint"];
   ack [label="callback ACK / 검색 workers"];
  }

@@ -1,5 +1,5 @@
 {
-  "head": "ebf494f2f916de84889b6c2e84641167f40839b3",
+  "head": "f703e5a2b0654c7d7a6df4ac8d838cbb80a96e5c",
   "date": "2026-10-07",
   "working_tree": true,
   "sha256": {
@@ -17,7 +17,7 @@
     "cfd_bot/gui.py": "94d8826a87d4bc249ca72b60601e57bd3f4fac66692b3b2d4317178e82ffc33c",
     "cfd_bot/jobs.py": "7ccf4ddafe2eba97a84b257c99672c0ac511af07b43893900487f474452bc4a0",
     "cfd_bot/logs.py": "a228d12e61e966c963bfedb44e17b2889bb9bffb411918ea3f1e15f2fedaf534",
-    "cfd_bot/monitor.py": "46774515bc06f70ff5349de1ad6e14c9e1d9fb961d37a1b42de86471e2f8a227",
+    "cfd_bot/monitor.py": "cede9318f70a97d2ad4e124afd1efeb96e584ab29a8c487b706e16af89f0d846",
     "cfd_bot/outcomes.py": "d978dc8002d966ffa3ddaa0b76b2f3cb6f26b59aa81b890fd876fe204b31e96c",
     "cfd_bot/patterns.py": "019e3e40ae4451af3a4697a113b811ce60005af14caa404c94df83eeece24eb9",
     "cfd_bot/processes.py": "7a33af94f35957e629bb9a8b448bd42ccaab664fa521338319257164b85c2c4d",

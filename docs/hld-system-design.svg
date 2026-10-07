@@ -9,7 +9,7 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(21.6 1140.18)">
 <title>system</title>
 <polygon fill="white" stroke="transparent" points="-21.6,21.6 -21.6,-1140.18 2171.6,-1140.18 2171.6,21.6 -21.6,21.6"/>
-<text text-anchor="middle" x="1075" y="-1095.38" font-family="Noto Sans CJK KR" font-size="24.00">CFD bot HLD · 안전한 managed 작업 중단 (#27)</text>
+<text text-anchor="middle" x="1075" y="-1095.38" font-family="Noto Sans CJK KR" font-size="24.00">CFD bot HLD · 계산 감시와 실행 제어 (#28)</text>
 <g id="clust1" class="cluster">
 <title>cluster_bot</title>
 <path fill="white" stroke="#94a3b8" d="M706.5,-764.58C706.5,-764.58 1502,-764.58 1502,-764.58 1508,-764.58 1514,-770.58 1514,-776.58 1514,-776.58 1514,-1064.58 1514,-1064.58 1514,-1070.58 1508,-1076.58 1502,-1076.58 1502,-1076.58 706.5,-1076.58 706.5,-1076.58 700.5,-1076.58 694.5,-1070.58 694.5,-1064.58 694.5,-1064.58 694.5,-776.58 694.5,-776.58 694.5,-770.58 700.5,-764.58 706.5,-764.58"/>
@@ -191,8 +191,8 @@
 <title>mon</title>
 <path fill="#eff6ff" stroke="#93c5fd" d="M951.5,-844.58C951.5,-844.58 714.5,-844.58 714.5,-844.58 708.5,-844.58 702.5,-838.58 702.5,-832.58 702.5,-832.58 702.5,-784.58 702.5,-784.58 702.5,-778.58 708.5,-772.58 714.5,-772.58 714.5,-772.58 951.5,-772.58 951.5,-772.58 957.5,-772.58 963.5,-778.58 963.5,-784.58 963.5,-784.58 963.5,-832.58 963.5,-832.58 963.5,-838.58 957.5,-844.58 951.5,-844.58"/>
 <text text-anchor="middle" x="833" y="-822.78" font-family="Noto Sans CJK KR" font-size="16.00">Monitor thread</text>
-<text text-anchor="middle" x="833" y="-804.78" font-family="Noto Sans CJK KR" font-size="16.00">관측 → 접수 → 미발행 종료 이벤트</text>
-<text text-anchor="middle" x="833" y="-786.78" font-family="Noto Sans CJK KR" font-size="16.00">→ queue별 Scheduler → sync</text>
+<text text-anchor="middle" x="833" y="-804.78" font-family="Noto Sans CJK KR" font-size="16.00">monitor&#45;only 신규 실행 제외</text>
+<text text-anchor="middle" x="833" y="-786.78" font-family="Noto Sans CJK KR" font-size="16.00">미발행 종료 → Scheduler → sync</text>
 </g>
 <!-- mon&#45;&gt;scan -->
 <g id="edge6" class="edge">

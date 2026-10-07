@@ -4,6 +4,7 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-10-07 | [monitor 잔류로 인한 중복 종료 알림 제거](2026-10-07-monitor-tail-duplicate-notifications.md) | [#28](https://github.com/jo0n-lab/cfd-bot/issues/28) |
 | 2026-10-07 | [실행 중인 managed 계산 중단](2026-10-07-running-job-interruption.md) | [#27](https://github.com/jo0n-lab/cfd-bot/issues/27) |
 | 2026-10-07 | [종료 이벤트 재처리로 인한 SQLite lock 제거](2026-10-07-terminal-event-db-lock.md) | [#26](https://github.com/jo0n-lab/cfd-bot/issues/26) |
 | 2026-10-07 | [`ofps`의 전용 모니터링 CPU 관측](2026-10-07-ofps-monitor-cpu-observation.md) | [#25](https://github.com/jo0n-lab/cfd-bot/issues/25) |

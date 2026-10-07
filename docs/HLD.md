@@ -6,6 +6,10 @@
 
 ## 1. 목적·범위·품질 요구
 
+#28은 계산 종료 뒤 남은 monitor가 외부 계산으로 재등록되는 중복 알림을 수정한다.
+현황·CPU 점유에는 전체 snapshot을 쓰고 계산 생명주기에는 solver/계산 wrapper를 쓴다.
+[원인·As-Is/To-Be](history/2026-10-07-monitor-tail-duplicate-notifications.md).
+
 Linux 호스트의 OpenFOAM/Basilisk 계산과 cfd-bot 전용 monitor 프로세스를 `ofps`로 관측하고, Telegram·Tk GUI·localhost web에서 티켓과 실행 큐를 관리한다. 티켓이 없는 외부 계산도 관측한다. solver는 이 시스템 밖에서 이미 실행 중일 수도 있고 detached worker가 시작할 수도 있다.
 
 설계 검토의 목적은 UC별 응답 지연을 설명하고, UI 응답에 필요하지 않은 작업·중복 읽기·직렬화·공유 자원 경합을 찾아 개선하는 것이다. 현재 p50/p95 운영 SLA는 정의되어 있지 않다. 45초 subprocess timeout이나 30초 SQLite busy timeout을 목표 응답 시간으로 해석하지 않는다.
@@ -91,7 +95,7 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 | 티켓 queue 표시 | sync_ticket_states, request, accept_submissions | UI | 저장과 제출 분리; mode(run/queue), queue id·dynamic 여부를 보존하고 CPU 위치는 admission 때 배정 |
 | jobs | Store + Scheduler + worker | 모든 UI·Monitor | `stopping` 포함 active case unique index, 상태 CAS, 즉시 요청 우선 + 이름 있는 대기열별 FIFO |
 | queue drain/fair turn | Scheduler의 SQLite kv | Scheduler | oversized 동적 head 하나의 donor drain claim, 실행 뒤 donor 대기열별 1회 우선권 |
-| 외부 observed | Monitor의 `kv.observed:<root>` | 상세·실행 guard·동기화 | 연속 소멸 확인 후 종료; scan 실패는 소멸로 간주하지 않음 |
+| 외부 observed | Monitor의 `kv.observed:<root>` | 상세·실행 guard·동기화 | monitor-only는 새 실행이 아님; 계산 소멸 연속 확인 후 종료; scan 실패는 소멸로 간주하지 않음 |
 | outbox | Monitor/Scheduler의 Store.event | Delivery | 기존 event+recipient는 read 단계에서 종료; 신규 recipient만 INSERT·retry/checkpoint; Scheduler는 outbox/발행 marker가 없는 terminal job만 처리 |
 | 성공 이력 | Store.remember_run | ETA/run_views | 케이스별 최대 20개 저장, 비교 가능한 최근 5개 사용 |
 | 종료 파일 snapshot | worker/terminal_event의 state/events | Delivery | 다음 계산의 덮어쓰기와 분리 |

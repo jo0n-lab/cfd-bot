@@ -724,8 +724,8 @@
     "title": "현재 CASE · 이전 실행/종료 확인 중 CASE 감시",
     "platform": "Monitor thread",
     "trigger": "run_once 완료 후 poll_seconds 대기",
-    "outcome": "종료 확정·outbox 완료 대상은 다음 tick 감시에서 제외; 새 실행 identity 구분",
-    "error": "scan 실패는 missing 증가 없음; state/outbox 사이 실패는 persisted tracking으로 재시도"
+    "outcome": "monitor-only 신규 실행 없음; 기존 계산은 missing 확인 후 종료; 원본 snapshot의 monitor CPU 점유 유지",
+    "error": "scan 실패는 missing 증가 없음; scan 중 managed 완료도 재등록 방지; state/outbox 실패는 tracking으로 재시도"
   },
   {
     "key": "BG-03",

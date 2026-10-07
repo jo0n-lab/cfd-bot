@@ -1,6 +1,6 @@
 # 함수·호출식 소스 색인
 
-기준 HEAD `ebf494f2f916de84889b6c2e84641167f40839b3` + 2026-10-07 작업 트리. 실제 검토 파일 SHA-256은 [source-manifest.json](source-manifest.json)에 기록했다.
+기준 HEAD `f703e5a2b0654c7d7a6df4ac8d838cbb80a96e5c` + 2026-10-07 작업 트리. 실제 검토 파일 SHA-256은 [source-manifest.json](source-manifest.json)에 기록했다.
 
 이 색인은 코드 AST의 정의·시그니처·호출식을 추출한다. `self.*` 등은 원문 그대로이며 동적 dispatch를 모두 해석한 call graph가 아니다. 사용자 요청/반환 및 순서는 [유즈케이스 그림](../lld/flows.md)과 [LLD](../LLD.md)를 기준으로 읽는다. nested function은 부모 이름으로 구분한다.
 
@@ -263,13 +263,14 @@
 | [monitor.process_started](../../cfd_bot/monitor.py#L16) | `pid` | `Path(f'/proc/{pid}/stat').read_text`, `Path`, `float`, `stat[stat.rfind(')') + 2:].split`, `stat.rfind`, `Path('/proc/uptime').read_text().split`, `Path('/proc/uptime').read_text`, `time.time`, `os.sysconf` |
 | [monitor.observed_text](../../cfd_bot/monitor.py#L26) | `record, ui=None` | `load_ui`, `record.get`, `sorted`, `ui.text`, `len`, `','.join` |
 | [monitor.observation](../../cfd_bot/monitor.py#L35) | `record, previous=None, ui=None` | `load_ui`, `record.get`, `dict`, `observed_text`, `previous.get`, `ui.text` |
-| [monitor.observed_identity](../../cfd_bot/monitor.py#L50) | `record` | `sorted`, `p.get`, `identity`, `record.get` |
-| [monitor.new_execution](../../cfd_bot/monitor.py#L55) | `previous, current` | `previous.get`, `current.get`, `set(old).isdisjoint`, `set`, `bool` |
-| [monitor.automatic_case](../../cfd_bot/monitor.py#L67) | `root, previous=None, ui=None` | `load_ui`, `Path(root).resolve`, `Path`, `root.glob`, `path.is_file`, `path.is_symlink`, `candidates.append`, `path.stat`, `sorted`, `previous.get('watcher', {}).get`, `previous.get`, `str`, `ui.text` |
-| [monitor.Monitor.__init__](../../cfd_bot/monitor.py#L114) | `self, config, store` | `load_ui`, `config.get`, `Scheduler` |
-| [monitor.Monitor.tick](../../cfd_bot/monitor.py#L119) | `self` | `ticket_index`, `snapshot`, `time.time`, `self.store.put`, `accept_submissions`, `self.scheduler.recover`, `self.store.jobs`, `current['cases'].get`, `self.store.update_job`, `observation`, `self.store.tracked_observations`, `set`, `sorted`, `index.lookup`, `tracked.get`, `automatic_case`, `previous.get`, `self.observe`, `self.store.get`, `case.get`, `state.get`, `automatic.append`, `self.scheduler.tick`, `sync_ticket_states` |
-| [monitor.Monitor.observe](../../cfd_bot/monitor.py#L153) | `self, case, record` | `self.store.get`, `self.store.remember_run`, `time.time`, `terminal_event`, `observed_identity`, `new_execution`, `previous.get`, `previous.update`, `self.ui.text`, `self.store.put`, `record.get`, `min`, `process_started`, `dict`, `uuid.uuid4`, `observation`, `recent_case_log`, `str`, `wants_event`, `self.store.event`, `observed_text`, `self.store.finish_observation`, `case['watcher'].get`, `logfile.exists`, `logfile.stat`, `decide` |
-| [monitor.Monitor.run_once](../../cfd_bot/monitor.py#L210) | `self` | `self.tick`, `self.ui.text`, `type`, `self.store.put`, `dict`, `time.time`, `self.store.get`, `uuid.uuid4`, `self.store.event`, `self.store.jobs`, `job.get`, `wants_event` |
+| [monitor.calculation_record](../../cfd_bot/monitor.py#L50) | `record` | `set`, `record.get`, `p.get`, `dict` |
+| [monitor.observed_identity](../../cfd_bot/monitor.py#L65) | `record` | `sorted`, `p.get`, `identity`, `record.get` |
+| [monitor.new_execution](../../cfd_bot/monitor.py#L70) | `previous, current` | `previous.get`, `current.get`, `set(old).isdisjoint`, `set`, `bool` |
+| [monitor.automatic_case](../../cfd_bot/monitor.py#L82) | `root, previous=None, ui=None` | `load_ui`, `Path(root).resolve`, `Path`, `root.glob`, `path.is_file`, `path.is_symlink`, `candidates.append`, `path.stat`, `sorted`, `previous.get('watcher', {}).get`, `previous.get`, `str`, `ui.text` |
+| [monitor.Monitor.__init__](../../cfd_bot/monitor.py#L129) | `self, config, store` | `load_ui`, `config.get`, `Scheduler` |
+| [monitor.Monitor.tick](../../cfd_bot/monitor.py#L134) | `self` | `ticket_index`, `self.store.jobs`, `snapshot`, `time.time`, `self.store.put`, `accept_submissions`, `self.scheduler.recover`, `managed.update`, `current['cases'].get`, `self.store.update_job`, `observation`, `self.store.tracked_observations`, `set`, `sorted`, `index.lookup`, `tracked.get`, `automatic_case`, `previous.get`, `self.observe`, `self.store.get`, `case.get`, `state.get`, `automatic.append`, `self.scheduler.tick`, `sync_ticket_states` |
+| [monitor.Monitor.observe](../../cfd_bot/monitor.py#L171) | `self, case, record` | `calculation_record`, `self.store.get`, `self.store.remember_run`, `time.time`, `terminal_event`, `observed_identity`, `new_execution`, `previous.get`, `previous.update`, `self.ui.text`, `self.store.put`, `record.get`, `min`, `process_started`, `dict`, `uuid.uuid4`, `observation`, `recent_case_log`, `str`, `wants_event`, `self.store.event`, `observed_text`, `self.store.finish_observation`, `case['watcher'].get`, `logfile.exists`, `logfile.stat`, `decide` |
+| [monitor.Monitor.run_once](../../cfd_bot/monitor.py#L229) | `self` | `self.tick`, `self.ui.text`, `type`, `self.store.put`, `dict`, `time.time`, `self.store.get`, `uuid.uuid4`, `self.store.event`, `self.store.jobs`, `job.get`, `wants_event` |
 ## outcomes.py
 
 | 함수 (소스 위치) | 시그니처 | 직접 호출식 (정적 원문) |

@@ -250,13 +250,14 @@ web('UC-28','실행 중 managed 작업 중단','action(stop-job)','/api/queue',f
 chart('BG-01','solver·monitor CPU를 합치는 scanner','Bash + Python','bin/ofps options',fn('bin/ofps:scan_and_sync','records path','scan exit status',fn('bin/ofps:scan_once','records_file','stdout',fn('bin/ofps:scan_supervisors','proc/process candidates','supervisor records'),fn('bin/ofps:openfoam_case_from_process','PID','case root|empty'),fn('bin/ofps:basilisk_case_from_process','PID','case root|empty'),fn('bin/ofps:monitor_case_from_process','PID environ + cwd','표식 있는 case root|empty',note='bot CASE/JOB/MONITOR_CPU 또는 TCB_MONITORED_SOLVER_PID; controlDict와 case 내부 cwd 확인'),fn('bin/ofps:thread_affinity_union','solver 또는 monitor PID','CPU set')),fn('bin/ofps:sync_ticket_state','standalone만 snapshot file','status',fn('processes.parse_snapshot','raw','case별 solver+monitor affinity 합집합'),db('put','snapshot, parsed'),fn('tickets.sync_ticket_states','settings,store,snapshot','None'))),'managed는 stdout만; --check는 monitor CPU overlap도 거절; --watch는 반복','유효 case root 또는 지원하는 monitor 표식이 없는 후보 제외; standalone sync 실패가 CPU 검사 exit를 덮어쓰지 않음')
 chart('BG-02','현재 CASE · 이전 실행/종료 확인 중 CASE 감시','Monitor thread','run_once 완료 후 poll_seconds 대기',
  fn('monitor.Monitor.run_once','','bool',fn('monitor.Monitor.tick','','None',
-    fn('catalog.ticket_index','config','index',detail='D-01'),snap(),db('put','snapshot / monitor_error'),
+    fn('catalog.ticket_index','config','index',detail='D-01'),db('jobs','scan 전 LIVE','managed roots'),snap(),db('put','snapshot / monitor_error'),
     fn('tickets.accept_submissions','config,store','None'),fn('jobs.Scheduler.recover','','None'),db('jobs','LIVE','managed jobs'),
     db('tracked_observations','','persisted pending roots'),
-    loop('현재 snapshot roots ∪ tracked roots − managed roots',
+    loop('현재 snapshot roots ∪ tracked roots − scan 전후 managed roots',
          fn('catalog.TicketIndex.lookup','canonical full root','Ticket | None'),
          fn('monitor.automatic_case','미등록 root','automatic Case'),
          fn('monitor.Monitor.observe','case,record | None','None',
+            fn('monitor.calculation_record','ofps record','계산 record | None',note='monitor-only는 None; CPU metadata 보존·monitor identity 제외'),
             fn('monitor.observed_identity','record','supervisor/process identities'),
             fn('monitor.new_execution','previous identities,current','bool: same path restart'),
             fn('logs.recent_case_log','대상 case / 종료 확인 시 final=True','(telemetry,path)'),
@@ -264,7 +265,7 @@ chart('BG-02','현재 CASE · 이전 실행/종료 확인 중 CASE 감시','Moni
             db('put','observed:root; trigger가 tracking/변경 기록'),
             fn('jobs.terminal_event','terminal observed','None'),db('finish_observation','outbox 성공한 terminal root,run id'))),
     fn('jobs.Scheduler.tick','snapshot.cases','None'),fn('tickets.sync_ticket_states','config,store,snapshot','None',detail='D-15'))),
- '종료 확정·outbox 완료 대상은 다음 tick 감시에서 제외; 새 실행 identity 구분','scan 실패는 missing 증가 없음; state/outbox 사이 실패는 persisted tracking으로 재시도')
+ 'monitor-only 신규 실행 없음; 기존 계산은 missing 확인 후 종료; 원본 snapshot의 monitor CPU 점유 유지','scan 실패는 missing 증가 없음; scan 중 managed 완료도 재등록 방지; state/outbox 실패는 tracking으로 재시도')
 chart('BG-03','변경된 제출 티켓 접수','Monitor','submit=True 티켓',
  fn('tickets.accept_submissions','config,store','None',
     fn('catalog.ticket_index','config','index',detail='D-01'),fn('catalog.TicketIndex.tickets','submit_only=True','pending Ticket[]'),

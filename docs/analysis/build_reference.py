@@ -178,7 +178,7 @@ Windows `Start CFD.cmd → cfd-client.ps1 → Get-SshAliases`와 macOS `CFDContr
 
 `queued → starting → running(phase=preprocess/solver) → postprocessing? → succeeded/failed`가 정상 흐름이다. 대기 취소는 queued에서만 cancelled다. 명시적 실행 중단은 `starting|running|postprocessing → stopping → interrupted`이며 stopping도 LIVE/ACTIVE여서 child 소멸 전까지 CPU와 case unique 예약을 유지한다. 외부 observed는 running에서 missing 임계값 이후 수치 판정으로 이동하며 UI 중단 대상이 아니다.
 
-Monitor.tick은 ticket_index → fresh snapshot → accept_submissions → recover → managed 관측 보강 → 현재 roots ∪ 영속 tracked roots 감시 → Scheduler.tick → 증분 sync_ticket_states 순서다. 등록 전체 CASE를 observe하지 않는다. Scheduler.tick 내부도 recover를 호출한다. Monitor 한 주기에서 recover가 두 번 실행되는 점은 현행 코드 그대로다.
+Monitor.tick은 ticket_index → scan 전 LIVE root 조회 → fresh snapshot → accept_submissions → recover → managed 관측 보강 → 현재 roots ∪ 영속 tracked roots 감시 → Scheduler.tick → 증분 sync_ticket_states 순서다. scan 전후 LIVE root 합집합은 외부 감시에서 제외한다. observe는 calculation_record로 monitor-only를 None으로 처리하고 혼합 record의 monitor를 실행 identity에서 제외한다. 전체 CPU snapshot은 그대로 UI/스케줄러에 전달한다. 등록 전체 CASE를 observe하지 않는다. Scheduler.tick 내부도 recover를 호출한다. Monitor 한 주기에서 recover가 두 번 실행되는 점은 현행 코드 그대로다.
 
 `bin/ofps`는 OpenFOAM/Basilisk process 다음으로 monitor process를 판정한다. worker opt-in 경로는 `CFD_BOT_CASE_DIR`, `CFD_BOT_JOB_ID`, `CFD_BOT_MONITOR_CPU`를, TCB 내장·외부 실행 경로는 `TCB_MONITORED_SOLVER_PID`와 cwd를 사용한다. 유효 controlDict와 case 내부 cwd를 확인한 process만 `ENGINE: Monitor`로 출력한다. `parse_snapshot`은 동일 root의 solver와 monitor process를 하나의 ProcessRecord로 병합해 affinity 합집합을 `/stat`, web, scheduler, `ofps --check`에 제공한다.
 
