@@ -119,7 +119,7 @@ class TicketRunner:
         return status
 
     @_diagnostics.trace
-    def _state(self, ticket, members, observed, *, jobs_by_root=None, external=None, active=None):
+    def _state(self, ticket, members, observed, *, jobs_by_root=None, external=None, active=None, capacity=True):
         roots = {member['_root'] for member in members}
         jobs = ([job for job in self.store.jobs_for_roots(roots) if job['status'] in (*LIVE, 'queued')]
                 if jobs_by_root is None else [j for root in roots for j in jobs_by_root.get(root, [])])
@@ -148,6 +148,8 @@ class TicketRunner:
             return dict(state='running', enabled=False, run_enabled=False, queue_enabled=False,
                         label=self.ui.text('scenarios.runtime.ticket_state.running'),
                         queue_label=self.ui.text('scenarios.runtime.ticket_state.queue_action'))
+        if not capacity:
+            return dict(state='idle', label=self.ui.text('scenarios.runtime.ticket_state.idle'))
         capacity = self._capacity(members, observed, active)
         enabled = capacity['can_run']
         queue_enabled = capacity.get('queue_possible', True)
@@ -164,7 +166,7 @@ class TicketRunner:
             return self._state(ticket, members, observed)
 
     @_diagnostics.trace
-    def states(self, tickets):
+    def states(self, tickets, *, observed=None, capacity_for=None):
         """One DB read per data set for a page showing many ticket buttons."""
         by_path = {c['_config']: c for c in tickets}
         jobs = {}
@@ -174,7 +176,7 @@ class TicketRunner:
             if _diagnostics.detailed: _diagnostics.step('ticket_run.TicketRunner.states:L135:loop', job=job)
             jobs.setdefault(job['case_root'], []).append(job)
         external = self.store.get_many('observed:' + c['_root'] for c in tickets)
-        observed = self.store.get('snapshot', {})
+        observed = self.store.get('snapshot', {}) if observed is None else observed
         result = {}
         for ticket in tickets:
             if _diagnostics.detailed: _diagnostics.step('ticket_run.TicketRunner.states:L140:loop', ticket=ticket)
@@ -198,7 +200,8 @@ class TicketRunner:
                     if _diagnostics.detailed: _diagnostics.step('ticket_run.TicketRunner.states:L143:else')
                     members = [ticket]
                 result[name] = self._state(ticket, members, observed, jobs_by_root=jobs,
-                                           external=external, active=active)
+                                           external=external, active=active,
+                                           capacity=capacity_for is None or name in capacity_for)
             except (ValueError, OSError) as exc:
                 if _diagnostics.enabled: _diagnostics.step('ticket_run.TicketRunner.states:L157:except')
                 result[name] = dict(state='invalid', enabled=False, run_enabled=False,

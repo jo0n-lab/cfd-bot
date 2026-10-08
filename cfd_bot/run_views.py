@@ -45,13 +45,13 @@ def job_view(job, registry):
 
 
 @_diagnostics.trace
-def _remaining(case, job, store, now):
+def _remaining(case, job, store, now, log_reader=recent_case_log):
     status = job.get('status')
     telemetry = job.get('telemetry', {})
     if status == 'running':
         if _diagnostics.detailed: _diagnostics.step('run_views._remaining:L46:then')
         try:
-            telemetry, _ = recent_case_log(case)
+            telemetry, _ = log_reader(case)
         except (OSError, ValueError):
             if _diagnostics.enabled: _diagnostics.step('run_views._remaining:L49:except')
             pass
@@ -69,7 +69,7 @@ def _remaining(case, job, store, now):
 
 
 @_diagnostics.trace
-def running_macro_views(macros, cases, jobs, store, now=None):
+def running_macro_views(macros, cases, jobs, store, now=None, *, log_reader=recent_case_log):
     """Aggregate each currently running macro from its current child job IDs."""
     now = time.time() if now is None else now
     by_root = {case['_root']: case for case in cases}
@@ -124,7 +124,7 @@ def running_macro_views(macros, cases, jobs, store, now=None):
             if not remaining_known and job['status'] == 'queued':
                 if _diagnostics.detailed: _diagnostics.step('run_views.running_macro_views:L104:then')
                 continue
-            prediction, remaining = _remaining(case, job, store, now)
+            prediction, remaining = _remaining(case, job, store, now, log_reader)
             if job['status'] in ('starting', 'running', 'postprocessing', 'stopping'):
                 if _diagnostics.detailed: _diagnostics.step('run_views.running_macro_views:M128:then')
                 active_name = case['name']

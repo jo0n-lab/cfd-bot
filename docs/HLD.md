@@ -92,7 +92,7 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 | Delivery thread | `deliver` 완료 뒤 1초 대기 | pending 최대 10행을 순차 전송·checkpoint·retry | 수신자별 outbox row |
 | detached worker | Scheduler의 `Popen(start_new_session=True)` | .process-core·hooks·solver·선택적 monitor·로그·판정 | terminal DB 상태; 다음 tick이 outbox 처리 |
 | Web HTTP threads | `ThreadingHTTPServer` | 요청별 domain 호출·JSON 응답·파일 stream | 요청 하나의 HTTP 응답 |
-| 브라우저 | JS event loop, fetch Promise | form·modal·DOM·10초 refresh | HTTP 성공과 DOM 갱신은 구별 |
+| 브라우저 | JS event loop, fetch Promise | form·modal·DOM·화면별 10초 refresh + 탭 복귀 즉시 갱신 | HTTP 성공과 DOM 갱신은 구별 |
 | Tk main thread | `root.mainloop` | 일반 편집·검증·저장·삭제·큐 조회 | 동기 callback 완료 시 화면 반영 |
 | Tk 작업 thread | `scan_cases.work`, `submit.work` | scan/discover 또는 실행 요청 | Queue → `after(100, finish)` |
 | CLI | `cli.main` | 선택 명령; monitor는 loop | stdout/exit code 또는 서비스 loop |
@@ -103,8 +103,8 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 
 | 데이터 | 진실 원천 / writer | 독자 | 일관성·주의 |
 |---|---|---|---|
-| 현재 실행 CASE | `/proc` → fresh ofps | stat/Monitor/실행 검사/web | OpenFOAM/Basilisk와 표식 있는 bot monitor를 case별 병합; 시점별 snapshot |
-| 저장된 snapshot | Monitor·TicketRunner._snapshot·CLI·standalone ofps의 `kv.snapshot` | 편집 버튼·fallback | 여러 프로세스가 overwrite, 요청 간 단일 관측 시점 보장 없음 |
+| 현재 실행 CASE | `/proc` → fresh ofps | stat/Monitor/실행 검사/web fallback | OpenFOAM/Basilisk와 표식 있는 bot monitor를 case별 병합; 시점별 snapshot |
+| 저장된 snapshot | Monitor·TicketRunner._snapshot·CLI·standalone ofps의 `kv.snapshot` | 편집 버튼·web 읽기 조회 | 여러 프로세스가 overwrite, 요청 간 단일 관측 시점 보장 없음 |
 | 티켓 설정 | `tickets/*.json`, TicketService/publish_macro | catalog·UI·Scheduler | 폴더 flock + 파일별 replace; revision으로 사용자 편집 충돌 검사 |
 | 티켓 queue 표시 | sync_ticket_states, request, accept_submissions | UI | 저장과 제출 분리; mode(run/queue), queue id·dynamic 여부를 보존하고 CPU 위치는 admission 때 배정 |
 | jobs | Store + Scheduler + worker | 모든 UI·Monitor | `stopping` 포함 active case unique index, 상태 CAS, 즉시 요청 우선 + 이름 있는 대기열별 FIFO |
@@ -128,7 +128,7 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 | SQLite writer | DB 파일; connect마다 timeout=30, WAL | BEGIN IMMEDIATE 또는 쓰기 transaction | 별도 연결/프로세스도 writer 경쟁. live child를 가진 worker는 locked/busy를 재시도해 DB 경합으로 solver를 종료하지 않음 |
 | daemon.lock | state 디렉터리 flock NB | bot/monitor 전체 생애 | 중복 scheduler 프로세스 방지; web은 별도 lock 미사용 |
 | API 네트워크 | Telegram.call | 일반 30초, upload 90초; updates 20초 | main 요청/파일 전송 및 Delivery batch의 순차 대기 |
-| GUI/Web 조작 상태 | run_busy/scan_in_progress, S.busy/S.refreshing | 같은 UI 동작 재진입 제한 | 서버 공용 lock과 다른 개념; browser 탭 사이 scan 합치기 없음 |
+| GUI/Web 조작 상태 | run_busy/scan_in_progress, S.busy/S.refreshing | 같은 UI 동작 재진입 제한 | 서버 공용 lock과 다른 개념; web 표시 fallback scan은 같은 process에서 합침 |
 
 일반적인 잠금 순서는 snapshot lock 해제 → ticket flock → 필요한 DB transaction이다. catalog는 여러 폴더를 정렬하여 잠근다. TicketRunner는 fresh scan을 ticket lock 전에 실행하지만 lock 안에서 멤버별 observed와 jobs를 읽는다. 이 설명은 정적 경로 조사이며 모든 외부 프로세스와의 교착 부재를 증명한 것은 아니다.
 
@@ -140,7 +140,7 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 | UC-09 편집 열기 | open/load/검증 → cached state DB 읽기 → 화면 | Monitor가 다음 snapshot 갱신 |
 | UC-12 저장 | 폼 변환·색인 중복 검사 → revision/guard → atomic JSON → 화면 | 저장만 수행; 실행·큐 등록은 UC-18 |
 | UC-18 공용 실행 | fresh scan → 51-core 용량·멤버·revision 검사 → 동적 macro는 첫 child NP로 즉시 실행 판정·전체 최대 NP로 실행 가능성 검사 → mode 제출 → 응답 | Monitor 접수 → 현재 batch head NP에서 quota/CPU 자동 배정 → 독립 병렬 worker |
-| UC-02 web refresh | fresh scan+sync → live logs/ETA → 티켓별 state → jobs/macros → JSON → DOM | 다음 visible/idle 10초 polling |
+| UC-02 web refresh | 최신 snapshot 읽기 → 화면별 jobs/증분 logs → metadata 조건부 응답 → DOM 상태 갱신 | visible/idle 10초 + 복귀 즉시; GET 쓰기 없음 |
 | BG-02 종료 | 연속 missing → 최신 로그·control 판정 → frozen payload → outbox | Delivery retry와 메시지/첨부 전송 |
 | BG-04 managed 종료 알림 | 미발행 terminal job 조회 → frozen payload 재사용 → outbox → 발행 marker | 다음 tick부터 outbox 또는 marker로 제외 |
 | UC-28 실행 중단 | UI 확인 → LIVE를 stopping으로 CAS → 저장된 PID identity 재검증 → child process group TERM | worker가 최대 10초 뒤 KILL하고 interrupted 확정; 복구 루프가 소실 worker 보완 |
@@ -190,3 +190,5 @@ flowchart LR
 세 UI의 삭제는 공용 TicketService가 현재 ofps·SQLite 실행/대기 상태로 판정한다. 실행·대기 중인 매크로와 종속 child를 보호하고, 나머지는 부모 미선택·목록 불일치와 관계없이 삭제할 수 있다. 확인 화면은 삭제 가능 수와 보호 이유를 표시하며 비활성 부모의 참조도 함께 정리한다. [공용 삭제 흐름](diagrams/D-05.svg) · [변경 이력](history/2026-10-08-ticket-deletion-activity.md).
 
 중단·완료 후 monitor만 남으면 공용 `processes.calculation_record`로 계산 상태에서 제외한다. 티켓 편집은 허용하되 ofps 현황과 CPU 배정에는 해당 모니터의 점유를 유지한다.
+
+웹 조회는 [2026-10-08 변경](history/2026-10-08-web-incremental-refresh.md)에 따라 설정 목록과 실행 상태를 분리한다. 티켓 목록 버전은 queue 진행 상태를 제외한 revision에서 만들며, 실행 용량은 선택 티켓만 계산한다. 실제 실행/삭제와 Telegram `/stat`은 fresh 검사를 유지한다.

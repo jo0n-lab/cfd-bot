@@ -1,6 +1,10 @@
 """Loopback web adapter. The existing bot remains the only queue controller."""
 from . import diagnostics as _diagnostics
+import gzip
+import os
+import hashlib
 import hmac
+import subprocess
 import json
 import logging
 from logging.handlers import RotatingFileHandler
@@ -24,7 +28,7 @@ from .logs import estimate, recent_case_log
 from .patterns import PatternLibrary
 from .queue_control import cancel_queued_jobs, interrupt_running_job, interrupt_running_jobs
 from .run_views import job_view, running_macro_views, tracking_registry
-from .storage import Store
+from .storage import ACTIVE, TERMINAL, Store
 from .ticket_run import TicketRunner
 from .tickets import discover_cases, has_postprocessing, sync_ticket_states
 
@@ -44,6 +48,13 @@ class WebApp:
         self.library = PatternLibrary(self.service.folder.parent / 'ticket-patterns.json')
         self.token = secrets.token_urlsafe(32)
         _diagnostics.remember_secret(self.token)
+        self._read_lock = threading.RLock()
+        self._fallback_snapshot = {}
+        self._catalog_generation = None
+        self._catalog_entries = {}
+        self._case_generation = None
+        self._log_cursors = {}
+
 
     @_diagnostics.trace
     def fresh(self):
@@ -52,72 +63,156 @@ class WebApp:
         return snap
 
     @_diagnostics.trace
-    def ticket_rows(self):
-        from .catalog import folder_index
-        index = folder_index(self.service.folder)
-        tickets = index.tickets()
-        states = self.runner.states(tickets)
-        rows = []
-        for case in tickets:
-            if _diagnostics.detailed: _diagnostics.step('web.WebApp.ticket_rows:L56:loop', case=case)
-            name = Path(case['_config']).name
-            rows.append(dict(filename=name, name=case['name'], case_dir=case['_root'],
-                             task_type=case['task_type'], role=case['role'],
-                             count=len(case.get('cases', [])), queue=case.get('queue', {}),
-                             revision=self.service.revision(name, data=index.document(self.service.path(name), raw=True)), **states[name]))
-        rows.extend(dict(filename=Path(path).name, name=Path(path).name, state='invalid',
-                         enabled=False, run_enabled=False, queue_enabled=False, error=error)
-                    for path, error in index.errors.copy().items())
-        return sorted(rows, key=lambda row: row['filename'])
+    def display_snapshot(self):
+        """Read-only display path. Admission and /stat still perform fresh scans."""
+        from . import ticket_run
+        with self._read_lock:
+            saved = self.store.get('snapshot', {})
+            snap = max((saved, self._fallback_snapshot), key=lambda s: s.get('at', 0))
+            max_age = max(15, 3 * self.config.get('poll_seconds', 5))
+            if 0 <= time.time() - snap.get('at', 0) <= max_age:
+                return snap, None
+            try:
+                snap = dict(ticket_run.snapshot(self.config['ofps_command']), at=time.time())
+                self._fallback_snapshot = snap
+                return snap, None
+            except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
+                return snap, str(exc)
 
     @_diagnostics.trace
-    def overview(self):
-        error = None
-        try:
-            snap = self.fresh()
-        except (ValueError, OSError) as exc:
-            if _diagnostics.enabled: _diagnostics.step('web.WebApp.overview:L71:except')
-            snap, error = self.store.get('snapshot', {}), str(exc)
-        cases = list(self.bot.cases().values())
+    def catalog(self):
+        """Reuse TicketIndex; runtime-only queue changes do not change metadata version."""
+        from .catalog import folder_index
+        with self._read_lock:
+            index = folder_index(self.service.folder)
+            with index.mutex:
+                generation = (id(index), index.generation)
+                if generation == self._catalog_generation:
+                    return self._catalog
+                tickets = index.tickets()
+                entries, rows = {}, []
+                for case in tickets:
+                    path = case['_config']
+                    prior = self._catalog_entries.get(path)
+                    stamp = index.stamps.get(path)
+                    if prior and prior[0] == stamp:
+                        row = prior[1]
+                    else:
+                        name = Path(path).name
+                        row = dict(filename=name, name=case['name'], case_dir=case['_root'],
+                                   task_type=case['task_type'], role=case['role'],
+                                   count=len(case.get('cases', [])),
+                                   revision=self.service.revision(name, data=index.raw[path]))
+                    entries[path] = (stamp, row)
+                    rows.append(row)
+                rows.extend(dict(filename=Path(path).name, name=Path(path).name,
+                                 state='invalid', enabled=False, run_enabled=False,
+                                 queue_enabled=False, error=error)
+                            for path, error in index.errors.items())
+            rows.sort(key=lambda r: r['filename'])
+            version = hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()[:24]
+            self._catalog = dict(tickets=tickets, rows=rows, version=version)
+            self._catalog_entries, self._catalog_generation = entries, generation
+            return self._catalog
+
+    @_diagnostics.trace
+    def ticket_rows(self):
+        catalog = self.catalog()
+        states = self.runner.states(catalog['tickets'])
+        return [dict(row, **states.get(row['filename'], {})) for row in catalog['rows']]
+
+    @_diagnostics.trace
+    def read_log(self, case):
+        # Parser already handles truncation, inode replacement and stage switches.
+        key = (case['_root'], json.dumps(case.get('watcher', {}), sort_keys=True))
+        with self._read_lock:
+            state, path = recent_case_log(case, self._log_cursors.get(key))
+            self._log_cursors[key] = state
+            if len(self._log_cursors) > 64:
+                self._log_cursors.pop(next(iter(self._log_cursors)))
+            return state, path
+
+    @_diagnostics.trace
+    def overview(self, query=None):
+        query = query or {}
+        view = query.get('view', 'all')
+        catalog = self.catalog()
+        counts = dict(total=len(catalog['rows']),
+                      macro=sum(c.get('task_type') == 'macro' for c in catalog['rows']))
+        result = dict(ticket_counts=counts, catalog_version=catalog['version'])
+        snap, error = self.display_snapshot()
+        result.update(at=snap.get('at'), error=error,
+                      paused=self.store.get('queue_paused', False),
+                      scheduler_enabled=self.config['scheduler']['enabled'],
+                      monitor_error=self.store.get('monitor_error'))
+        if view in ('all', 'tickets'):
+            states = self.runner.states(catalog['tickets'], observed=snap,
+                                        capacity_for=None if view == 'all' else {query.get('selected')})
+            states.update({r['filename']: {k: v for k, v in r.items() if k in
+                           ('state', 'enabled', 'run_enabled', 'queue_enabled', 'error')}
+                           for r in catalog['rows'] if r.get('state') == 'invalid'})
+            result['ticket_states'] = states
+            if view == 'all' or query.get('catalog') != catalog['version']:
+                result['tickets'] = [dict(row, **states.get(row['filename'], {}))
+                                     for row in catalog['rows']]
+        if view == 'data':
+            rows = self.case_rows()
+            result['catalog_version'] = self._case_version
+            if query.get('catalog') != self._case_version:
+                result['cases'] = rows
+            return result
+        cases = list(self.cases().values())
         registry = tracking_registry(cases)
+        jobs = self.store.jobs(ACTIVE)
+        result['queue'] = [job_view(j, registry) for j in jobs]
+        if view == 'tickets':
+            return result
+        history = self.store.jobs(TERMINAL, newest=True, limit=100 if view in ('all', 'queue') else 6)
+        result['history'] = [job_view(j, registry) for j in history]
+        if view == 'queue':
+            return result
         live = []
         for run in self.bot.active_runs(snap, cases):
-            if _diagnostics.detailed: _diagnostics.step('web.WebApp.overview:L76:loop', run=run)
             case = run['case']
             item = job_view(run, registry)
             item.update(case_id=case_id(case), registered=run['registered'], owner=run['owner'])
             if run['registered']:
-                if _diagnostics.detailed: _diagnostics.step('web.WebApp.overview:L80:then')
-                telemetry, _ = recent_case_log(case)
-                item['time'] = telemetry.get('time')
-                item['estimate'] = estimate(case, telemetry, time.time() - run['started'],
-                                            self.store.runtime_history(case, run.get('actual_cores')))
+                telemetry, _ = self.read_log(case)
+                prediction = estimate(case, telemetry, time.time() - run['started'])
+                if prediction.get('basis') == 'unknown':
+                    prediction = estimate(case, telemetry, time.time() - run['started'],
+                                          self.store.runtime_history(case, run.get('actual_cores')))
+                item.update(time=telemetry.get('time'), estimate=prediction)
             live.append(item)
-        jobs = self.store.jobs()
-        tickets = self.ticket_rows()
-        macros = [ticket for ticket in tickets if ticket.get('task_type') == 'macro']
-        macro_documents = []
-        for row in macros:
-            if _diagnostics.detailed: _diagnostics.step('web.WebApp.overview:L90:loop', row=row)
-            try:
-                from .catalog import folder_index
-                macro_documents.append(folder_index(self.service.folder).document(self.service.path(row['filename'])))
-            except (OSError, ValueError):
-                if _diagnostics.enabled: _diagnostics.step('web.WebApp.overview:L94:except')
-                continue
-        return dict(at=snap.get('at'), error=error, live=live, tickets=tickets,
-                    live_macros=running_macro_views(macro_documents, cases, jobs, self.store),
-                    queue=[job_view(j, registry) for j in jobs if j['status'] in
-                           ('queued', 'starting', 'running', 'postprocessing', 'stopping')],
-                    history=[job_view(j, registry) for j in reversed(jobs) if j['status'] not in
-                             ('queued', 'starting', 'running', 'postprocessing', 'stopping')][:100],
-                    paused=self.store.get('queue_paused', False),
-                    scheduler_enabled=self.config['scheduler']['enabled'],
-                    monitor_error=self.store.get('monitor_error'))
+        macros = [c for c in catalog['tickets'] if c['task_type'] == 'macro'
+                  and c.get('queue', {}).get('state') == 'running']
+        known = {j['id'] for j in jobs}
+        jobs += self.store.jobs(ids=[r['job_id'] for m in macros for r in m['cases']
+                                     if r.get('job_id') and r['job_id'] not in known])
+        result.update(live=live, live_macros=running_macro_views(
+            macros, cases, jobs, self.store, log_reader=self.read_log))
+        return result
+
+    @_diagnostics.trace
+    def cases(self):
+        from .catalog import ticket_index
+        with self._read_lock:
+            index = ticket_index(self.config)
+            with index.mutex:
+                generation = (id(index), index.generation)
+                if generation != self._case_generation:
+                    self._cases = {case_id(c): c for c in index.cases()}
+                    self._case_rows = [dict(id=cid, name=c['name'], case_dir=c['_root'],
+                        ticket=Path(c['_config']).name if Path(c['_config']).parent == self.service.folder else None,
+                        residual_pattern=c.get('residual_pattern'), exports=c['exports'])
+                        for cid, c in self._cases.items()]
+                    self._case_version = hashlib.sha256(json.dumps(self._case_rows, sort_keys=True).encode()).hexdigest()[:24]
+                    self._case_generation = generation
+            return self._cases
 
     @_diagnostics.trace
     def case(self, cid):
-        case = self.bot.cases().get(cid)
+        case = self.cases().get(cid)
         if case is None:
             if _diagnostics.detailed: _diagnostics.step('web.WebApp.case:L108:then')
             raise ValueError('케이스가 없거나 등록이 변경되었습니다. 목록을 새로고침하세요.')
@@ -125,15 +220,13 @@ class WebApp:
 
     @_diagnostics.trace
     def case_rows(self):
-        return [dict(id=cid, name=c['name'], case_dir=c['_root'],
-                     ticket=Path(c['_config']).name if Path(c['_config']).parent == self.service.folder else None,
-                     residual_pattern=c.get('residual_pattern'), exports=c['exports'])
-                for cid, c in self.bot.cases().items()]
+        self.cases()
+        return self._case_rows
 
     @_diagnostics.trace
     def detail(self, cid):
         case = self.case(cid)
-        telemetry, path = recent_case_log(case)
+        telemetry, path = self.read_log(case)
         run = self.bot.latest_run(case)
         started = (run or {}).get('started') or time.time()
         elapsed = max(0, ((run or {}).get('finished') or time.time()) - started)
@@ -141,13 +234,13 @@ class WebApp:
                     telemetry={k: telemetry.get(k) for k in ('time', 'execution_time', 'clock_time',
                                'errors', 'missing', 'residuals')}, log=str(path),
                     estimate=estimate(case, telemetry, elapsed,
-                                      self.store.runtime_history(case, (run or {}).get('actual_cores'))),
-                    latest=job_view(run, tracking_registry(self.bot.cases().values())) if run else None,
+                                      (run or {}).get('runtime_history', [])),
+                    latest=job_view(run, tracking_registry(self.cases().values())) if run else None,
                     history=self.store.runtime_history(case)[:10])
 
     @_diagnostics.trace
-    def artifact_paths(self, cid, source):
-        case = self.case(cid)
+    def artifact_paths(self, cid, source, *, case=None):
+        case = self.case(cid) if case is None else case
         if source == 'residual':
             if _diagnostics.detailed: _diagnostics.step('web.WebApp.artifact_paths:L134:then')
             return case, [Path(i['path']) for i in residual_files(case)]
@@ -168,7 +261,7 @@ class WebApp:
             if _diagnostics.detailed: _diagnostics.step('web.WebApp.artifacts:L147:loop', definition=definition)
             group = dict(name=definition['name'], pattern=definition['pattern'], files=[])
             try:
-                _, paths = self.artifact_paths(cid, definition['source'])
+                _, paths = self.artifact_paths(cid, definition['source'], case=case)
                 for path in paths:
                     if _diagnostics.detailed: _diagnostics.step('web.WebApp.artifacts:L151:loop', path=path)
                     relative = str(path.relative_to(case['_root']))
@@ -255,7 +348,7 @@ class WebApp:
                         patterns=self.library.load())
         if path == '/api/overview':
             if _diagnostics.detailed: _diagnostics.step('web.WebApp.get:L217:then')
-            return self.overview()
+            return self.overview(query)
         if path == '/api/ticket':
             if _diagnostics.detailed: _diagnostics.step('web.WebApp.get:L219:then')
             draft = self.service.open(query['name'])
@@ -322,6 +415,11 @@ class WebApp:
         if path == '/api/exports/validate':
             if _diagnostics.detailed: _diagnostics.step('web.WebApp.post:L267:then')
             root = (self.service.folder / Path(data['case_dir']).expanduser()).resolve()
+            if 'items' in data:
+                items = data['items']
+                if not isinstance(items, list):
+                    raise ValueError('요청 데이터 목록이 필요합니다.')
+                return [validate_export(item, items, root, index) for index, item in enumerate(items)]
             return validate_export(data['item'], data.get('others', []), root, data.get('index'))
         if path == '/api/delete/preview':
             if _diagnostics.detailed: _diagnostics.step('web.WebApp.post:L270:then')
@@ -379,7 +477,7 @@ class WebApp:
                 if job is None:
                     if _diagnostics.detailed: _diagnostics.step('web.WebApp.post:M379:then')
                     raise ValueError('이미 종료되었거나 중단할 수 없는 작업입니다. 상태를 새로고침하세요.')
-                return job_view(job, tracking_registry(list(self.bot.cases().values())))
+                return job_view(job, tracking_registry(list(self.cases().values())))
             raise ValueError('알 수 없는 큐 동작입니다.')
         raise LookupError('없는 API입니다.')
 
@@ -426,7 +524,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header('Content-Type', content_type)
         self.send_header('Content-Length', str(size))
-        self.send_header('Cache-Control', 'no-store')
+        self.send_header('Cache-Control', (extra or {}).get('Cache-Control', 'no-store'))
         self.send_header('X-CFD-Diagnostics', '1' if _diagnostics.enabled else '0')
         self.send_header('X-CFD-Diagnostics-Level', _diagnostics.level)
         if _diagnostics.enabled:
@@ -438,13 +536,18 @@ class Handler(BaseHTTPRequestHandler):
                          "img-src 'self' data:; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'")
         for key, value in (extra or {}).items():
             if _diagnostics.detailed: _diagnostics.step('web.Handler.send_headers:L355:loop', key=key, value=value)
-            self.send_header(key, value)
+            if key != 'Cache-Control':
+                self.send_header(key, value)
         self.end_headers()
 
     @_diagnostics.trace
     def respond(self, data, status=200):
         payload = json.dumps(data, ensure_ascii=False, allow_nan=False).encode('utf-8')
-        self.send_headers(status, 'application/json; charset=utf-8', len(payload))
+        extra = {'Vary': 'Accept-Encoding'}
+        if len(payload) > 1024 and 'gzip' in self.headers.get('Accept-Encoding', ''):
+            payload = gzip.compress(payload, compresslevel=1)
+            extra['Content-Encoding'] = 'gzip'
+        self.send_headers(status, 'application/json; charset=utf-8', len(payload), extra)
         self.wfile.write(payload)
 
     @_diagnostics.trace
@@ -478,8 +581,16 @@ class Handler(BaseHTTPRequestHandler):
                     mime = mimetypes.guess_type(name)[0]
                     preview = mime in ('image/png', 'image/jpeg', 'image/webp') and query.get('download') != '1'
                     disposition = 'inline' if preview else 'attachment'
+                    stat = os.fstat(source.fileno())
+                    etag = '"%x-%x-%x-%x"' % (stat.st_ino, stat.st_mtime_ns, stat.st_ctime_ns, size)
+                    extra = {'Content-Disposition': disposition + "; filename*=UTF-8''" + quote(name)}
+                    if preview:
+                        extra.update({'ETag': etag, 'Cache-Control': 'private, no-cache'})
+                        if self.headers.get('If-None-Match') == etag:
+                            self.send_headers(304, mime, 0, extra)
+                            return
                     self.send_headers(200, mime if preview else 'application/octet-stream', size,
-                                 {'Content-Disposition': disposition + "; filename*=UTF-8''" + quote(name)})
+                                 extra)
                     remaining = size
                     while remaining:
                         if _diagnostics.detailed: _diagnostics.step('web.Handler.handle_request:L391:loop')
@@ -504,9 +615,15 @@ class Handler(BaseHTTPRequestHandler):
                 if _diagnostics.detailed: _diagnostics.step('web.Handler.handle_request:L405:then')
                 raise LookupError('없는 페이지입니다.')
             payload = (STATIC / asset).read_bytes()
+            etag = '"' + hashlib.sha256(payload).hexdigest() + '"'
+            if self.headers.get('If-None-Match') == etag:
+                self.send_headers(304, mimetypes.guess_type(asset)[0] or 'text/plain', 0,
+                                  {'ETag': etag, 'Cache-Control': 'private, no-cache'})
+                return
             mime = mimetypes.guess_type(asset)[0] or 'text/plain'
-            extra = {'Content-Disposition': 'attachment; filename="' + Path(asset).name + '"'} if asset.endswith('.zip') else None
-            self.send_headers(200, mime if extra else mime + '; charset=utf-8', len(payload), extra)
+            extra = {'Content-Disposition': 'attachment; filename="' + Path(asset).name + '"'} if asset.endswith('.zip') else {}
+            extra.update({'ETag': etag, 'Cache-Control': 'private, no-cache'})
+            self.send_headers(200, mime if asset.endswith('.zip') else mime + '; charset=utf-8', len(payload), extra)
             self.wfile.write(payload)
         except (BrokenPipeError, ConnectionResetError):
             if _diagnostics.enabled: _diagnostics.step('web.Handler.handle_request:L412:except')

@@ -339,7 +339,7 @@ class WebTests(Environment):
         query = urlencode(dict(case=cid, source='export:data', file='data.csv'))
         self.assertEqual(self.request('/api/file?' + query)[0], 400)
 
-    def test_status_fresh_snapshot_includes_unregistered_and_reports_outage(self):
+    def test_status_reuses_snapshot_includes_unregistered_and_reports_outage(self):
         root = str(self.root / 'external')
         self.scan.return_value = {'cases': {root: {'processes': [], 'actual_cores': 4,
                                                   'actual_cpu_list': '0-3', 'owner': 'user'}}}
@@ -348,11 +348,76 @@ class WebTests(Environment):
         self.assertFalse(result['live'][0]['registered'])
         self.assertIsNone(result['error'])
         self.get('/api/overview')
-        self.assertEqual(self.scan.call_count, 2)
+        self.assertEqual(self.scan.call_count, 1)
+        self.app._fallback_snapshot['at'] = 1
         self.scan.side_effect = RuntimeError('scanner unavailable')
         result = self.get('/api/overview')
         self.assertIn('scanner unavailable', result['error'])
         self.assertEqual(len(result['live']), 1)  # explicitly stale, never silently empty
+
+    def test_display_reads_do_not_write_or_rescan_fresh_monitor_snapshot(self):
+        self.store.put('snapshot', dict(at=time.time(), cases={}))
+        with patch.object(self.store, 'put', side_effect=AssertionError('GET must not write')), \
+                patch('cfd_bot.web.sync_ticket_states', side_effect=AssertionError('GET must not sync')):
+            self.get('/api/overview?view=overview')
+            self.get('/api/overview?view=tickets')
+        self.scan.assert_not_called()
+
+    def test_catalog_is_conditional_and_runtime_changes_do_not_resend_metadata(self):
+        first = self.get('/api/overview?view=tickets')
+        version = first['catalog_version']
+        query = '/api/overview?' + urlencode(dict(view='tickets', catalog=version, selected=self.name))
+        second = self.get(query)
+        self.assertNotIn('tickets', second)
+        self.assertIn(self.name, second['ticket_states'])
+        path = self.app.service.path(self.name)
+        data = read_json(path)
+        data['queue'] = dict(submit=True)
+        atomic_json(path, data)
+        queued = self.get(query)
+        self.assertEqual(queued['catalog_version'], version)
+        self.assertNotIn('tickets', queued)
+        self.assertEqual(queued['ticket_states'][self.name]['state'], 'queued')
+        data['name'] = 'renamed externally'
+        atomic_json(path, data)
+        renamed = self.get(query)
+        self.assertNotEqual(renamed['catalog_version'], version)
+        self.assertEqual(renamed['tickets'][0]['name'], 'renamed externally')
+        path.unlink()
+        deleted = self.get(query)
+        self.assertEqual(deleted['tickets'], [])
+
+    def test_dashboard_skips_ticket_capacity_and_limits_history_in_sql(self):
+        case = load_case(self.app.service.path(self.name))
+        ids = []
+        for _ in range(8):
+            job = self.store.enqueue(case)
+            self.store.update_job(job['id'], status='succeeded')
+            ids.append(job['id'])
+        with patch.object(self.app.runner, 'states', side_effect=AssertionError('no ticket screen')), \
+                patch.object(self.store, 'jobs', wraps=self.store.jobs) as jobs:
+            result = self.get('/api/overview?view=overview')
+        self.assertNotIn('tickets', result)
+        self.assertEqual(len(result['history']), 6)
+        self.assertEqual([j['id'] for j in self.store.jobs(ids=ids[:2])], ids[:2])
+        self.assertTrue(any(c.kwargs.get('limit') == 6 for c in jobs.call_args_list))
+        self.assertTrue(all(c.args or c.kwargs for c in jobs.call_args_list))
+        self.assertEqual(self.store.jobs(root=case['_root'], newest=True, limit=1)[0]['id'], ids[-1])
+
+    def test_export_batch_uses_shared_validation(self):
+        items = [dict(name='one', pattern='monitoring/one.png', kind='photo', max_files=1),
+                 dict(name='two', pattern='monitoring/two.png', kind='photo', max_files=2)]
+        result = self.post('/api/exports/validate', dict(case_dir=str(self.case_root), items=items))
+        self.assertEqual([i['name'] for i in result], ['one', 'two'])
+        items[1]['name'] = 'one'
+        self.assertEqual(self.request('/api/exports/validate', dict(case_dir=str(self.case_root), items=items))[0], 400)
+
+    def test_static_assets_revalidate_without_resending_body(self):
+        _, _, headers = self.request('/app.js')
+        status, body, response = self.request('/app.js', headers={'If-None-Match': headers['ETag']})
+        self.assertEqual(status, 304)
+        self.assertEqual(body, b'')
+        self.assertEqual(response['Cache-Control'], 'private, no-cache')
 
     def test_browse_control_patterns_and_paths(self):
         result = self.get('/api/browse?' + urlencode(dict(path=str(self.case_root), root=str(self.case_root))))

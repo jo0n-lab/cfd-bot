@@ -13,7 +13,7 @@ const fixture = liveUrl ? {url:liveUrl} : JSON.parse(fs.readFileSync('/tmp/cfd-w
     page.on('pageerror', error=>errors.push(error.message));
     page.on('console', message=>{if(message.type()==='error'&&!message.text().includes('404'))errors.push(message.text());});
     await page.goto(fixture.url);
-    await page.waitForFunction(()=>document.querySelector('#sync-label').textContent.startsWith('갱신'));
+    await page.waitForFunction(()=>document.querySelector('#sync-label').textContent.startsWith('관측'));
     if(liveUrl){
       // Read-only deployment smoke: never click save, run, queue or delete.
       const state=await page.evaluate(async()=>await(await fetch('/api/overview')).json());

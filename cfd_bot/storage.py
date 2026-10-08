@@ -162,15 +162,36 @@ class Store:
         return json.loads(row[0])
 
     @_diagnostics.trace
-    def jobs(self, statuses=None):
+    def jobs(self, statuses=None, *, limit=None, newest=False, ids=None, root=None):
+        """Filter/limit in SQL before decoding potentially large telemetry bodies."""
+        clauses, args = [], []
+        if root is not None:
+            clauses.append('case_root=?')
+            args.append(root)
+        if statuses:
+            clauses.append('status IN (%s)' % ','.join('?' for _ in statuses))
+            args.extend(statuses)
+        if ids is not None:
+            ids = list(dict.fromkeys(ids))
+            if not ids:
+                return []
+            # Stay below the SQLite bind limit on supported installations.
+            if len(ids) > 500:
+                rows = [j for i in range(0, len(ids), 500)
+                        for j in self.jobs(statuses, ids=ids[i:i + 500], root=root)]
+                rows.sort(key=lambda j: j['created'], reverse=newest)
+                return rows if limit is None else rows[:limit]
+            clauses.append('id IN (%s)' % ','.join('?' for _ in ids))
+            args.extend(ids)
+        query = 'SELECT body FROM jobs'
+        if clauses:
+            query += ' WHERE ' + ' AND '.join(clauses)
+        query += ' ORDER BY created' + (' DESC' if newest else '')
+        if limit is not None:
+            query += ' LIMIT ?'
+            args.append(max(0, int(limit)))
         with self.connect() as db:
-            if statuses:
-                if _diagnostics.detailed: _diagnostics.step('storage.Store.jobs:L140:then')
-                rows = db.execute('SELECT body FROM jobs WHERE status IN (%s) ORDER BY created' %
-                                  ','.join('?' for _ in statuses), tuple(statuses)).fetchall()
-            else:
-                if _diagnostics.detailed: _diagnostics.step('storage.Store.jobs:L140:else')
-                rows = db.execute('SELECT body FROM jobs ORDER BY created').fetchall()
+            rows = db.execute(query, args).fetchall()
         return [json.loads(r[0]) for r in rows]
 
     @_diagnostics.trace

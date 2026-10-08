@@ -316,7 +316,7 @@ class Bot:
 
     @_diagnostics.trace
     def latest_run(self, case):
-        runs = [j for j in self.store.jobs() if j['case_root'] == case['_root']]
+        runs = self.store.jobs(root=case['_root'], newest=True, limit=1)
         external = self.store.get('observed:' + case['_root'])
         if external:
             if _diagnostics.detailed: _diagnostics.step('bot.Bot.latest_run:L236:then')

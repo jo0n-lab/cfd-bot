@@ -5,7 +5,7 @@
 <a id="entry"></a>
 ## 진입·HTTP·화면 응답 규칙
 
-`app.js:start → api(bootstrap) → api(cases) → render → refresh → 10초 timer`다. visible 상태이며 S.busy가 아닐 때 자동 갱신한다. refresh의 S.refreshing은 같은 탭 중복만 막는다. click은 S.busy/content.inert로 조작을 제한한다. input은 draft만 변경하며 API mutation과 다르다.
+`start`는 10초 timer를 먼저 설치하고 session의 metadata를 복원한 뒤 `refresh`한다. 초기 연결 실패에도 재시도한다. visible이며 S.busy가 아닐 때 polling하고 visibilitychange/focus/pageshow/online에서 즉시 요청한다. `S.refreshing`은 공유 Promise이고 실행 중 추가 강제 요청은 완료 뒤 한 번 더 갱신한다. 화면이 바뀐 뒤 도착한 응답으로 다른 화면을 다시 그리지 않는다.
 
 `Handler.do_GET/do_POST → handle_request → trusted → WebApp.get/post → respond → wfile.write`다. 각 HTTP 요청은 별도 thread지만 snapshot lock은 같은 web process 안에서 공유한다. `/api/file`만 Handler가 `WebApp.file`을 직접 호출한다. 다운로드 ZIP과 정적 파일은 allowlist로 제공한다.
 
@@ -13,7 +13,7 @@
 |---|---|---|
 | GET /api/health | app/version/hostname | 27 |
 | GET /api/bootstrap | csrf/default_directory/patterns | 01 |
-| GET /api/overview | fresh + sync + live/tickets/queue/history/macros | 02,07,19 |
+| GET /api/overview | view별 읽기 snapshot + 제한 jobs + 조건부 metadata + ticket_states | 02,07,19 |
 | GET /api/ticket | TicketService.open + cached state + postprocessed | 09 |
 | GET /api/cases | case_rows | 03 |
 | GET /api/detail | log/control/ETA/latest/history | 04 |
@@ -29,9 +29,9 @@
 | POST /api/patterns | 갱신 templates | 22 |
 | POST /api/queue | pause/resume {ok:true}; cancel CancelResult; interrupt JobView | 20,21,28 |
 
-403=Host/Origin/Fetch-Site/CSRF, 413=body 크기, 400=입력 타입·ValueError/OSError, 404=LookupError, 500=그 밖 예외다. browser.api는 non-2xx에서 Error를 던지고 click handler가 toast로 표시한다. overview 수집 실패는 HTTP 200+error와 이전 snapshot을 반환할 수 있다. refresh는 오류 표시를 유지한다. 클라이언트 fetch 자체에 timeout/AbortController는 없다. 서버 socket timeout 60초가 모든 domain 연산을 60초 안에 중단하는 것은 아니다.
+403=Host/Origin/Fetch-Site/CSRF, 413=body 크기, 400=입력 타입·ValueError/OSError, 404=LookupError, 500=그 밖 예외다. browser.api는 non-2xx에서 Error를 던지고 click handler가 toast로 표시한다. overview 수집 실패는 HTTP 200+error와 이전 snapshot을 반환할 수 있다. refresh는 오류 표시를 유지한다. 클라이언트 fetch는 AbortController로 GET 30초/POST 120초 timeout을 적용한다. POST timeout은 서버 작업 취소를 의미하지 않는다. 서버 socket timeout 60초가 모든 domain 연산을 60초 안에 중단하는 것은 아니다.
 
-stableOverview는 동일 실행의 일시적으로 사라진 ETA/progress를 유지한다. shape가 같으면 updateOverview가 기존 DOM을 수정한다. form은 polling 때문에 재생성하지 않는다. loadData는 detail/artifacts를 Promise.all로 요청하고 현재 선택 ID가 바뀌었으면 이전 응답을 버린다.
+stableOverview는 동일 실행의 일시적으로 사라진 ETA/progress를 유지한다. shape가 같으면 updateOverview가 기존 DOM을 수정한다. form은 polling 때문에 재생성하지 않는다. loadData는 detail/artifacts를 Promise.all로 요청하고 현재 선택 ID 또는 요청 순서가 바뀌었으면 이전 응답을 버린다. 결과 화면에서도 timer/복귀 시 detail과 artifacts를 갱신한다.
 
 
 #18/#30 진단 로그는 basic에서 업무 경계·명시적 사건·예외를, detailed에서 내부 함수·분기까지 기록한다. [공통 로그 계약](../DIAGNOSTICS.md)과 [시퀀스별 이벤트 대응표](../analysis/diagnostic-flow-coverage.md)를 함께 읽는다.
@@ -100,7 +100,7 @@ stableOverview는 동일 실행의 일시적으로 사라진 ETA/progress를 유
 **정상 결과:** JSON → api Promise → 해당 DOM / toast / modal 반영.
 **실패/취소:** 403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면.
 
-**코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L453), [web.WebApp.get](../../cfd_bot/web.py#L248), [web.WebApp.overview](../../cfd_bot/web.py#L74), [web.WebApp.fresh](../../cfd_bot/web.py#L49), [ticket_run.TicketRunner._snapshot](../../cfd_bot/ticket_run.py#L24), [processes.snapshot](../../cfd_bot/processes.py#L229), [processes.parse_snapshot](../../cfd_bot/processes.py#L177), [processes.identity](../../cfd_bot/processes.py#L25), [processes.owner_label](../../cfd_bot/processes.py#L87), [processes.cpu_layout](../../cfd_bot/processes.py#L140), [storage.Store.put](../../cfd_bot/storage.py#L151), [tickets.sync_ticket_states](../../cfd_bot/tickets.py#L425), [bot.Bot.cases](../../cfd_bot/bot.py#L65), [config.cases_for](../../cfd_bot/config.py#L554), [bot.Bot.active_runs](../../cfd_bot/bot.py#L97), [logs.recent_case_log](../../cfd_bot/logs.py#L264), [storage.Store.jobs](../../cfd_bot/storage.py#L165), [web.WebApp.ticket_rows](../../cfd_bot/web.py#L55), [catalog.folder_index](../../cfd_bot/catalog.py#L355), [ticket_run.TicketRunner.states](../../cfd_bot/ticket_run.py#L153), [run_views.running_macro_views](../../cfd_bot/run_views.py#L72).
+**코드 연결:** `refresh/refreshOnce → WebApp.overview(query) → catalog / display_snapshot / cases / Store.jobs(limit) / read_log / running_macro_views`. 오래된 snapshot만 동일 `processes.snapshot`으로 fallback한다. 이 GET에서 `fresh`, `Store.put`, `sync_ticket_states`를 호출하지 않는다.
 
 **관련 검증:** [test_core.py](../../tests/test_core.py), [test_web.py](../../tests/test_web.py).
 
@@ -545,3 +545,5 @@ stableOverview는 동일 실행의 일시적으로 사라진 ETA/progress를 유
 **코드 연결:** [web.Handler.handle_request](../../cfd_bot/web.py#L453), [web.WebApp.post](../../cfd_bot/web.py#L296), [editor.validate_export](../../cfd_bot/editor.py#L584).
 
 **관련 검증:** [test_ticket_chat.py](../../tests/test_ticket_chat.py), [test_gui.py](../../tests/test_gui.py), [test_web.py](../../tests/test_web.py).
+
+설정 버전, 캐시 만료, SQL 범위 및 브라우저 수명주기는 [증분 조회 계약](../LLD.md#웹-증분-조회-계약)과 [변경 이력](../history/2026-10-08-web-incremental-refresh.md)을 따른다.

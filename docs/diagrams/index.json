@@ -147,7 +147,7 @@
     "key": "UC-02-web",
     "title": "대시보드·현황 갱신",
     "platform": "web",
-    "trigger": "refresh → /api/overview",
+    "trigger": "refresh / 탭 복귀 / 10초 → /api/overview?view=overview",
     "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
     "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
   },
@@ -163,7 +163,7 @@
     "key": "UC-03-web",
     "title": "등록 케이스 목록",
     "platform": "web",
-    "trigger": "start / reload-data → /api/cases",
+    "trigger": "결과 화면 진입 / 복귀 → /api/overview?view=data&catalog=version",
     "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
     "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
   },
@@ -251,7 +251,7 @@
     "key": "UC-07-web",
     "title": "티켓 목록·선택",
     "platform": "web",
-    "trigger": "refresh / ticketList → /api/overview",
+    "trigger": "refresh / ticketList → /api/overview?view=tickets&catalog=version&selected=name",
     "outcome": "JSON → api Promise → 해당 DOM / toast / modal 반영",
     "error": "403 권한/출처; 400 입력/파일; 404 경로; 500 기타 → api throw → toast/오류 화면"
   },

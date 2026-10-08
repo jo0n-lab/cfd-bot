@@ -297,3 +297,13 @@ sequenceDiagram
 ```
 
 [기계 판독 대응표](../cfd_bot/diagnostic_map.json)는 기존 103개 시퀀스의 모든 노드를 Python/JS/shell 기록 또는 외부 호출 경계에 연결한다. 정적 대응표의 완성도와 실제 환경에서 시나리오를 실행한 검증 범위는 구분한다. #30의 `log.batch.v2`는 함수/event 숫자 코드, 공통 context/call/value 사전, delta 시간/순서, error ID와 공유 stack을 사용한다. decoder는 기존 `log.batch`와 신형 Python/browser/ofps 기록을 모두 읽고 선택한 수집 수준에 포함된 개별 사건을 복원한다. basic에서 생략한 정상 helper 호출/분기는 복원하지 않는다. [정확한 필드 순서와 번호](analysis/diagnostic-codebook.md)를 별도 제공한다. 예외 객체 참조는 요청 종료 시 해제하며, 읽기 DB context 종료는 실제 commit과 다른 code를 쓴다.
+
+## 웹 증분 조회 계약
+
+`WebApp.display_snapshot`은 `kv.snapshot`과 최근 fallback 중 최신 것을 사용한다. 관측 시각이 `max(15초, 3×poll_seconds)` 이내이면 재스캔하지 않고, 오래됐으면 동일 `processes.snapshot`으로 읽기 전용 fallback한다. 실패 시 마지막 관측과 error를 반환한다. DB/티켓 상태 쓰기는 GET 경로에서 제거했다.
+
+`catalog()`는 TicketIndex generation/stamp가 바뀐 파일의 metadata revision만 재산출한다. `overview?view=tickets&catalog=<version>&selected=<filename>`은 변경된 경우에만 tickets를 포함하고, 매번 ticket_states를 반환한다. 공용 `TicketRunner.states(capacity_for=...)`의 기본값은 기존 전체 용량 판정이며 web 목록만 선택된 티켓으로 제한한다. `view=data`는 별도 case catalog 버전을 사용한다. 옵션 없는 overview는 기존 전체 응답을 유지한다.
+
+`Store.jobs(statuses, limit, newest, ids, root)`는 SQL에서 필터/정렬/제한한 후 JSON을 읽는다. dashboard 이력은 최근 6건, queue는 100건, macro 집계는 연결된 job IDs만 읽는다. `Bot.latest_run`도 root별 최신 1건만 읽는다. web 로그 reader는 기존 parser cursor를 64케이스 이내로 유지하며 교체·절단은 parser가 처리한다.
+
+브라우저는 갱신 Promise 공유/후속 요청 보존, 요청 timeout(GET 30초/POST 120초), 초기 실패 재시도, visibility/focus/pageshow/online 갱신을 사용한다. sessionStorage는 버전 있는 티켓 metadata만 저장하고 런타임 권한은 복원하지 않는다. 폼은 polling으로 재생성하지 않는다. 정적 파일/검증된 이미지의 ETag 재검증, JSON gzip은 HTTP adapter에서 처리한다. CSRF·Host·artifact 경로 검사는 유지한다.
