@@ -69,7 +69,7 @@
 | ID | 트리거 | 호출 경로 | 사용자가 보는 결과 | 명세 |
 |---|---|---|---|---|
 | BG-01 프로세스 snapshot | `/stat`, Monitor, web fresh, 실행 전 검사, ofps | `processes.snapshot → bin/ofps → parse_snapshot`; 같은 CASE의 solver·표식 monitor affinity 병합 | 현재 CASE·소유자·실제 전체 CPU | [scan](lld/runtime.md#bg-01) |
-| BG-02 외부 계산 감시 | Monitor 주기 | `Monitor.run_once → tick → observe → calculation_record → decide → terminal_event`; scan 전후 managed root 제외 | monitor-only 신규 실행 제외, 실제 계산 시작/종료 알림·저장된 상태 | [monitor](lld/runtime.md#bg-02), [#28](history/2026-10-07-monitor-tail-duplicate-notifications.md) |
+| BG-02 외부 계산 감시 | Monitor 주기 | `Monitor.run_once → tick → observe → processes.calculation_record → decide → terminal_event`; scan 전후 managed root 제외 | monitor-only 신규 실행 제외, 실제 계산 시작/종료 알림·저장된 상태 | [monitor](lld/runtime.md#bg-02), [#28](history/2026-10-07-monitor-tail-duplicate-notifications.md) |
 | BG-03 JSON 제출 접수·동기화 | Monitor tick | `accept_submissions → Store.enqueue_batch`; `sync_ticket_states` | 기다리는 티켓이 DB 큐에 반영 | [접수](lld/runtime.md#bg-03) |
 | BG-04 CPU 검사·병렬 시작 | Monitor 안의 Scheduler | `Scheduler.tick → unpublished terminal event → scheduling_candidates(batch별 현재 head) → queue_heads → borrowing_plan/drain/fair turn → allocate_cpus/check_cpus → Popen` | 종료 알림 1회 또는 queued 이유·서로 다른 queue의 복수 starting | [scheduler](lld/runtime.md#bg-04) |
 | BG-05 계산·후처리·판정 | detached worker | `worker → .process-core → Allrun → hooks → lock 재시도 → stopping 확인/child 정리 → decide → freeze_exports` | DB 경합 중 계산 유지·진행·최종 상태 또는 사용자 중단 | [worker](lld/runtime.md#bg-05) |
@@ -105,3 +105,5 @@
 | UI 문구·접속 launcher | [test_ui_resources.py](../tests/test_ui_resources.py), [test_clients.py](../tests/test_clients.py), [test_web_tunnel.py](../tests/test_web_tunnel.py) |
 
 새 버튼/API/명령을 추가하면 이 표의 UC와 플랫폼 LLD의 라우팅 표를 먼저 갱신한다. 공용 계약을 바꾸면 LLD와 함수 색인, 실행 경계를 바꾸면 HLD, 비용을 바꾸면 병목 분석의 측정 기준을 함께 갱신한다. 이번 검증의 실제 실행 여부·누락은 [검증 결과](analysis/validation.md)에 기록한다.
+
+티켓 상태·삭제 보호·JSON 동기화도 같은 `processes.calculation_record`를 사용한다. Monitor-only CASE는 계산 중으로 표시하지 않으며 CPU 예약 검사에는 계속 포함한다. [중단 후 티켓 상태 수정](history/2026-10-08-monitor-only-ticket-state.md).

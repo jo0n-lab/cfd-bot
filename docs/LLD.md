@@ -49,10 +49,10 @@
 
 <a id="catalog"></a>
 
-`Monitor.observe`는 먼저 `calculation_record(record)`를 적용한다. solver/계산 wrapper 없이
+`Monitor.observe`와 티켓 상태·삭제·JSON 동기화는 `processes.calculation_record(record)`를 공유한다. solver/계산 wrapper 없이
 monitor만 남으면 None으로 처리하고, 혼합 record는 `mode=monitor`를 실행 identity/시작 시각
 계산에서 제외한다. 합산 CPU metadata와 원본 snapshot은 유지한다. 기존 외부 실행은
-missing_polls 뒤 종료하며 monitor-only로 새 실행 ID를 생성하지 않는다.
+missing_polls 뒤 종료하며 monitor-only로 새 실행 ID를 생성하지 않는다. 중단된 작업에 monitor만 남은 경우 티켓은 finished/interrupted와 편집 가능 상태로 전환한다. CPU 배정에는 전체 snapshot을 사용해 monitor CPU를 계속 제외한다.
 `Monitor.tick`은 scan 전과 recovery 후 LIVE root의 합집합을 제외하므로 scan 중 managed
 작업이 완료돼도 같은 tick에 외부 실행으로 재등록하지 않는다.
 [#28 설계·운영 근거](history/2026-10-07-monitor-tail-duplicate-notifications.md).

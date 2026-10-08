@@ -8,7 +8,7 @@ import uuid
 from .config import load_case, read_json
 from .cpu_allocation import capacity_status
 from .execution import execution_case
-from .processes import snapshot
+from .processes import calculation_record, snapshot
 from .storage import LIVE
 from .tickets import atomic_json, ticket_lock
 from .ui import load_ui
@@ -29,7 +29,8 @@ class TicketRunner:
         external = self.store.get_many('observed:' + root for root in roots)
         activity.update((root, 'delete_running') for root in roots
                         if (external.get('observed:' + root) or {}).get('status') in LIVE)
-        activity.update((root, 'delete_running') for root in observed.get('cases', {}))
+        activity.update((root, 'delete_running') for root, record in observed.get('cases', {}).items()
+                        if calculation_record(record) is not None)
         return activity
 
     @_diagnostics.trace
@@ -126,7 +127,8 @@ class TicketRunner:
         if external is None:
             if _diagnostics.detailed: _diagnostics.step('ticket_run.TicketRunner._state:L96:then')
             external = self.store.get_many('observed:' + root for root in roots)
-        running = (roots & set(observed.get('cases', {}))) or any(job['status'] in LIVE for job in jobs)
+        running = any(calculation_record(observed.get('cases', {}).get(root)) is not None
+                      for root in roots) or any(job['status'] in LIVE for job in jobs)
         # Keep a briefly disappearing external process blocked until the monitor
         # has completed its normal missing-poll checks.
         running = running or any((external.get('observed:' + root) or {}).get('status') in LIVE

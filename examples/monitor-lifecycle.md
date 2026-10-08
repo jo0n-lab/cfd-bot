@@ -15,3 +15,5 @@ monitor만 관측된 CASE에서는 새 외부 계산과 종료 알림을 만들�
 ```bash
 python3 -m unittest -q tests.test_core.MonitorTests
 ```
+
+중단한 케이스에 Allmonitor·pvpython만 남아도 티켓은 편집할 수 있다. 실제 작업이 후처리 중이면 보호하며, monitor가 사용하는 CPU는 새 계산의 자동 배정에서 제외한다.

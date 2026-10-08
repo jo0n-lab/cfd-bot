@@ -85,7 +85,7 @@ chart('D-03','공용 실행 요청','공용','TicketRunner.request(name, revisio
     fn('tickets.ticket_lock','service.folder','context exit',note='이하 멤버·상태·revision 검사와 JSON 쓰기 동안 유지'),
     fn('ticket_run.TicketRunner._members','name','(Ticket, list[Case])',fn('config.load_case','ticket 및 child paths','Ticket')),
     service('revision','expected_revision 있을 때 name','SHA-256'),
-    fn('ticket_run.TicketRunner._state','ticket, members, observed','RunState',db('jobs','LIVE + queued','list[Job]'),db('get','각 observed:root','Observed|None'),fn('ticket_run.TicketRunner._capacity','members, observed, active','head required + max required',note='동적 macro: 첫 child만 즉시 실행 판정; 전체 최대 NP는 51-core 한도 검사'),note='running 거절; queued/동일 request_id는 already_queued'),
+    fn('ticket_run.TicketRunner._state','ticket, members, observed','RunState',db('jobs','LIVE + queued','list[Job]'),db('get','각 observed:root','Observed|None'),fn('ticket_run.TicketRunner._capacity','members, observed, active','head required + max required',note='동적 macro: 첫 child만 즉시 실행 판정; 전체 최대 NP는 51-core 한도 검사'),note='공용 calculation_record로 monitor-only 제외; 실제 LIVE 작업 보호; CPU 점유는 전체 snapshot'),
     fn('tickets.atomic_json','child들, 마지막 부모 queue.submit=True + mode/queue profile','None',note='backup 후 파일별 교체; OSError rollback')),
  '동적 macro는 첫 child가 가용하면 즉시 제출; Monitor.accept_submissions가 나중에 DB 큐 접수','scan/revision/running/command/member 오류 또는 child 최대 NP가 관리 한도 초과 → ValueError; 쓰기 실패 → rollback')
 chart('D-04','fresh snapshot과 lock 대기','공용','processes.snapshot(command)',
@@ -257,7 +257,7 @@ chart('BG-02','현재 CASE · 이전 실행/종료 확인 중 CASE 감시','Moni
          fn('catalog.TicketIndex.lookup','canonical full root','Ticket | None'),
          fn('monitor.automatic_case','미등록 root','automatic Case'),
          fn('monitor.Monitor.observe','case,record | None','None',
-            fn('monitor.calculation_record','ofps record','계산 record | None',note='monitor-only는 None; CPU metadata 보존·monitor identity 제외'),
+            fn('processes.calculation_record','ofps record','계산 record | None',note='monitor-only는 None; CPU metadata 보존·monitor identity 제외'),
             fn('monitor.observed_identity','record','supervisor/process identities'),
             fn('monitor.new_execution','previous identities,current','bool: same path restart'),
             fn('logs.recent_case_log','대상 case / 종료 확인 시 final=True','(telemetry,path)'),

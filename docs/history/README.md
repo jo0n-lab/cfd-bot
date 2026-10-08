@@ -4,6 +4,7 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-10-08 | [중단 뒤 monitor-only 티켓 상태](2026-10-08-monitor-only-ticket-state.md) | 사용자 요청으로 생략 |
 | 2026-10-08 | [실행·대기 상태에 따른 티켓 삭제](2026-10-08-ticket-deletion-activity.md) | 사용자 요청으로 생략 |
 | 2026-10-07 | [기본 업무 로그와 상세 함수 로그 분리](2026-10-07-diagnostic-logging-levels.md) | [#30](https://github.com/jo0n-lab/cfd-bot/issues/30) |
 | 2026-10-07 | [숫자 코드·사전 기반 진단 로그 구현](2026-10-07-diagnostic-codec-implementation.md) | [#30](https://github.com/jo0n-lab/cfd-bot/issues/30) |

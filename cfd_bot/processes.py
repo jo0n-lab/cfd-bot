@@ -14,6 +14,24 @@ MANAGED_SCAN_ENV = 'CFD_BOT_OFPS_MANAGED'
 
 
 @_diagnostics.trace
+def calculation_record(record):
+    """Project a CPU snapshot onto a calculation, excluding monitor-only tails."""
+    if record is None:
+        if _diagnostics.detailed: _diagnostics.step('monitor.calculation_record:M57:then')
+        return None
+    engines = set(record.get('engines', []))
+    processes = [p for p in record.get('processes', []) if p.get('mode') != 'monitor']
+    calculation_wrapper = record.get('supervisors') and (engines - {'Monitor'})
+    if not processes and not calculation_wrapper and (
+            'Monitor' in engines or record.get('processes')):
+        if _diagnostics.detailed: _diagnostics.step('monitor.calculation_record:M62:then')
+        return None
+    # Keep combined CPU metadata for display/admission, but a plotting process
+    # must not establish a new execution identity or its start time.
+    return dict(record, processes=processes)
+
+
+@_diagnostics.trace
 def managed_scan_environment():
     """Tell the integrated ofps that its caller owns state reconciliation."""
     env = os.environ.copy()

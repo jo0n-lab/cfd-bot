@@ -17,6 +17,7 @@ import uuid
 
 from .config import glob_patterns, load_case, read_json
 from .control import control_times
+from .processes import calculation_record
 from .ui import load_ui
 
 STATES = {name: load_ui().text('scenarios.diagnostics.tickets.state_' + name)
@@ -461,7 +462,7 @@ def _sync_ticket_states(config, store, snapshot, tickets=None):
         pending = [r for r in runs if r['status'] in (*LIVE, 'queued')]
         run = max(pending or runs, key=lambda r: r['created']) if runs else None
         queue = dict(case.get('queue', {}))
-        if case['_root'] in snapshot['cases']:
+        if calculation_record(snapshot['cases'].get(case['_root'])) is not None:
             if _diagnostics.detailed: _diagnostics.step('tickets._sync_ticket_states:L380:then')
             queue.update(state='running', result=None,
                          reason=ui.text('scenarios.diagnostics.tickets.ofps_running'))

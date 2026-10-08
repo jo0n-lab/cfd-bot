@@ -8,7 +8,7 @@ from .catalog import ticket_index
 from .jobs import Scheduler, terminal_event
 from .logs import recent_case_log
 from .outcomes import decide, wants_event
-from .processes import identity, snapshot
+from .processes import calculation_record, identity, snapshot
 from .storage import LIVE
 from .tickets import accept_submissions, sync_ticket_states
 from .ui import load_ui
@@ -50,24 +50,6 @@ def observation(record, previous=None, ui=None):
         actual_cpu_list=(cpu_list if cpu_list and cpu_list != ui.text('strings.common.unspecified')
                          else previous.get('actual_cpu_list', ui.text('strings.common.unspecified'))),
     )
-
-
-@_diagnostics.trace
-def calculation_record(record):
-    """Project a CPU snapshot onto a calculation, excluding monitor-only tails."""
-    if record is None:
-        if _diagnostics.detailed: _diagnostics.step('monitor.calculation_record:M57:then')
-        return None
-    engines = set(record.get('engines', []))
-    processes = [p for p in record.get('processes', []) if p.get('mode') != 'monitor']
-    calculation_wrapper = record.get('supervisors') and (engines - {'Monitor'})
-    if not processes and not calculation_wrapper and (
-            'Monitor' in engines or record.get('processes')):
-        if _diagnostics.detailed: _diagnostics.step('monitor.calculation_record:M62:then')
-        return None
-    # Keep combined CPU metadata for display/admission, but a plotting process
-    # must not establish a new execution identity or its start time.
-    return dict(record, processes=processes)
 
 
 @_diagnostics.trace

@@ -188,3 +188,5 @@ flowchart LR
 ### 티켓 삭제의 실행 상태 경계
 
 세 UI의 삭제는 공용 TicketService가 현재 ofps·SQLite 실행/대기 상태로 판정한다. 실행·대기 중인 매크로와 종속 child를 보호하고, 나머지는 부모 미선택·목록 불일치와 관계없이 삭제할 수 있다. 확인 화면은 삭제 가능 수와 보호 이유를 표시하며 비활성 부모의 참조도 함께 정리한다. [공용 삭제 흐름](diagrams/D-05.svg) · [변경 이력](history/2026-10-08-ticket-deletion-activity.md).
+
+중단·완료 후 monitor만 남으면 공용 `processes.calculation_record`로 계산 상태에서 제외한다. 티켓 편집은 허용하되 ofps 현황과 CPU 배정에는 해당 모니터의 점유를 유지한다.

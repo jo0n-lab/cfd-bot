@@ -3,7 +3,7 @@ from unittest.mock import patch
 from cfd_bot.config import read_json
 from cfd_bot.editor import TicketService
 from cfd_bot.ticket_run import TicketRunner
-from cfd_bot.tickets import atomic_json, accept_submissions, publish_macro
+from cfd_bot.tickets import atomic_json, accept_submissions, publish_macro, sync_ticket_states
 from tests.test_core import Environment
 
 
@@ -89,3 +89,37 @@ class TicketRunTests(Environment):
         with self.assertRaisesRegex(ValueError, '실행 상태 확인 실패'):
             self.runner.request(self.name)
         self.assertFalse(read_json(self.service.path(self.name)).get('queue', {}).get('submit', False))
+
+    def test_interrupted_case_with_monitor_tail_is_editable_but_cpu_stays_occupied(self):
+        job = self.store.enqueue(self.case)
+        self.store.update_job(job['id'], status='interrupted', finished=1, returncode=143)
+        document = read_json(self.service.path(self.name))
+        document['queue'] = dict(state='running', job_id=job['id'], submit=False)
+        atomic_json(self.service.path(self.name), document)
+        record = dict(engines=['Monitor'], processes=[dict(mode='monitor', cpu_list=self.cpu)],
+                      actual_cores=1, actual_cpu_list=self.cpu)
+        self.scan.return_value = {'cases': {str(self.case_root): record}}
+        sync_ticket_states(self.config, self.store, self.scan.return_value)
+        queue = read_json(self.service.path(self.name))['queue']
+        self.assertEqual((queue['state'], queue['result']), ('finished', 'interrupted'))
+        state = self.runner.state(self.name, fresh=True)
+        self.assertEqual(state['state'], 'idle')
+        self.assertGreaterEqual(state['used_cores'], 1)
+        self.assertEqual(self.service.deletion_preview([self.name])['names'], [self.name])
+        draft = self.service.open(self.name)
+        draft['values']['macro_cores'] = '2'
+        draft['values']['macro_cpu_policy'] = 'auto'
+        draft['values']['macro_cpu_set'] = ''
+        draft['values']['execution_source'] = 'ticket'
+        self.service.save(draft['values'], self.name, self.name, expected_revision=draft['revision'])
+        self.assertEqual(read_json(self.service.path(self.name))['cores'], 2)
+
+    def test_monitor_tail_does_not_unlock_live_postprocessing(self):
+        job = self.store.enqueue(self.case)
+        self.store.update_job(job['id'], status='postprocessing')
+        self.scan.return_value = {'cases': {str(self.case_root): dict(
+            engines=['Monitor'], processes=[dict(mode='monitor', cpu_list=self.cpu)])}}
+        sync_ticket_states(self.config, self.store, self.scan.return_value)
+        self.assertEqual(self.runner.state(self.name, fresh=True)['state'], 'running')
+        self.assertEqual(read_json(self.service.path(self.name))['queue']['state'], 'running')
+        self.assertEqual(self.service.deletion_preview([self.name])['names'], [])
