@@ -86,7 +86,8 @@
 |---|---|---|
 | 실행 진입점 | 편집기의 실행은 `TicketRunner.request`; Telegram legacy enqueue와 CLI enqueue는 `Store.enqueue` 직접 호출 | 공유 실행 정책을 어디까지 통합할지 [P-06](analysis/performance.md#p-06) |
 | 플랫폼 동등성 | GUI pause/resume·매크로 순서 이동, TG 매크로 순서 이동 UI 없음 | 사용자 기능 변경 시 세 adapter 동등 반영 원칙과 별도 검토 |
-| 저장/삭제 전 live 확인 | web은 `fresh()` 수행; TG/GUI 일반 저장·삭제는 저장된 JSON queue 상태 검사 | stale 상태에 대한 정책 통일 필요; UI parity와 freshness를 혼동하지 않음 |
+| 저장 전 live 확인 | web은 `fresh()` 수행; TG/GUI 일반 저장은 저장된 JSON queue 상태 검사 | 저장 정책의 freshness 통일은 별도 작업 |
+| 삭제 전 live 확인 | 세 UI의 TicketService → TicketRunner.deletion_activity → 같은 ofps snapshot + SQLite active 작업 | preview에서 삭제 가능/보호 분리, 확정 시 재확인; 비활성 child 단독·고아 삭제 허용 |
 | 성공 목표 | `control_times()`는 ticket `end_time`이 있으면 controlDict의 endTime보다 우선 사용 | AGENTS의 controlDict 기준 원칙과 차이. 기존 테스트도 override를 기대하므로 문서 수정으로 정책을 확정하지 않음 |
 | 종료 자동 첨부 | 편집기는 exports의 자동 전송을 끄지만 `load_case`는 생략된 `on_complete`를 true로 기본화; `freeze_exports`는 legacy 자동 exports 처리 | 모든 티켓에 ‘Residual 하나만’을 보장하는지 정책 검토 필요 |
 | 전송 중복 | outbox unique key는 event 중복 삽입 방지; API 성공 후 DB offset 저장 전 종료되면 재전송 가능 | exactly-once 전달을 보장한다고 기술하지 않음 |

@@ -42,10 +42,10 @@
     "child_from_macro": "child는 매크로의 케이스 목록에서 생성하세요.",
     "child_path": "child의 케이스 경로는 매크로에서 지정한 경로를 사용하세요.",
     "delete_selection": "삭제할 티켓을 선택하세요.",
-    "delete_busy_macro": "{name}: 매크로의 대기 작업을 먼저 취소하거나 종료까지 기다리세요.",
+    "delete_busy_macro": "{name}: 실행·대기 중인 매크로 또는 그 하위 티켓이므로 보호합니다.",
     "child_membership_changed": "{name}: 매크로 소속이 변경되었습니다. 다시 확인하세요.",
     "delete_changed": "{name}: 다른 편집기에서 티켓이 변경되었습니다. 다시 열어 확인하세요.",
-    "delete_queued": "{name}: 큐에 접수한 작업은 Telegram /queue에서 대기 취소한 뒤 삭제하세요.",
+    "delete_queued": "{name}: 접수·대기 중인 작업입니다. 대기 취소 후 삭제하세요.",
     "delete_child": "{name}: child 티켓은 매크로와 함께 관리합니다. 매크로 티켓도 선택하세요.",
     "macro_mismatch": "{name}: 매크로의 케이스 목록과 일치하지 않습니다.",
     "export_name": "요청 이름: 영문·숫자·_- 를 사용해 1~32자로 입력하세요.",
@@ -60,7 +60,8 @@
     "queue_macro_shared": "매크로 전용 대기열 {queue}는 다른 티켓({detail})과 공유할 수 없습니다.",
     "queue_overlap": "대기열 {queue}와 CPU {detail}이 겹칩니다. 대기열 quota는 서로 겹칠 수 없습니다.",
     "running_execution": "계산 중에는 코어 수·CPU 배정·실행 명령·모니터링 실행 설정을 바꿀 수 없습니다. 요청 데이터와 watcher 로그·판정 설정은 수정할 수 있습니다.",
-    "child_execution": "하위 티켓은 매크로 실행 설정을 상속합니다. 부모 매크로 티켓에서 수정하세요."
+    "child_execution": "하위 티켓은 매크로 실행 설정을 상속합니다. 부모 매크로 티켓에서 수정하세요.",
+    "delete_running": "{name}: 실행·후처리·중단 처리 중인 작업이므로 보호합니다."
   },
   "tickets": {
     "state_waiting": "계산대기",

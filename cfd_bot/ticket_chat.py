@@ -260,11 +260,14 @@ class TicketChat:
         plan = self.service.deletion_preview(names, revisions)
         s['delete_plan'] = plan
         text = self.t('list.delete_review', selected=len(names), total=len(plan['names']),
-                      names='\n'.join(plan['names']))
-        self.render(chat, user, s, text,
-                    [[(self.t('list.delete_confirm'), 'bdelete' if bulk else 'deleteyes', None),
-                      (self.ui.text('strings.common.cancel'), 'bulkpage' if bulk else 'card',
-                       s.get('bulk_page', 0) if bulk else None)]],
+                      protected=len(plan['blocked']), names=short('\n'.join(plan['names']), 1400))
+        if plan['blocked']:
+            text += self.t('list.delete_blocked', reasons=short('\n'.join(row['reason'] for row in plan['blocked']), 1400))
+        buttons = ([(self.t('list.delete_confirm'), 'bdelete' if bulk else 'deleteyes', None)]
+                   if plan['names'] else [])
+        buttons.append((self.ui.text('strings.common.cancel'), 'bulkpage' if bulk else 'card',
+                        s.get('bulk_page', 0) if bulk else None))
+        self.render(chat, user, s, text, [buttons],
                     'bulk_confirm' if bulk else 'delete_confirm')
 
     @_diagnostics.trace

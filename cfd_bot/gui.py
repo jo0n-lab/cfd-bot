@@ -1428,11 +1428,18 @@ class TicketEditor:
             return
         try:
             revisions = {self.current.name: self.file_revision} if self.current and self.file_revision else None
+            if self.bot_config.is_file():
+                self.execution_runner()
             plan = self.service.deletion_preview(names, revisions)
-            text = (f'선택 {len(names)}개 · 하위 child 포함 총 {len(plan["names"])}개 티켓을 삭제할까요?\n\n'
+            text = (f'선택 {len(names)}개 · 삭제 가능 {len(plan["names"])}개 · 보호 {len(plan["blocked"])}개\n\n'
                     + '\n'.join(plan['names'][:20])
                     + ('\n…' if len(plan['names']) > 20 else '')
                     + '\n\n케이스 폴더와 계산 결과는 유지됩니다.')
+            if plan['blocked']:
+                text += '\n\n삭제 제외:\n' + '\n'.join(row['reason'] for row in plan['blocked'][:10])
+            if not plan['names']:
+                self.messagebox.showinfo('삭제 가능한 티켓 없음', text, parent=self.root)
+                return
             if not self.messagebox.askyesno('티켓 삭제', text, parent=self.root):
                 if _diagnostics.detailed: _diagnostics.step('gui.TicketEditor.delete:L1168:then')
                 return

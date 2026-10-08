@@ -19,6 +19,18 @@ class TicketRunner:
     def __init__(self, service, config, store):
         self.service, self.config, self.store = service, config, store
         self.ui = load_ui(config.get('_ui_dir'))
+        self.service.deletion_activity = self.deletion_activity
+
+    def deletion_activity(self, roots):
+        """Current execution/queue facts, without validating editable ticket membership."""
+        observed = self._snapshot()
+        activity = {job['case_root']: ('delete_running' if job['status'] in LIVE else 'delete_queued')
+                    for job in self.store.jobs((*LIVE, 'queued'))}
+        external = self.store.get_many('observed:' + root for root in roots)
+        activity.update((root, 'delete_running') for root in roots
+                        if (external.get('observed:' + root) or {}).get('status') in LIVE)
+        activity.update((root, 'delete_running') for root in observed.get('cases', {}))
+        return activity
 
     @_diagnostics.trace
     def _snapshot(self):

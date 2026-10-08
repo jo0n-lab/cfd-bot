@@ -128,7 +128,7 @@ class TicketServiceTests(Environment):
         changed = read_json(self.service.path(other))
         changed['queue'] = dict(state='running', job_id='busy')
         self.service.path(other).write_text(json.dumps(changed))
-        with self.assertRaisesRegex(ValueError, '대기 취소'):
+        with self.assertRaisesRegex(ValueError, '보호'):
             self.service.delete_many(plan['names'], plan['revisions'])
         self.assertTrue(self.service.path(self.name).exists())
         self.assertTrue(self.service.path(other).exists())
@@ -146,9 +146,6 @@ class TicketServiceTests(Environment):
 
     def test_bulk_delete_expands_macros_deduplicates_children_and_keeps_case_data(self):
         macro, child = self.macro_documents()
-        with self.assertRaisesRegex(ValueError, '매크로 티켓도 선택'):
-            self.service.delete_many([self.name, child])
-        self.assertTrue(self.service.path(self.name).exists())
         plan = self.service.deletion_preview([child, macro, self.name, child])
         self.assertEqual(set(plan['names']), {child, macro, self.name})
         self.assertEqual(set(self.service.delete_many(plan['names'], plan['revisions'])), set(plan['names']))
@@ -171,9 +168,103 @@ class TicketServiceTests(Environment):
         data = read_json(self.service.path(child))
         data['queue'] = dict(state='running', job_id='still-running')
         self.service.path(child).write_text(json.dumps(data))
-        with self.assertRaisesRegex(ValueError, '대기 취소'):
+        with self.assertRaisesRegex(ValueError, '보호'):
             self.service.delete_many([self.name, macro])
         self.assertEqual(len(self.service.listing()), 3)
+
+    def test_idle_child_can_be_deleted_alone_and_parent_reference_is_removed(self):
+        macro, child = self.macro_documents()
+        data = read_json(self.service.path(macro))
+        data['cases'][0]['state'] = 'waiting'  # Never submitted is deletable.
+        self.service.path(macro).write_text(json.dumps(data))
+        plan = self.service.deletion_preview([child])
+        self.assertEqual(plan['names'], [child])
+        self.assertIn(macro, plan['revisions'])
+        self.service.delete_many(plan['names'], plan['revisions'])
+        self.assertEqual(read_json(self.service.path(macro))['cases'], [])
+        self.assertTrue(self.control.exists())
+
+    def test_orphan_and_stale_membership_children_can_be_deleted(self):
+        macro, child = self.macro_documents()
+        data = read_json(self.service.path(macro))
+        data['cases'] = []
+        self.service.path(macro).write_text(json.dumps(data))
+        self.assertEqual(self.service.delete(child), [child])
+        data = read_json(self.service.path(self.name))
+        data.update(role='child', macro_ticket='missing-parent.json')
+        self.service.path(self.name).write_text(json.dumps(data))
+        self.assertEqual(self.service.delete(self.name), [self.name])
+
+    def test_live_state_filters_bulk_preview_and_ignores_stale_json(self):
+        from cfd_bot.ticket_run import TicketRunner
+        TicketRunner(self.service, self.config, self.store)
+        queued = self.store.enqueue(load_case(self.service.path(self.name)))
+        other = 'alone-idle.json'
+        data = read_json(self.service.path(self.name))
+        data.update(case_dir=str(self.root / 'idle'), queue=dict(state='running', job_id='old'))
+        self.service.path(other).write_text(json.dumps(data))
+        with patch('cfd_bot.ticket_run.snapshot', return_value={'cases': {}}):
+            plan = self.service.deletion_preview([self.name, other])
+            self.assertEqual(plan['names'], [other])
+            self.assertEqual([row['name'] for row in plan['blocked']], [self.name])
+            self.service.delete_many(plan['names'], plan['revisions'])
+        self.assertTrue(self.service.path(self.name).exists())
+        self.assertEqual(self.store.job(queued['id'])['status'], 'queued')
+
+    def test_external_run_and_scan_failure_protect_ticket(self):
+        from cfd_bot.ticket_run import TicketRunner
+        TicketRunner(self.service, self.config, self.store)
+        with patch('cfd_bot.ticket_run.snapshot', return_value={'cases': {str(self.case_root): {}}}):
+            self.assertEqual(self.service.deletion_preview([self.name])['names'], [])
+        with patch('cfd_bot.ticket_run.snapshot', side_effect=RuntimeError('scan unavailable')):
+            with self.assertRaises(ValueError):
+                self.service.delete(self.name)
+        self.assertTrue(self.service.path(self.name).exists())
+
+    def test_completed_child_is_protected_while_macro_sibling_is_queued(self):
+        from cfd_bot.ticket_run import TicketRunner
+        macro, child = self.macro_documents()
+        sibling = 'child-sibling.json'
+        data = read_json(self.service.path(child))
+        data['case_dir'] = str(self.root / 'sibling')
+        self.service.path(sibling).write_text(json.dumps(data))
+        parent = read_json(self.service.path(macro))
+        parent['cases'].append(dict(ticket=sibling, case_dir=data['case_dir'], state='waiting'))
+        self.service.path(macro).write_text(json.dumps(parent))
+        TicketRunner(self.service, self.config, self.store)
+        # A job snapshot may outlive a file/membership edit.
+        job_case = dict(load_case(self.service.path(child)), _root=data['case_dir'])
+        self.store.enqueue(job_case)
+        with patch('cfd_bot.ticket_run.snapshot', return_value={'cases': {}}):
+            plan = self.service.deletion_preview([child, macro])
+            self.assertEqual(plan['names'], [])
+            self.assertEqual({r['name'] for r in plan['blocked']}, {child, macro, sibling})
+
+    def test_confirmation_rechecks_live_state_before_deleting_any_file(self):
+        from cfd_bot.ticket_run import TicketRunner
+        TicketRunner(self.service, self.config, self.store)
+        macro, child = self.macro_documents()
+        with patch('cfd_bot.ticket_run.snapshot', return_value={'cases': {}}) as scan:
+            plan = self.service.deletion_preview([self.name, macro])
+            scan.return_value = {'cases': {str(self.case_root): {}}}
+            with self.assertRaisesRegex(ValueError, '보호'):
+                self.service.delete_many(plan['names'], plan['revisions'])
+        self.assertEqual(len(self.service.listing()), 3)
+
+    def test_parent_edit_after_preview_aborts_and_io_failure_restores_parent(self):
+        macro, child = self.macro_documents()
+        plan = self.service.deletion_preview([child])
+        parent = read_json(self.service.path(macro))
+        parent['name'] = 'edited parent'
+        self.service.path(macro).write_text(json.dumps(parent))
+        with self.assertRaisesRegex(ValueError, '다른 편집기'):
+            self.service.delete_many(plan['names'], plan['revisions'])
+        before = self.service.path(macro).read_bytes()
+        with patch.object(Path, 'unlink', side_effect=OSError('disk error')):
+            with self.assertRaises(OSError):
+                self.service.delete_many([child])
+        self.assertEqual(self.service.path(macro).read_bytes(), before)
+        self.assertTrue(self.service.path(child).exists())
 
     def test_bulk_delete_restores_removed_files_on_io_failure(self):
         other = 'alone-other.json'
@@ -530,6 +621,19 @@ class TicketChatTests(Environment):
         self.assertTrue(self.service.path(name).exists())
         self.click('deleteyes')
         self.assertFalse(self.service.path(name).exists())
+
+    def test_delete_review_excludes_queued_ticket_and_deletes_idle_orphan(self):
+        name = self.source()
+        self.store.enqueue(load_case(self.service.path(name)))
+        orphan = 'child-orphan.json'
+        self.service.path(orphan).write_text(json.dumps(dict(
+            self.case_data, case_dir=str(self.root / 'idle'), role='child', macro_ticket='missing.json')))
+        self.message('/tickets')
+        self.bot.ticket_ui.delete_review(20, 10, self.session(), [name, orphan], bulk=True)
+        self.assertIn('보호 1개', self.panel()['text'])
+        self.click('bdelete')
+        self.assertTrue(self.service.path(name).exists())
+        self.assertFalse(self.service.path(orphan).exists())
 
     def test_sessions_and_buttons_are_scoped_to_user_and_survive_restart(self):
         self.new(user=10)

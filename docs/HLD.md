@@ -184,3 +184,7 @@ flowchart LR
 ```
 
 공용 티켓 색인과 Web 버튼 상태의 DB 일괄 읽기는 #20에서 구현했다. 다음 후보는 큐 ETA/history의 요청 내 재사용, 큐 응답 페이지화와 필요한 ETA만 계산, session lock 밖 전송과 순서 보장, 일반 dispatcher 작업의 제한된 병렬 처리, 실행 진입점의 공용화다. 각 제안의 근거·우선순위·비용·회귀 조건은 [성능 문서](analysis/performance.md)에 정리한다. `/stat`을 cached watcher 결과로 바꾸는 제안은 포함하지 않는다. To-Be 도표는 현재 동작이나 개선 완료를 뜻하지 않는다.
+
+### 티켓 삭제의 실행 상태 경계
+
+세 UI의 삭제는 공용 TicketService가 현재 ofps·SQLite 실행/대기 상태로 판정한다. 실행·대기 중인 매크로와 종속 child를 보호하고, 나머지는 부모 미선택·목록 불일치와 관계없이 삭제할 수 있다. 확인 화면은 삭제 가능 수와 보호 이유를 표시하며 비활성 부모의 참조도 함께 정리한다. [공용 삭제 흐름](diagrams/D-05.svg) · [변경 이력](history/2026-10-08-ticket-deletion-activity.md).

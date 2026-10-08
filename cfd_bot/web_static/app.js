@@ -246,7 +246,18 @@ async function action(button){const __diagnosticCaller=CFDLog.currentCall();cons
     case 'queue-ticket':return CFDLog.callAs(__diagnosticCaller,requestRun,'queue');
     case 'select-all-tickets':S.selected=new Set((S.overview?.tickets||[]).map(CFDLog.wrap((t=>t.filename),"web.ui.callback:L171:C79")));CFDLog.callAs(__diagnosticCaller,render);break;
     case 'clear-ticket-selection':S.selected.clear();CFDLog.callAs(__diagnosticCaller,render);break;
-    case 'delete-selected':{if(!S.selected.size)throw new Error('삭제할 티켓을 선택하세요.');const plan=await CFDLog.callAs(__diagnosticCaller,api,'/api/delete/preview',{names:[...S.selected]});CFDLog.callAs(__diagnosticCaller,modal,'티켓 일괄 삭제',`<p>${plan.names.length}개 티켓을 삭제합니다. 매크로의 하위 티켓도 포함됩니다. 케이스 디렉토리와 계산 결과는 유지됩니다.</p><p class="mono">${plan.names.map(esc).join('\n')}</p>`,'선택 티켓 삭제',CFDLog.wrap((async()=>{const __diagnosticCaller=CFDLog.currentCall();await CFDLog.callAs(__diagnosticCaller,api,'/api/delete',plan);if(plan.names.includes(S.draft?.current))S.draft=null;S.selected.clear();await CFDLog.callAs(__diagnosticCaller,refresh);CFDLog.callAs(__diagnosticCaller,render);CFDLog.callAs(__diagnosticCaller,toast,'선택한 티켓을 삭제했습니다.');}),"web.ui.callback:L173:C316"),true);break;}
+    case 'delete-selected':{
+      if(!S.selected.size)throw new Error('삭제할 티켓을 선택하세요.');
+      const plan=await CFDLog.callAs(__diagnosticCaller,api,'/api/delete/preview',{names:[...S.selected]});
+      const blocked=plan.blocked||[];
+      const body=`<p>삭제 가능 ${plan.names.length}개 · 보호 ${blocked.length}개. 비활성 매크로의 하위 티켓도 포함됩니다. 케이스 디렉토리와 계산 결과는 유지됩니다.</p><p class="mono">${plan.names.map(esc).join('\n')}</p>`+(blocked.length?`<h3>삭제 제외</h3><p class="mono">${blocked.map(row=>esc(row.reason)).join('\n')}</p>`:'');
+      CFDLog.callAs(__diagnosticCaller,modal,'티켓 일괄 삭제',body,plan.names.length?'삭제 가능한 티켓 삭제':null,CFDLog.wrap((async()=>{const __diagnosticCaller=CFDLog.currentCall();
+        const deleted=await CFDLog.callAs(__diagnosticCaller,api,'/api/delete',plan);
+        if(deleted.includes(S.draft?.current))S.draft=null;
+        deleted.forEach(name=>S.selected.delete(name));
+        await CFDLog.callAs(__diagnosticCaller,refresh);CFDLog.callAs(__diagnosticCaller,render);CFDLog.callAs(__diagnosticCaller,toast,`${deleted.length}개 티켓을 삭제했습니다.`);
+      }),"web.ui.callback:L173:C316"),true);break;
+    }
     case 'add-export':v.exports.push({name:'',pattern:'',kind:'document',max_files:1,on:[],on_complete:false});CFDLog.callAs(__diagnosticCaller,dirty);CFDLog.callAs(__diagnosticCaller,renderEditor);break;
     case 'remove-export':v.exports.splice(Number(button.dataset.index),1);CFDLog.callAs(__diagnosticCaller,dirty);CFDLog.callAs(__diagnosticCaller,renderEditor);break;
     case 'apply-preset':{const rules=S.patterns[CFDLog.callAs(__diagnosticCaller,$,'#preset').value];v.failure_patterns=rules.failure_patterns.join('\n');v.openfoam_defaults=rules.openfoam_defaults;CFDLog.callAs(__diagnosticCaller,dirty);CFDLog.callAs(__diagnosticCaller,renderEditor);break;}

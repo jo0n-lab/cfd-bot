@@ -302,6 +302,7 @@ class TicketService:
         self.folder = Path(folder).resolve()
         self.folder.mkdir(parents=True, exist_ok=True)
         self._save_requests = {}
+        self.deletion_activity = None  # Bound by TicketRunner for all live interfaces.
 
     @_diagnostics.trace
     def _remember_save(self, request_id, name, data):
@@ -319,7 +320,7 @@ class TicketService:
             if _diagnostics.detailed: _diagnostics.step('editor.TicketService.path:L264:then')
             raise ValueError(load_ui().text('scenarios.diagnostics.editor.ticket_filename'))
         path = self.folder / name
-        if path.resolve().parent != self.folder:
+        if path.is_symlink() or path.resolve().parent != self.folder:
             if _diagnostics.detailed: _diagnostics.step('editor.TicketService.path:L267:then')
             raise ValueError(load_ui().text('scenarios.diagnostics.editor.ticket_escape'))
         return path
@@ -502,78 +503,120 @@ class TicketService:
 
     @_diagnostics.trace
     def delete(self, name, expected_revision=None):
-        return self.delete_many([name], {name: expected_revision} if expected_revision else None)
+        plan = self.deletion_preview([name], {name: expected_revision} if expected_revision else None)
+        if plan['blocked']:
+            raise ValueError(plan['blocked'][0]['reason'])
+        return self.delete_many(plan['names'], plan['revisions'])
 
     @_diagnostics.trace
     def _deletion_plan(self, names, expected_revisions=None):
-        """Caller holds the ticket lock; expand macros before checking any file."""
+        """Caller holds the lock. Membership errors do not make idle files undeletable."""
         documents = {name: read_json(self.path(name)) for name in dict.fromkeys(names)}
         if not documents:
             if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L416:then')
             raise ValueError(load_ui().text('scenarios.diagnostics.editor.delete_selection'))
-        for name, data in list(documents.items()):
-            if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L418:loop', name=name, data=data)
-            if data.get('task_type') != 'macro':
-                if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L419:then')
-                continue
-            if any(row.get('state') != 'finished' for row in data['cases']):
-                if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L421:then')
-                raise ValueError(load_ui().text('scenarios.diagnostics.editor.delete_busy_macro', name=name))
-            for row in data['cases']:
-                if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L423:loop', row=row)
-                child = self.path(row['ticket'])
-                if not child.exists():
-                    if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L425:then')
-                    continue
-                child_data = read_json(child)
-                parent = (self.folder / child_data.get('macro_ticket', '')).resolve()
-                if child_data.get('role') != 'child' or parent != self.path(name):
-                    if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L429:then')
-                    raise ValueError(load_ui().text('scenarios.diagnostics.editor.child_membership_changed',
-                                                    name=child.name))
-                documents[child.name] = child_data
-        for name, data in documents.items():
-            if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L433:loop', name=name, data=data)
-            revision = (expected_revisions or {}).get(name)
-            if revision and self.revision(name) != revision:
-                if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L435:then')
-                raise ValueError(load_ui().text('scenarios.diagnostics.editor.delete_changed', name=name))
+        all_documents = dict(documents)
+        for name in self.listing():
+            if name not in all_documents:
+                try:
+                    all_documents[name] = read_json(self.path(name))
+                except (OSError, ValueError):
+                    continue  # Unrelated invalid files must not prevent repair/deletion.
+        macros = {n: d for n, d in all_documents.items() if d.get('task_type') == 'macro'}
+
+        def root(data):
+            value = data.get('case_dir')
+            return str((self.folder / Path(value).expanduser()).resolve()) if value else None
+
+        roots = {root(d) for d in all_documents.values()}
+        roots.update(root(row) for d in macros.values() for row in d.get('cases', []))
+        activity = self.deletion_activity(roots - {None}) if self.deletion_activity else None
+
+        def busy(data):
             queue = data.get('queue', {})
-            if queue.get('submit') or queue.get('state') == 'running' or (
-                    queue.get('job_id') and queue.get('state') == 'waiting'):
-                if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L438:then')
-                raise ValueError(load_ui().text('scenarios.diagnostics.editor.delete_queued', name=name))
-            if data.get('role') == 'child':
-                if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L441:then')
+            if queue.get('submit'):
+                return 'delete_queued'
+            if activity is not None:
+                return activity.get(root(data))
+            if queue.get('state') == 'running':
+                return 'delete_running'
+            if queue.get('job_id') and queue.get('state') == 'waiting':
+                return 'delete_queued'
+            return None
+
+        parents, owned = {}, {name: set() for name in macros}
+        for name, data in all_documents.items():
+            if data.get('role') == 'child' and data.get('macro_ticket'):
                 parent = (self.folder / data['macro_ticket']).resolve()
-                if parent.parent != self.folder or documents.get(parent.name, {}).get('task_type') != 'macro':
-                    if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L443:then')
-                    raise ValueError(load_ui().text('scenarios.diagnostics.editor.delete_child', name=name))
-                if not any(row['ticket'] == name for row in documents[parent.name]['cases']):
-                    if _diagnostics.detailed: _diagnostics.step('editor.TicketService._deletion_plan:L445:then')
-                    raise ValueError(load_ui().text('scenarios.diagnostics.editor.macro_mismatch', name=name))
-        return documents
+                if parent.parent == self.folder and parent.name in macros:
+                    parents.setdefault(name, set()).add(parent.name)
+                    owned[parent.name].add(name)
+        for name, data in macros.items():
+            for row in data.get('cases', []):
+                parents.setdefault(row.get('ticket'), set()).add(name)
+        busy_macros = {name for name, data in macros.items() if busy(data)
+                       or any(busy(all_documents[child]) for child in owned[name])
+                       or any(busy(all_documents.get(row.get('ticket'), {}))
+                              or (activity or {}).get(root(row))
+                              or (activity is None and row.get('state') == 'running')
+                              for row in data.get('cases', []))}
+        for name in list(documents):
+            for child in sorted(owned.get(name, ())):
+                documents[child] = all_documents[child]
+        blocked = []
+        for name, data in list(documents.items()):
+            key = ('delete_busy_macro' if name in busy_macros or parents.get(name, set()) & busy_macros
+                   else busy(data))
+            if key:
+                blocked.append(dict(name=name, reason=load_ui().text('scenarios.diagnostics.editor.' + key, name=name)))
+                del documents[name]
+                continue
+            revision = (expected_revisions or {}).get(name)
+            if revision and self.revision(name, data=data) != revision:
+                raise ValueError(load_ui().text('scenarios.diagnostics.editor.delete_changed', name=name))
+        updates = {}
+        for name, data in macros.items():
+            rows = [row for row in data.get('cases', []) if row.get('ticket') not in documents]
+            if name not in documents and rows != data.get('cases', []):
+                revision = (expected_revisions or {}).get(name)
+                if revision and self.revision(name, data=data) != revision:
+                    raise ValueError(load_ui().text('scenarios.diagnostics.editor.delete_changed', name=name))
+                updates[name] = dict(data, cases=rows)
+        return documents, blocked, updates
 
     @_diagnostics.trace
     def deletion_preview(self, names, expected_revisions=None):
         with ticket_lock(self.folder):
-            documents = self._deletion_plan(names, expected_revisions)
-            return dict(names=list(documents), revisions={name: self.revision(name) for name in documents})
+            documents, blocked, updates = self._deletion_plan(names, expected_revisions)
+            return dict(names=list(documents), blocked=blocked,
+                        revisions={name: self.revision(name) for name in documents.keys() | updates.keys()})
 
     @_diagnostics.trace
     def delete_many(self, names, expected_revisions=None):
         with ticket_lock(self.folder):
-            documents = self._deletion_plan(names, expected_revisions)
-            backups = {self.path(name): self.path(name).read_bytes() for name in documents}
-            removed = []
+            documents, blocked, updates = self._deletion_plan(names, expected_revisions)
+            if blocked:
+                raise ValueError(blocked[0]['reason'])
+            targets = list(documents) + list(updates)
+            if expected_revisions is not None:
+                for name in targets:
+                    if name not in expected_revisions:
+                        raise ValueError(load_ui().text('scenarios.diagnostics.editor.delete_changed', name=name))
+            backups = {self.path(name): self.path(name).read_bytes() for name in targets}
+            changed = []
             try:
-                for path in backups:
+                for name, data in updates.items():
+                    path = self.path(name)
+                    changed.append(path)
+                    atomic_json(path, data)
+                for name in documents:
+                    path = self.path(name)
                     if _diagnostics.detailed: _diagnostics.step('editor.TicketService.delete_many:L460:loop', path=path)
                     path.unlink()
-                    removed.append(path)
+                    changed.append(path)
             except OSError:
                 if _diagnostics.enabled: _diagnostics.step('editor.TicketService.delete_many:L463:except')
-                for path in removed:
+                for path in changed:
                     if _diagnostics.detailed: _diagnostics.step('editor.TicketService.delete_many:L464:loop', path=path)
                     path.write_bytes(backups[path])
                 raise

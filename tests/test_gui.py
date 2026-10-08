@@ -279,6 +279,33 @@ class FormTests(unittest.TestCase):
 
 
 class BulkDeleteControllerTests(unittest.TestCase):
+
+    def test_delete_initializes_live_reader_and_skips_protected_selection(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        folder = Path(temporary.name)
+        service = TicketService(folder / 'tickets')
+        files = [service.path(f'alone-{name}.json') for name in ('idle', 'running')]
+        for path in files:
+            path.write_text(json.dumps(dict(TEMPLATE, case_dir=str(folder / path.stem))))
+        editor = TicketEditor.__new__(TicketEditor)
+        editor.root, editor.current, editor.file_revision = None, None, None
+        editor.service, editor.files = service, files
+        editor.bot_config = folder / 'bot.json'
+        editor.bot_config.touch()
+        def bind_reader():
+            service.deletion_activity = lambda roots: {str(folder / 'alone-running'): 'delete_running'}
+        editor.execution_runner = Mock(side_effect=bind_reader)
+        editor.listbox = Mock()
+        editor.listbox.curselection.return_value = (0, 1)
+        editor.messagebox, editor.status = Mock(), Mock()
+        editor.messagebox.askyesno.return_value = True
+        editor.refresh, editor.new = Mock(), Mock()
+        editor.delete()
+        editor.execution_runner.assert_called_once()
+        self.assertIn('보호 1개', editor.messagebox.askyesno.call_args.args[1])
+        self.assertEqual(service.listing(), [files[1].name])
+        editor.messagebox.showerror.assert_not_called()
     def test_running_job_interruption_uses_shared_control(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -323,6 +350,7 @@ class BulkDeleteControllerTests(unittest.TestCase):
             path.write_text(json.dumps(dict(TEMPLATE, case_dir=str(folder))))
         editor = TicketEditor.__new__(TicketEditor)
         editor.root = None
+        editor.bot_config = folder / 'bot.json'
         editor.service, editor.files, editor.current = service, files, files[0]
         editor.file_revision = service.revision(files[0].name)
         editor.listbox = Mock()

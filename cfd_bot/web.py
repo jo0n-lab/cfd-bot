@@ -325,14 +325,12 @@ class WebApp:
             return validate_export(data['item'], data.get('others', []), root, data.get('index'))
         if path == '/api/delete/preview':
             if _diagnostics.detailed: _diagnostics.step('web.WebApp.post:L270:then')
-            self.fresh()
             return self.service.deletion_preview(data['names'])
         if path == '/api/delete':
             if _diagnostics.detailed: _diagnostics.step('web.WebApp.post:L273:then')
             if not data.get('revisions'):
                 if _diagnostics.detailed: _diagnostics.step('web.WebApp.post:L274:then')
                 raise ValueError('삭제 대상을 먼저 확인하세요.')
-            self.fresh()
             return self.service.delete_many(data['names'], data['revisions'])
         if path == '/api/run':
             if _diagnostics.detailed: _diagnostics.step('web.WebApp.post:L278:then')

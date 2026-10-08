@@ -124,6 +124,17 @@ class WebTests(Environment):
         self.assertEqual(self.app.service.listing(), [])
         self.assertTrue(second.exists())
 
+    def test_bulk_delete_returns_protected_tickets_and_accepts_idle_orphan(self):
+        self.store.enqueue(load_case(self.app.service.path(self.name)))
+        orphan = 'child-orphan.json'
+        atomic_json(self.app.service.path(orphan), dict(
+            self.case_data, case_dir=str(self.root / 'idle'), role='child', macro_ticket='missing.json'))
+        plan = self.post('/api/delete/preview', dict(names=[self.name, orphan]))
+        self.assertEqual(plan['names'], [orphan])
+        self.assertEqual([r['name'] for r in plan['blocked']], [self.name])
+        self.assertEqual(self.post('/api/delete', plan), [orphan])
+        self.assertTrue(self.app.service.path(self.name).exists())
+
     def test_ticket_selection_uses_cached_state_without_ofps_scan(self):
         self.store.put('snapshot', {'cases': {}, 'raw': 'No active jobs', 'at': time.time()})
         self.scan.reset_mock()

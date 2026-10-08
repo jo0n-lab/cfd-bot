@@ -42,7 +42,7 @@
 | Observed | Job 유사 + `external=True, missing:int, log_path, owner/CPU` | Monitor.observe → kv |
 | Telemetry | `time, execution, clock, rate_samples, errors, tail`, `inode, offset, backlog, missing, log_path` 등 | logs.read_log/recent_case_log |
 | Estimate | `remaining_seconds:number|None, progress:number|None, basis:str`, optional target/expected_seconds | logs.estimate → report/run_views/web |
-| DeletionPlan | `names:list[str], revisions:dict[name,hash]` | deletion_preview → 사용자 확인 → delete_many |
+| DeletionPlan | `names:list[str], revisions:dict[name,hash], blocked:list[{name,reason}]` | deletion_preview → 사용자 확인 → delete_many |
 | CancelResult | `cancelled:list[id], unavailable:list[id]` | cancel_queued_jobs → 세 UI/CLI |
 | FileItem | `path, kind:photo/document, caption` | residual_files/freeze_exports → Telegram.file |
 | Outbox row | `id,event_key,chat_id,body,sent,attempts,next_attempt` | Store.event → pending → deliver |
@@ -158,7 +158,9 @@ web은 save 전에 fresh snapshot + sync를 수행한다. Telegram/GUI의 일반
 
 ![삭제 요청·반환](diagrams/D-05.svg)
 
-`deletion_preview(names,revisions?) → {names,revisions}`로 macro child까지 확장한다. 사용자 확인 후 `delete_many(plan.names,plan.revisions) → list[str]`가 동일 검사를 다시 실행한다. 빈 선택, busy macro, 제출/queued/running 티켓, 단독 child 삭제, parent 관계 변경, revision 불일치를 거절한다. 모든 검사와 backup을 마친 후 unlink하며 OSError이면 제거 파일을 복원한다. 결과 디렉터리·solver 파일은 삭제하지 않는다. 삭제 직전 fresh 동기화는 web adapter에만 있다.
+`deletion_preview(names,revisions?) → {names,revisions,blocked}`는 비활성 macro의 소유 child까지 확장하고 삭제 가능/보호 목록을 분리한다. 세 UI 모두 `TicketRunner.deletion_activity`를 연결하여 같은 ofps snapshot과 SQLite queued/LIVE 작업·외부 관측을 읽는다. 접수 중(submit), 대기·실행·후처리·중단 중인 티켓 및 활성 매크로에 속한 child를 보호한다. 설정상의 대기열 이름, 미접수 waiting, 과거 queue 상태, 비활성 child의 membership 불일치는 삭제를 막지 않는다. runtime 미연결 편집 도구만 JSON 상태를 보수적으로 사용한다.
+
+사용자 확인 후 `delete_many(plan.names,plan.revisions) → list[str]`가 lock 안에서 동일 상태를 재조회한다. 상태 변경·revision 충돌·새 삭제 대상/부모 추가가 있으면 파일 변경 전에 거절한다. 비활성 child만 삭제하는 경우 남기는 부모의 cases 행도 정리하고 부모 revision을 확인한다. 모든 backup을 확보한 뒤 부모 저장·unlink를 수행하며 OSError이면 복원한다. 케이스 폴더·결과·DB 작업 기록은 유지한다. 잘못된 파일명·symlink는 허용하지 않는다.
 
 <a id="discover"></a>
 ## 8. UC-15 — 매크로 검색

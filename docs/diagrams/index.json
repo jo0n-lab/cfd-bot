@@ -36,8 +36,8 @@
     "title": "삭제 preview와 최종 삭제",
     "platform": "공용",
     "trigger": "deletion_preview → 사용자 확인 → delete_many",
-    "outcome": "티켓 JSON만 삭제; 케이스/결과 유지",
-    "error": "busy macro/child/running/queued/revision 충돌은 쓰기 전 거절; OSError rollback"
+    "outcome": "삭제 가능한 JSON + 비활성 부모 참조 정리; 케이스/결과 유지",
+    "error": "확정 전 active/revision 재확인 실패는 쓰기 전 거절; OSError rollback"
   },
   {
     "key": "D-06",
