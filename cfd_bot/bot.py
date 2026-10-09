@@ -1,4 +1,5 @@
 from . import diagnostics as _diagnostics
+from contextlib import nullcontext
 import hashlib
 import logging
 import os
@@ -16,6 +17,7 @@ from .queueing import job_queue_id
 from .run_views import case_id_for_root, running_macro_views, tracking_registry
 from .report import compact_status, macro_queue_text, queue_text, render_run
 from .telegram import Telegram, TelegramError, chunks
+from .telegram_receipts import TelegramReceipts
 from .texts import load_text
 from .ui import load_ui
 
@@ -56,8 +58,10 @@ def elapsed_seconds(value):
 
 class Bot:
     @_diagnostics.trace
-    def __init__(self, config, store, api):
+    def __init__(self, config, store, api, receipts=None):
         self.config, self.store, self.api = config, store, api
+        self.receipts = receipts
+        self.message_store = receipts if receipts is not None else store
         self.ui = load_ui(config.get('_ui_dir'))
         self.ticket_ui = None
 
@@ -79,7 +83,7 @@ class Bot:
             if _diagnostics.detailed: _diagnostics.step('bot.Bot._remember:L66:loop', message=message)
             if isinstance(message, dict) and type(message.get('message_id')) is int:
                 if _diagnostics.detailed: _diagnostics.step('bot.Bot._remember:L67:then')
-                self.store.remember_message(chat, message['message_id'], message.get('date'))
+                self.message_store.remember_message(chat, message['message_id'], message.get('date'))
 
     @_diagnostics.trace
     def send(self, chat, text, markup=None):
@@ -341,12 +345,12 @@ class Bot:
                 if _diagnostics.detailed: _diagnostics.step('bot.Bot.handle:L251:then')
                 self.start_callback_ack(callback['id'], self.ui.text('menus.home.unauthorized'))
             return
-        if type(message.get('message_id')) is int:
-            if _diagnostics.detailed: _diagnostics.step('bot.Bot.handle:L254:then')
-            self.store.remember_message(chat, message['message_id'], message.get('date'))
         if callback:
             if _diagnostics.detailed: _diagnostics.step('bot.Bot.handle:L256:then')
             self.start_callback_ack(callback['id'])
+        if type(message.get('message_id')) is int:
+            if _diagnostics.detailed: _diagnostics.step('bot.Bot.handle:L254:then')
+            self.message_store.remember_message(chat, message['message_id'], message.get('date'))
         if self.ticket_ui is None:
             if _diagnostics.detailed: _diagnostics.step('bot.Bot.handle:L258:then')
             from .ticket_chat import TicketChat
@@ -389,11 +393,13 @@ class Bot:
             # message's Telegram timestamp and a small boundary margin so one
             # expired ID cannot force the whole batch into a slow fallback.
             if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L287:then')
-            messages = self.store.chat_messages(chat, since=time.time() - 48 * 3600 + 60)
-            self.api.delete_messages(chat, messages)
-            # Expired and otherwise undeletable IDs must not poison every later
-            # /clean attempt. A transport/server error raises before this point.
-            self.store.clear_messages(chat)
+            barrier = self.receipts.clean_barrier() if self.receipts is not None else nullcontext()
+            with barrier:
+                messages = self.store.chat_messages(chat, since=time.time() - 48 * 3600 + 60)
+                self.api.delete_messages(chat, messages)
+                # Expired and otherwise undeletable IDs must not poison every later
+                # /clean attempt. A transport/server error raises before this point.
+                self.store.clear_messages(chat)
             if self.ticket_ui is not None:
                 if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L296:then')
                 self.ticket_ui.forget_panels(chat)
@@ -777,6 +783,8 @@ def serve(config, store, stop=None):
         if webhook.get('url'):
             if _diagnostics.detailed: _diagnostics.step('bot.serve:L560:then')
             raise ValueError(ui.text('scenarios.diagnostics.service.webhook'))
+        receipts = TelegramReceipts(store)
+        bot.receipts = bot.message_store = receipts
         workers = [threading.Thread(target=_diagnostics.inherit_context(monitor_loop), daemon=True),
                    threading.Thread(target=_diagnostics.inherit_context(notification_loop), daemon=True)]
         for thread in workers:
@@ -786,7 +794,7 @@ def serve(config, store, stop=None):
             while not stop.is_set():
                 if _diagnostics.detailed: _diagnostics.step('bot.serve:L567:loop')
                 try:
-                    updates = api.updates(store.get('telegram_offset', 0))
+                    updates = api.updates(receipts.offset)
                     for update in updates:
                         if _diagnostics.detailed: _diagnostics.step('bot.serve:L570:loop', update=update)
                         try:
@@ -795,7 +803,7 @@ def serve(config, store, stop=None):
                             if _diagnostics.enabled: _diagnostics.step('bot.serve:L573:except')
                             LOG.warning('Telegram request failed: %s', exc)
                         # A broken update must not indefinitely block subsequent buttons.
-                        store.put('telegram_offset', update['update_id'] + 1)
+                        receipts.checkpoint(update['update_id'] + 1)
                 except TelegramError as exc:
                     if _diagnostics.enabled: _diagnostics.step('bot.serve:L577:except')
                     LOG.warning('Telegram polling: %s', exc)
@@ -805,3 +813,4 @@ def serve(config, store, stop=None):
             for thread in workers:
                 if _diagnostics.detailed: _diagnostics.step('bot.serve:L582:loop', thread=thread)
                 thread.join(timeout=2)
+            receipts.close()

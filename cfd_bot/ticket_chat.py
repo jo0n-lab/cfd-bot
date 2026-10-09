@@ -77,6 +77,13 @@ class TicketChat:
     def persist(self, chat, user, session):
         self.store.put(self.key(chat, user), session)
 
+    def leave(self, chat, user, session):
+        """Invalidate real pending input; ordinary data requests need no write."""
+        if 'pending' in session or session.get('view', 'away') != 'away':
+            session.pop('pending', None)
+            session['view'] = 'away'
+            self.persist(chat, user, session)
+
     @_diagnostics.trace
     def forget_panels(self, chat):
         """A cleared conversation has no usable editor prompts; retain drafts."""
@@ -163,9 +170,7 @@ class TicketChat:
                         return True
                     if not data.startswith('te:'):
                         if _diagnostics.detailed: _diagnostics.step('ticket_chat.TicketChat.handle:L141:then')
-                        session.pop('pending', None)
-                        session['view'] = 'away'
-                        self.persist(chat, user, session)
+                        self.leave(chat, user, session)
                         return False
                     parts = data.split(':', 3)
                     if len(parts) < 3 or parts[1] != session.get('token'):
@@ -197,9 +202,7 @@ class TicketChat:
                 if command in COMMANDS:
                     # Leaving the editor must not interpret subsequent conversation as a field.
                     if _diagnostics.detailed: _diagnostics.step('ticket_chat.TicketChat.handle:L168:then')
-                    session.pop('pending', None)
-                    session['view'] = 'away'
-                    self.persist(chat, user, session)
+                    self.leave(chat, user, session)
                     return False
                 if session.get('pending') and text:
                     if _diagnostics.detailed: _diagnostics.step('ticket_chat.TicketChat.handle:L174:then')

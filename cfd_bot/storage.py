@@ -519,14 +519,24 @@ class Store:
             if _diagnostics.detailed: _diagnostics.step('storage.Store.remember_message:L391:then')
             return
         created = created if isinstance(created, (int, float)) else time.time()
+        self.remember_messages([(chat_id, message_id, created)])
+
+    @_diagnostics.trace
+    def remember_messages(self, messages, *, offset=None):
+        """Commit Telegram receipts and their polling checkpoint together."""
         with self.connect() as db:
-            db.execute('INSERT INTO chat_messages VALUES (?,?,?) '
-                       'ON CONFLICT(chat_id,message_id) DO UPDATE SET '
-                       'created=MIN(chat_messages.created,excluded.created)',
-                       (chat_id, message_id, created))
-            db.execute('DELETE FROM chat_messages WHERE chat_id=? AND message_id NOT IN '
-                       '(SELECT message_id FROM chat_messages WHERE chat_id=? '
-                       'ORDER BY created DESC LIMIT 1000)', (chat_id, chat_id))
+            db.executemany('INSERT INTO chat_messages VALUES (?,?,?) '
+                           'ON CONFLICT(chat_id,message_id) DO UPDATE SET '
+                           'created=MIN(chat_messages.created,excluded.created)', messages)
+            for chat_id in {message[0] for message in messages}:
+                db.execute('DELETE FROM chat_messages WHERE chat_id=? AND message_id NOT IN '
+                           '(SELECT message_id FROM chat_messages WHERE chat_id=? '
+                           'ORDER BY created DESC LIMIT 1000)', (chat_id, chat_id))
+            if offset is not None:
+                db.execute("INSERT INTO kv VALUES ('telegram_offset', ?) "
+                           "ON CONFLICT(key) DO UPDATE SET body=excluded.body "
+                           "WHERE CAST(kv.body AS INTEGER) < CAST(excluded.body AS INTEGER)",
+                           (json.dumps(offset),))
 
     @_diagnostics.trace
     def chat_messages(self, chat_id, since=None):

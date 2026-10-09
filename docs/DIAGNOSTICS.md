@@ -89,3 +89,7 @@ ofps도 event/function 코드와 파일 header를 사용하며 원래 stdout/exi
 후속 [#30 원인·중복 분석](analysis/diagnostic-overhead-review.md)에서 제안한 숫자 기록·사전·공유 예외를 runtime에 적용했다. [구현 이력](history/2026-10-07-diagnostic-codec-implementation.md)과 [적용 전후 실측](analysis/diagnostic-codec-performance.md)을 참고한다. 제안 문서는 설계 당시 기록이며 실제 번호/형식은 [코드 사전](analysis/diagnostic-codebook.md)을 따른다.
 
 basic/detailed를 분리한 최신 비교는 [수집 수준별 성능](analysis/diagnostic-level-performance.md)을 따른다. 과거 전체 ON 결과는 상세 모드의 배경 자료다. 실제 네트워크·solver·장기 동시 요청은 합성 fixture 측정과 구분하며 상세 모드는 여전히 큰 비용이 발생할 수 있다.
+
+## Telegram 메시지 기록 지연 분석
+
+`TelegramReceipts.remember_message/checkpoint`의 시간은 local journal 비용이고, `_flush → Store.remember_messages`는 background DB 대기·일괄 commit 비용이다. basic에서도 `telegram.receipts.queued`와 `telegram.receipts.committed`의 generation/개수를 남겨 요청에서 기록한 항목이 어느 batch까지 반영됐는지 확인한다. DB 실패는 경고와 예외로 남으며 journal을 유지한다. 응답 지연은 `Bot.handle → Bot.file → Telegram.call`의 같은 trace와 별도 batch trace를 구분해 읽는다. 실제 기기 클릭·화면 표시 시간은 수집하지 않는다.

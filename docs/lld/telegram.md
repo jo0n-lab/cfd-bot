@@ -7,7 +7,11 @@
 
 `bot.serve → Telegram.updates(offset) → for update → Bot.handle`이 main thread에서 순차 실행된다. callback ACK는 `start_callback_ack → acknowledge_callback → Telegram.call(answerCallbackQuery)`의 별도 daemon thread다. 인증은 sender와 chat을 모두 검사한다. ACK와 실제 사용자 화면 응답은 별개다.
 
+인증 직후 ACK thread를 시작하고 `TelegramReceipts.remember_message`에 수신 ID를 기록한다. `Bot.send/file`의 송신 ID도 같은 복구 journal에 기록한다. `serve`는 처리 후 `checkpoint`에 offset을 기록하고 다음 polling은 메모리 offset을 사용한다. 단일 receipt thread의 `Store.remember_messages` batch가 SQLite의 메시지 ID와 offset을 함께 갱신한다. DB 실패는 journal을 보존해 재시도하며 restart 시 재생한다. 이 경로는 알림 outbox의 전달 checkpoint와 별개다.
+
 `TicketChat.handle`은 일반 Bot.dispatch보다 먼저 호출된다. `/tickets`·`/ticket`·`tickets`·`ticketopen`·`/cancel`, 편집 callback 및 pending field 입력을 소비하면 True를 반환한다. 나머지는 일반 dispatcher로 넘긴다. session은 `ticket-editor:<chat>:<user>`에 저장한다. render마다 token을 교체하며 다른 사용자/오래된 버튼은 거절한다.
+
+일반 요청은 `TicketChat.leave`에서 실제 편집 화면/pending이 있을 때만 이탈 상태를 저장한다. 빈 세션과 이미 away인 세션에는 쓰지 않는다. `/clean`은 receipt writer와 같은 flush lock 아래 pending ID 저장·조회·Telegram 삭제·DB 목록 정리를 수행하고, 그 뒤 편집 panel/token/pending을 정리한다.
 
 TicketChat의 RLock은 handle과 검색 결과 반영, render의 Telegram API까지 포함한다. render는 먼저 새 token을 저장하고 editMessageText를 시도하며 TelegramError면 새 메시지로 fallback한다. 일반 Bot.send/file은 outbox를 거치지 않는다. `Bot.handle`은 일반 dispatch의 ValueError/OSError를 메시지로 바꾸고, 그 밖의 예외는 serve에서 경고 후 offset을 진행한다. 모든 실패가 사용자 오류 응답을 보장하는 것은 아니다.
 

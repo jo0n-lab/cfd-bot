@@ -253,7 +253,7 @@ ID만 선택·해제·취소하고 다른 대기열의 선택을 보존한다. T
 
 입력 취소는 draft/session/modal 전이이며 이미 수락된 job을 취소하는 동작이 아니다. `/cancel`은 pending/browser/scan_id를 지우고 draft를 유지한다. dirty 초안 전환은 별도 폐기 확인이다. GUI confirm_switch는 Yes=save 결과, No=이동 허용, Cancel=이동 거절이다. web draft는 beforeunload 경고만 있으며 서버에 자동 저장하지 않는다.
 
-`/clean`은 최근 48시간에서 60초 여유를 둔 message ID를 최대 100개씩 deleteMessages에 전달한다. 400이면 batch를 재귀 이분하고 단일 불가 ID를 제외한다. 정상 완료 후 로컬 추적 목록을 지우고 편집 panel/token/pending을 정리한다. Telegram 전송 오류는 목록 정리 전에 전파된다.
+`/clean`은 `TelegramReceipts.clean_barrier()`에서 pending ID를 먼저 DB에 반영하고 flush lock을 유지한 채 최근 48시간에서 60초 여유를 둔 message ID를 최대 100개씩 deleteMessages에 전달한다. 400이면 batch를 재귀 이분하고 단일 불가 ID를 제외한다. 정상 완료 후 로컬 추적 목록을 지우고 편집 panel/token/pending을 정리한다. Telegram 전송 오류는 목록 정리 전에 전파된다. 삭제 중 새로 보낸 메시지는 journal에 남아 다음 flush/clean의 대상이다.
 
 ## 15. 저장소·오류·검증
 
@@ -272,6 +272,8 @@ ID만 선택·해제·취소하고 다른 대기열의 선택을 보존한다. T
 | remember_run/runtime_history | root별 최대 20개 저장; 실행 profile/CPU가 맞는 최근 5개 반환 |
 
 테이블은 jobs, kv, outbox, chat_messages, run_history다. kv 주요 키는 snapshot, monitor_error, observed:root, auto_observed_roots, telegram_offset, queue_paused, queue_drain_claim, queue_fair_turns, outage_id, event:run-id, ticket-editor:chat:user, queue-selection:chat:user, enqueue:request다. DB state와 ticket queue는 별도 상태 계층이다.
+
+`Store.remember_messages(messages, offset=None)`는 ID upsert, chat별 최근 1,000개 보존, offset의 단조 증가를 한 transaction으로 반영한다. 단건 `remember_message`도 이 함수를 사용한다. daemon의 일반 응답은 `TelegramReceipts.remember_message/checkpoint`로 local journal(0600, atomic replace)에 기록하며, 단일 thread가 DB batch를 처리한다. DB 쓰기 중 journal mutex는 해제한다. 성공한 batch에 포함된 pending만 지우므로 쓰기 도중 도착한 메시지를 잃지 않는다. 실패·종료 시 journal을 보존하고 시작 시 SQLite checkpoint와 journal offset의 최댓값으로 복구한다. 알림 `deliver`의 outbox 선기록·checkpoint 경계는 유지한다.
 
 Scheduler는 `unpublished_terminal_jobs` 결과만 `terminal_event`로 넘긴다. 이미 outbox가 있는 legacy job은 migration 없이 제외되고, 알림 대상이 아니거나 outbox 저장이 끝난 managed job은 `terminal_event_published=true`가 된다. `Store.event`는 기존 event/recipient만 있으면 쓰기 transaction을 열지 않으므로 반복 start 복구와 external 감시도 `AUTOINCREMENT`를 소비하지 않는다. worker의 solver·monitor·hook 실행 이후 Store 쓰기는 SQLite `locked` 또는 `busy`만 재시도한다. 그동안 child는 계속 실행되며 다른 DB 오류는 기존 오류 경로로 전파된다.
 

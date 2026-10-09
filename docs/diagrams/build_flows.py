@@ -30,7 +30,7 @@ def tg_send():
     return fn('bot.Bot.send', 'chat, text, keyboard', 'list[Message]',
               fn('telegram.Telegram.send','chat, text, keyboard','list[Message]',
                  fn('telegram.Telegram.call','sendMessage; 30 s/call','Message',note='문자열 분할마다 동기 네트워크')),
-              fn('bot.Bot._remember','chat, result','None',db('remember_message','chat, message_id, date')))
+              fn('bot.Bot._remember','chat, result','None',fn('telegram_receipts.TelegramReceipts.remember_message','chat, message_id, date','None',note='복구 journal 기록; DB는 별도 thread에서 batch commit')))
 
 def panel():
     return fn('ticket_chat.TicketChat.render','chat, user, session, text, rows, view','None',
@@ -48,8 +48,8 @@ def tg(uc,title,trigger,*calls,editor=False,error=None):
                       note='token 확인 후 op 분기; RLock 유지'),note='진입/입력 명령은 handle에서 직접 분기')
     else:
         handler=fn('bot.Bot.dispatch','chat, action, request_key, user','None',*calls)
-    root=fn('bot.Bot.handle','update','None',handler,note='sender/chat 인증; callback ACK는 별도 thread')
-    chart(f'{uc}-tg',title,'Telegram',trigger,root,'메시지/패널 반영 → handle 반환 → serve가 offset 저장',error or '입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행')
+    root=fn('bot.Bot.handle','update','None',handler,note='sender/chat 인증 → ACK thread → 수신 ID journal; 비편집 idle session 쓰기 생략')
+    chart(f'{uc}-tg',title,'Telegram',trigger,root,'메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch',error or '입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행')
 
 def gui(uc,title,method,*calls,note='',outcome='Tk status / widget / dialog 반영',error='ValueError/OSError → messagebox; 초안 유지'):
     chart(f'{uc}-gui',title,'cfd-ticket-gui',f'Tk event → {method}',fn('gui.TicketEditor.'+method,'event 또는 현재 폼',{'values':'FormValues','save':'bool','validate':'bool','confirm_switch':'bool'}.get(method,'None'),*calls,note=note),outcome,error)
@@ -182,7 +182,7 @@ web('UC-03','등록 케이스 목록','결과 화면 진입 / 복귀','/api/over
 tg('UC-04','상태 상세','detail:case-id',fn('bot.Bot.latest_run','case','Job|Observed|None',db('jobs','','all jobs'),db('get','observed:root','Observed|None'),db('runtime_history','case,cores','samples')),fn('report.render_run','run,templates,detail','text'),tg_send())
 web('UC-04','상태 상세·ETA','loadData','/api/detail?case=id',fn('web.WebApp.detail','cid','Detail',fn('web.WebApp.case','cid','Case'),fn('web.WebApp.read_log','case + cursor','(telemetry,path)'),fn('bot.Bot.latest_run','case','run|None'),fn('logs.estimate','case,telemetry,elapsed,history','Estimate'),db('runtime_history','case','samples')),note='/api/artifacts와 Promise.all; stale dataId이면 결과 폐기')
 for uc,title,action,call in [('UC-05','Residual 조회','residual',fn('artifacts.residual_files','case','FileItem[]',detail='D-10')),('UC-06','결과 파일 조회','export',fn('artifacts.export_files','case,export','Path[]',detail='D-10'))]:
- tg(uc,title,action+':case-id[:name]',call,fn('bot.Bot.file','파일마다 chat,item','Message',fn('telegram.Telegram.file','chat,item','Message',fn('telegram.Telegram.call','sendPhoto/Document, timeout=90','Message'),note='photo 400이면 document 재시도')))
+ tg(uc,title,action+':case-id[:name]',call,fn('bot.Bot.file','파일마다 chat,item','Message',fn('telegram.Telegram.file','chat,item','Message',fn('telegram.Telegram.call','sendPhoto/Document, timeout=90','Message'),note='photo 400이면 document 재시도'),fn('bot.Bot._remember','chat, result','None',fn('telegram_receipts.TelegramReceipts.remember_message','chat, message_id, date','None',note='복구 journal 기록; DB 잠금은 업로드/다음 polling을 막지 않음'))))
  gui(uc,title,'open_queue_result_data',fn('artifacts.residual_files' if uc=='UC-05' else 'artifacts.export_files','현재 registry Case','파일 목록',detail='D-10'),note='현재 ticket로 추적 가능한 running/종료 job만; Tk Listbox에 경로 표시',outcome='파일 경로 표시; 이미지 preview/다운로드는 구현 없음')
  web(uc,title,'loadData / download','/api/artifacts → /api/file',fn('web.WebApp.artifacts','cid','ArtifactGroup[]',fn('web.WebApp.artifact_paths','cid,source','(Case,Path[])')),note='후속 /api/file은 Handler가 WebApp.file을 직접 호출: 재매칭→inside→open→fd 확인→64 KiB stream',outcome='파일 목록 JSON; 후속 파일 HTTP는 binary inline/attachment')
 tg('UC-07','티켓 목록·다중 선택','/tickets /ticket tickets',fn('ticket_chat.TicketChat.listing','page','None',service('listing','','names'),panel()),fn('ticket_chat.TicketChat.bulk_list','bulk/page/all/none/toggle','None',service('listing','','names'),panel()),editor=True)
@@ -239,7 +239,7 @@ web('UC-23','폴더·파일 선택','showBrowser','/api/browse',fn('web.WebApp.b
 tg('UC-24','입력 취소·초안 폐기·검색 취소','/cancel / backinput / discard / stopscan',fn('ticket_chat.TicketChat.card','pending/browser/scan_id 제거; draft 유지','None',panel()),editor=True)
 gui('UC-24','저장/폐기/취소·닫기','confirm_switch',fn('tkinter.messagebox.askyesnocancel','미저장 변경','True/False/None'),fn('gui.TicketEditor.save','Yes일 때','bool'),note='No: 폐기하고 이동; None: 현재 화면 유지; close는 성공 시 after 취소/destroy',outcome='bool → new/open/duplicate/close 진행 여부')
 chart('UC-24-web','초안 폐기·modal 취소','web','confirmDiscard / close-modal / beforeunload',fn('web_static.app.js:confirmDiscard','next action','UI action',fn('web_static.app.js:modal','dirty면 폐기 확인','None')),'확인 시 다음 action; 취소 시 draft 유지; 서버 rollback 동작 아님','진행 중 fetch의 서버 작업을 취소하는 기능은 없음')
-tg('UC-25','대화 일괄 정리','/clean',db('chat_messages','chat, since=48h-60s','message_ids'),fn('telegram.Telegram.delete_messages','chat,ids','deleted ids',fn('telegram.Telegram._delete_batch','최대 100 ids','deleted ids',fn('telegram.Telegram.call','deleteMessages','API result'),note='400이면 절반씩 재귀; 단일 불가 ID는 []')),db('clear_messages','chat'),fn('ticket_chat.TicketChat.forget_panels','chat','None',note='draft 유지; token/panel/pending 제거'))
+tg('UC-25','대화 일괄 정리','/clean',fn('telegram_receipts.TelegramReceipts.clean_barrier','','context',fn('telegram_receipts.TelegramReceipts._flush','pending messages + offset','None',db('remember_messages','batch + offset','None')),note='이후 chat_messages/delete_messages/clear_messages 완료까지 flush lock 유지'),db('chat_messages','chat, since=48h-60s','message_ids'),fn('telegram.Telegram.delete_messages','chat,ids','deleted ids',fn('telegram.Telegram._delete_batch','최대 100 ids','deleted ids',fn('telegram.Telegram.call','deleteMessages','API result'),note='400이면 절반씩 재귀; 단일 불가 ID는 []')),db('clear_messages','chat'),fn('ticket_chat.TicketChat.forget_panels','chat','None',note='draft 유지; token/panel/pending 제거'))
 # Non-UI operational entrypoints are one chart with explicit command branches.
 chart('UC-26','외부 PC 접속과 브라우저','Windows / macOS / Linux','launcher / cfd-web-tunnel',fn('OpenSSH ssh','-N -T -L loopback:local:loopback:server','연결 유지',note='Windows Get-SshAliases / macOS ssh_config_hosts → Host 번호 선택; ssh가 인증/ProxyJump 해석'), '포트 열림 확인 → 브라우저 http://127.0.0.1 → UC-01-web; 종료 시 자신이 만든 SSH 종료','잘못된 선택·포트 충돌·SSH 종료 시 실패; HTTP health 확인과 단순 포트 열림은 다름')
 chart('UC-27','운영 CLI 명령 분기','CLI','python -m cfd_bot [command]',fn('cli.main','argv','exit code',fn('config.load_bot','config path','BotConfig'),fn('config.cases_for','check: force=True; enqueue: cached index','Case[]'),fn('processes.snapshot','status만: command','Snapshot',detail='D-04'),db('enqueue','enqueue만: selected Case','Job'),fn('monitor.Monitor.run_once','monitor만: loop/once','bool'),fn('bot.serve','serve만','None; loop'),fn('web.serve','web만','None; loop')), 'check는 검증/stdout만; identify는 Telegram 조회; gui는 config 분기 전에 launch','OSError/ValueError/RuntimeError → stderr, exit 2; _worker는 별도 worker 반환')

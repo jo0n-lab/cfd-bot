@@ -4,6 +4,7 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-10-10 | [Telegram 응답 경로의 DB 대기 제거](2026-10-10-telegram-receipt-batching.md) | 사용자 요청으로 생략 |
 | 2026-10-08 | [웹 증분 조회·탭 복귀 갱신](2026-10-08-web-incremental-refresh.md) | 사용자 요청으로 생략 |
 | 2026-10-08 | [중단 뒤 monitor-only 티켓 상태](2026-10-08-monitor-only-ticket-state.md) | 사용자 요청으로 생략 |
 | 2026-10-08 | [실행·대기 상태에 따른 티켓 삭제](2026-10-08-ticket-deletion-activity.md) | 사용자 요청으로 생략 |

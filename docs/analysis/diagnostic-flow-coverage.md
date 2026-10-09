@@ -10,7 +10,7 @@
 | [D-02](../diagrams/D-02.svg) | 저장·revision·원자적 파일 반영 | 6 | 5 | 1 | 0 |
 | [D-03](../diagrams/D-03.svg) | 공용 실행 요청 | 20 | 5 | 12 | 3 |
 | [D-04](../diagrams/D-04.svg) | fresh snapshot과 lock 대기 | 8 | 1 | 4 | 3 |
-| [D-05](../diagrams/D-05.svg) | 삭제 preview와 최종 삭제 | 4 | 2 | 1 | 1 |
+| [D-05](../diagrams/D-05.svg) | 삭제 preview와 최종 삭제 | 16 | 4 | 8 | 4 |
 | [D-06](../diagrams/D-06.svg) | 직계 하위 케이스 검색 | 5 | 1 | 4 | 0 |
 | [D-07](../diagrams/D-07.svg) | 로그·진행률·ETA | 5 | 2 | 3 | 0 |
 | [D-08](../diagrams/D-08.svg) | 다중 대기 취소 | 2 | 2 | 0 | 0 |
@@ -24,20 +24,20 @@
 | [UC-01-gui](../diagrams/UC-01-gui.svg) | 편집기 기동 | 7 | 6 | 1 | 0 |
 | [UC-01-web](../diagrams/UC-01-web.svg) | 초기 화면 | 6 | 3 | 1 | 2 |
 | [UC-02-tg](../diagrams/UC-02-tg.svg) | 실시간 현재 CASE | 23 | 10 | 9 | 4 |
-| [UC-02-web](../diagrams/UC-02-web.svg) | 대시보드·현황 갱신 | 26 | 10 | 11 | 5 |
+| [UC-02-web](../diagrams/UC-02-web.svg) | 대시보드·현황 갱신 | 21 | 4 | 12 | 5 |
 | [UC-03-tg](../diagrams/UC-03-tg.svg) | 등록 케이스 목록·선택 | 19 | 13 | 4 | 2 |
-| [UC-03-web](../diagrams/UC-03-web.svg) | 등록 케이스 목록 | 7 | 3 | 2 | 2 |
+| [UC-03-web](../diagrams/UC-03-web.svg) | 등록 케이스 목록 | 6 | 3 | 1 | 2 |
 | [UC-04-tg](../diagrams/UC-04-tg.svg) | 상태 상세 | 13 | 6 | 6 | 1 |
 | [UC-04-web](../diagrams/UC-04-web.svg) | 상태 상세·ETA | 10 | 3 | 5 | 2 |
-| [UC-05-tg](../diagrams/UC-05-tg.svg) | Residual 조회 | 7 | 6 | 0 | 1 |
+| [UC-05-tg](../diagrams/UC-05-tg.svg) | Residual 조회 | 9 | 7 | 1 | 1 |
 | [UC-05-gui](../diagrams/UC-05-gui.svg) | Residual 조회 | 2 | 2 | 0 | 0 |
 | [UC-05-web](../diagrams/UC-05-web.svg) | Residual 조회 | 6 | 3 | 1 | 2 |
-| [UC-06-tg](../diagrams/UC-06-tg.svg) | 결과 파일 조회 | 7 | 6 | 0 | 1 |
+| [UC-06-tg](../diagrams/UC-06-tg.svg) | 결과 파일 조회 | 9 | 7 | 1 | 1 |
 | [UC-06-gui](../diagrams/UC-06-gui.svg) | 결과 파일 조회 | 2 | 2 | 0 | 0 |
 | [UC-06-web](../diagrams/UC-06-web.svg) | 결과 파일 조회 | 6 | 3 | 1 | 2 |
 | [UC-07-tg](../diagrams/UC-07-tg.svg) | 티켓 목록·다중 선택 | 19 | 17 | 0 | 2 |
 | [UC-07-gui](../diagrams/UC-07-gui.svg) | 티켓 목록·다중 선택 | 4 | 3 | 1 | 0 |
-| [UC-07-web](../diagrams/UC-07-web.svg) | 티켓 목록·선택 | 8 | 6 | 0 | 2 |
+| [UC-07-web](../diagrams/UC-07-web.svg) | 티켓 목록·선택 | 7 | 4 | 1 | 2 |
 | [UC-08-tg](../diagrams/UC-08-tg.svg) | 새 티켓 | 14 | 13 | 0 | 1 |
 | [UC-08-gui](../diagrams/UC-08-gui.svg) | 새 티켓 | 5 | 4 | 1 | 0 |
 | [UC-08-web](../diagrams/UC-08-web.svg) | 새 티켓 | 5 | 3 | 0 | 2 |
@@ -58,7 +58,7 @@
 | [UC-12-web](../diagrams/UC-12-web.svg) | 저장·이름 변경 | 18 | 8 | 5 | 5 |
 | [UC-14-tg](../diagrams/UC-14-tg.svg) | 개별·다중 티켓 삭제 | 20 | 18 | 0 | 2 |
 | [UC-14-gui](../diagrams/UC-14-gui.svg) | 개별·다중 티켓 삭제 | 4 | 4 | 0 | 0 |
-| [UC-14-web](../diagrams/UC-14-web.svg) | 개별·다중 티켓 삭제 | 18 | 8 | 5 | 5 |
+| [UC-14-web](../diagrams/UC-14-web.svg) | 개별·다중 티켓 삭제 | 6 | 4 | 0 | 2 |
 | [UC-15-tg](../diagrams/UC-15-tg.svg) | 매크로 검색·필터·취소 | 28 | 19 | 4 | 5 |
 | [UC-15-gui](../diagrams/UC-15-gui.svg) | 매크로 검색·필터 | 13 | 5 | 5 | 3 |
 | [UC-15-web](../diagrams/UC-15-web.svg) | 매크로 검색·필터 | 17 | 7 | 5 | 5 |
@@ -89,7 +89,7 @@
 | [UC-24-tg](../diagrams/UC-24-tg.svg) | 입력 취소·초안 폐기·검색 취소 | 9 | 8 | 0 | 1 |
 | [UC-24-gui](../diagrams/UC-24-gui.svg) | 저장/폐기/취소·닫기 | 3 | 2 | 0 | 1 |
 | [UC-24-web](../diagrams/UC-24-web.svg) | 초안 폐기·modal 취소 | 2 | 0 | 0 | 2 |
-| [UC-25-tg](../diagrams/UC-25-tg.svg) | 대화 일괄 정리 | 9 | 6 | 2 | 1 |
+| [UC-25-tg](../diagrams/UC-25-tg.svg) | 대화 일괄 정리 | 12 | 8 | 3 | 1 |
 | [UC-26](../diagrams/UC-26.svg) | 외부 PC 접속과 브라우저 | 1 | 0 | 0 | 1 |
 | [UC-27](../diagrams/UC-27.svg) | 운영 CLI 명령 분기 | 15 | 7 | 5 | 3 |
 | [UC-28-tg](../diagrams/UC-28-tg.svg) | 실행 중 managed 작업 중단 | 10 | 7 | 2 | 1 |

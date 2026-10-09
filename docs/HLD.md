@@ -85,8 +85,9 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 
 | 실행 단위 | 진입점 / 실행 방식 | 점유하는 작업 | 응답/완료 경계 |
 |---|---|---|---|
-| 봇 main thread | `bot.serve`, updates 순차 for loop | 인증·routing·대부분의 도메인 호출·일반 메시지와 파일 전송 | handle 반환 후 update offset 저장 |
+| 봇 main thread | `bot.serve`, updates 순차 for loop | 인증·routing·대부분의 도메인 호출·일반 메시지와 파일 전송 | handle 반환 후 offset을 로컬 journal에 기록 |
 | callback ACK thread | callback마다 `start_callback_ack` | answerCallbackQuery 네트워크 호출 | 실제 action 완료와 독립 |
+| Telegram receipt thread | `TelegramReceipts`, daemon lock 안에서 1개 | 메시지 ID·offset을 50ms 병합 후 SQLite 일괄 저장·실패 재시도 | 수신/송신은 journal 기록까지만 기다림; `/clean`은 flush 동기화 |
 | Telegram 검색 thread | `TicketChat.scan.work` | snapshot·매크로 디렉터리 검색 | session 확인 후 RLock 아래 화면 전송 |
 | Monitor thread | `run_once` 완료 뒤 `poll_seconds` 대기 | scan·관측·접수·복구·Scheduler·JSON sync | 한 tick 전체; 고정 주기 timer가 아님 |
 | Delivery thread | `deliver` 완료 뒤 1초 대기 | pending 최대 10행을 순차 전송·checkpoint·retry | 수신자별 outbox row |
@@ -98,6 +99,8 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 | CLI | `cli.main` | 선택 명령; monitor는 loop | stdout/exit code 또는 서비스 loop |
 
 일반 Telegram 응답 전송은 outbox를 거치지 않으며 main thread를 점유한다. ACK를 비동기로 보낸다고 다음 사용자 요청까지 병렬 처리되는 것은 아니다. Tk의 일반 저장/검증은 main thread에서 수행한다. 브라우저가 비동기 fetch를 사용해도 현재 click 처리 중 `S.busy`와 `content.inert`가 다른 조작을 제한한다.
+
+Telegram ACK는 인증 후 메시지 기록보다 먼저 시작한다. 빈 편집 세션과 이미 이탈한 세션에는 조회 요청마다 쓰지 않는다. 메시지 ID/offset은 `state/telegram-receipts.json`에 복구 가능하게 기록하고 별도 writer가 계산 DB에 반영한다. journal 파일 I/O와 Telegram API 시간은 여전히 요청 비용이며, 실제 편집 이탈·티켓 저장 같은 의미 있는 DB 쓰기는 동기 처리한다. [As-Is/To-Be 및 검증](history/2026-10-10-telegram-receipt-batching.md).
 
 ## 4. 데이터 소유권과 일관성
 

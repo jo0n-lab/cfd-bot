@@ -116,7 +116,7 @@
     "title": "진입·도움말",
     "platform": "Telegram",
     "trigger": "/start /help home",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -140,7 +140,7 @@
     "title": "실시간 현재 CASE",
     "platform": "Telegram",
     "trigger": "/stat / status",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "fresh_runs는 OSError/RuntimeError만 catch. TimeoutExpired는 serve catch로 가며 사용자 오류 응답이 없을 수 있음"
   },
   {
@@ -156,7 +156,7 @@
     "title": "등록 케이스 목록·선택",
     "platform": "Telegram",
     "trigger": "/data /cases cases:page case:id",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -172,7 +172,7 @@
     "title": "상태 상세",
     "platform": "Telegram",
     "trigger": "detail:case-id",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -188,7 +188,7 @@
     "title": "Residual 조회",
     "platform": "Telegram",
     "trigger": "residual:case-id[:name]",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -212,7 +212,7 @@
     "title": "결과 파일 조회",
     "platform": "Telegram",
     "trigger": "export:case-id[:name]",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -236,7 +236,7 @@
     "title": "티켓 목록·다중 선택",
     "platform": "Telegram",
     "trigger": "/tickets /ticket tickets",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -260,7 +260,7 @@
     "title": "새 티켓",
     "platform": "Telegram",
     "trigger": "new",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -284,7 +284,7 @@
     "title": "티켓 열기",
     "platform": "Telegram",
     "trigger": "open",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -308,7 +308,7 @@
     "title": "티켓 복제",
     "platform": "Telegram",
     "trigger": "duplicate",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -332,7 +332,7 @@
     "title": "기본·감시·알림·스크립트 편집",
     "platform": "Telegram",
     "trigger": "field / event / scripts / scriptdefault",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -356,7 +356,7 @@
     "title": "티켓 검증",
     "platform": "Telegram",
     "trigger": "validate",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -380,7 +380,7 @@
     "title": "저장·이름 변경",
     "platform": "Telegram",
     "trigger": "review → save",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -404,7 +404,7 @@
     "title": "개별·다중 티켓 삭제",
     "platform": "Telegram",
     "trigger": "delete/breview → deleteyes/bdelete",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -428,7 +428,7 @@
     "title": "매크로 검색·필터·취소",
     "platform": "Telegram",
     "trigger": "scan / stopscan",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -452,7 +452,7 @@
     "title": "매크로 구성원 선택",
     "platform": "Telegram",
     "trigger": "members / remove",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -476,7 +476,7 @@
     "title": "실행·queue 이름·동적 macro 설정",
     "platform": "Telegram",
     "trigger": "execsource / cpupolicy / toggle / field / macrocores",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -500,7 +500,7 @@
     "title": "즉시 실행·이름 있는 대기열 등록",
     "platform": "Telegram",
     "trigger": "runstate / runreview / runyes",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -524,7 +524,7 @@
     "title": "케이스 메뉴 실행(우회 경로)",
     "platform": "Telegram",
     "trigger": "prepare:cid → enqueue:cid",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -532,7 +532,7 @@
     "title": "큐·이력·매크로 진행",
     "platform": "Telegram",
     "trigger": "queue",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -548,7 +548,7 @@
     "title": "자동 시작 pause/resume",
     "platform": "Telegram",
     "trigger": "pause/resume",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -572,7 +572,7 @@
     "title": "대기 작업 선택·취소",
     "platform": "Telegram",
     "trigger": "qselect/qgroup:id/qall/qnone/qcancel/qcancelyes",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -596,7 +596,7 @@
     "title": "실패 패턴 템플릿",
     "platform": "Telegram",
     "trigger": "templates/template/savetemplate",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -620,7 +620,7 @@
     "title": "폴더·로그·Residual 선택",
     "platform": "Telegram",
     "trigger": "browse/bd/bf/bapply/bcancel",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -644,7 +644,7 @@
     "title": "입력 취소·초안 폐기·검색 취소",
     "platform": "Telegram",
     "trigger": "/cancel / backinput / discard / stopscan",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -668,7 +668,7 @@
     "title": "대화 일괄 정리",
     "platform": "Telegram",
     "trigger": "/clean",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -692,7 +692,7 @@
     "title": "실행 중 managed 작업 중단",
     "platform": "Telegram",
     "trigger": "queue → rselect/rall/rcancel/rcancelyes 또는 stop:id",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {
@@ -804,7 +804,7 @@
     "title": "요청 데이터 정의 편집",
     "platform": "Telegram",
     "trigger": "exports / xe / xnew / xkind / xapply / xdelete",
-    "outcome": "메시지/패널 반영 → handle 반환 → serve가 offset 저장",
+    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
     "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
   },
   {

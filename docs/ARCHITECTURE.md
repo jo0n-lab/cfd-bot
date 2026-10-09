@@ -1,5 +1,7 @@
 # CFD bot 아키텍처 — 유즈케이스와 플랫폼 지도
 
+> 2026-10-10: Telegram 수신·송신 ID와 polling offset을 복구 journal → background batch writer로 분리했다. ACK는 기록보다 먼저 시작하고 비편집 세션의 불필요한 저장을 생략한다. `/clean`은 pending 반영 후 일괄 삭제한다. [설계·호환성](history/2026-10-10-telegram-receipt-batching.md) · [Telegram LLD](lld/telegram.md#entry).
+
 > #30 수집 수준 분리: ON 기본 `basic`은 업무 경계·사용자 이벤트·티켓/작업 변경·경고/예외를 기록한다. 내부 정상 함수·분기/반복은 `detailed` 전용이다. [설계 이력](history/2026-10-07-diagnostic-logging-levels.md) · [최신 성능](analysis/diagnostic-level-performance.md).
 
 > #30: Python/브라우저/ofps의 숫자 코드 기록, 값·예외 사전 공유와 구·신 decoder를 적용했다. [코드 사전](analysis/diagnostic-codebook.md) · [구현 이력](history/2026-10-07-diagnostic-codec-implementation.md).

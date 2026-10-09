@@ -3,6 +3,7 @@ digraph platform {
  node [shape=box,style="rounded,filled",fillcolor="#f0fdf4",color="#86efac",fontname="Noto Sans CJK KR",fontsize=17,margin=".18,.12"];
  edge [fontname="Noto Sans CJK KR",fontsize=13,color="#16a34a"];
  tg [label="Telegram\nBot / TicketChat",URL="lld/telegram.md"];
+ receipts [label="TelegramReceipts\nID + offset recovery journal\nbackground batch writer",URL="history/2026-10-10-telegram-receipt-batching.md"];
  gui [label="cfd-ticket-gui\nTicketEditor",URL="lld/gui.md"];
  web [label="Web\napp.js → Handler → WebApp",URL="lld/web.md"];
  cli [label="CLI / launcher",URL="lld/runtime.md"];
@@ -15,6 +16,8 @@ digraph platform {
  monitor [label="Monitor / Scheduler\nmonitor-only 신규 실행 제외\n미발행 terminal / head admission",URL="diagrams/BG-04.svg"];
  worker [label="worker\nhooks / solver / 판정\nDB lock 재시도",URL="diagrams/BG-05.svg"];
  tg -> service;gui -> service;web -> service;
+ tg -> receipts [label="ACK 후 ID 기록\n응답 후 offset 기록"];
+ receipts -> store [label="일괄 commit / retry\nclean 전 flush",style=dashed];
  tg -> run;gui -> run;web -> run;
  tg -> stop;gui -> stop;web -> stop;
  stop -> store [label="stopping / interrupted"];
