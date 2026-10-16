@@ -21,3 +21,5 @@
 보관 정책·설치·지연 상한·예외는 [DIAGNOSTICS](../DIAGNOSTICS.md#보관과-읽기), 사전 구조는 [설계 이력](../history/2026-10-16-diagnostic-retention.md)을 참고한다. 운영 원본 집계는 로컬 `state/investigations/2026-10-16-retention/initial-cleanup.json`에 저장했다.
 
 배포 후 timer 실행은 12,402개를 조회하고 만료 7개를 0.051초(wall) / 0.051초(CPU)에 정리했다. 오류·열린 legacy 유예는 0이며 마지막 결과를 `state/diagnostics/retention-status.json`에서 읽을 수 있다. Telegram/web은 재시작 뒤 active/running, web HTTP 200 및 basic 활성화, ofps/Python 신규 시간 segment 생성을 확인했다.
+
+최종 운영 작업 공간 통합 검증: **412개 테스트 통과, 1개 skip** (52.67초). 이 작업 공간에는 기존 진행 중이던 #34 티켓 변경도 포함되어 있다. 별도 #31 브랜치의 기준 main에서 재현된 위 2건과 통합 결과를 구분한다. 새 보관/기존 로그 테스트 34개도 별도로 통과했다. compileall, 실제 bot.json check(4개 케이스), Bash 및 systemd unit 문법, SVG XML parse/실제 렌더링을 확인했다.
