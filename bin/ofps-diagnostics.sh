@@ -48,6 +48,9 @@ _cfd_diag_write()
             return 0
         fi
     fi
+    if (( SECONDS - _cfd_diag_segment_started >= 300 || EPOCHSECONDS - _cfd_diag_segment_wall >= 300 )); then
+        _cfd_diag_time_rotate || return 0
+    fi
     detail=${detail//\\/\\\\}; detail=${detail//\"/\\\"}
     detail=${detail//$'\n'/\\n}; detail=${detail//$'\r'/\\r}; detail=${detail//$'\t'/\\t}
     local code=${_cfd_diag_event_codes[$event]:-\"$event\"}
@@ -107,6 +110,23 @@ _cfd_diag_rotate()
     fi
 }
 
+_cfd_diag_time_rotate()
+{
+    # Only once per five-minute segment, never a directory scan per event.
+    local next="$_cfd_diag_dir/ofps-$BASHPID-${_cfd_diag_instance}-s${EPOCHREALTIME//./}.jsonl"
+    (umask 077; : > "$next") || return 1
+    exec {_cfd_diag_fd}>&-
+    if exec {_cfd_diag_fd}>>"$next"; then
+        _cfd_diag_file=$next
+        _cfd_diag_segment_started=$SECONDS
+        _cfd_diag_segment_wall=$EPOCHSECONDS
+        _cfd_diag_header
+    else
+        CFD_BOT_DIAGNOSTICS=0
+        return 1
+    fi
+}
+
 case ${CFD_BOT_DIAGNOSTICS:-0} in
     0|off|false) ;;
     *)
@@ -114,7 +134,10 @@ case ${CFD_BOT_DIAGNOSTICS:-0} in
         if mkdir -p -m 700 -- "$_cfd_diag_dir"; then
             _cfd_diag_old_umask=$(umask)
             umask 077
-            _cfd_diag_file="$_cfd_diag_dir/ofps-$BASHPID-${EPOCHREALTIME//./}.jsonl"
+            _cfd_diag_instance=${EPOCHREALTIME//./}
+            _cfd_diag_segment_started=$SECONDS
+            _cfd_diag_segment_wall=$EPOCHSECONDS
+            _cfd_diag_file="$_cfd_diag_dir/ofps-$BASHPID-${_cfd_diag_instance}-s${EPOCHREALTIME//./}.jsonl"
             if exec {_cfd_diag_fd}>>"$_cfd_diag_file"; then
                 export CFD_BOT_DIAGNOSTICS=1 CFD_BOT_DIAGNOSTICS_DIR="$_cfd_diag_dir"
                 source "${BASH_SOURCE[0]%/*}/ofps-diagnostic-codes.sh"

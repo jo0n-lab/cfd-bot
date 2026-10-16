@@ -1,5 +1,8 @@
 # CFD bot 아키텍처 — 유즈케이스와 플랫폼 지도
 
+> #31 진단 로그 보관: Python/ofps의 5분 segment와 요청 경로 밖의 5분 user timer로 마지막 기록 후 24시간 지난 파일을 정리한다. [As-Is/To-Be](history/2026-10-16-diagnostic-retention.md) · [보관 계약/설치](DIAGNOSTICS.md#보관과-읽기).
+
+
 > 2026-10-10: Telegram 수신·송신 ID와 polling offset을 복구 journal → background batch writer로 분리했다. ACK는 기록보다 먼저 시작하고 비편집 세션의 불필요한 저장을 생략한다. `/clean`은 pending 반영 후 일괄 삭제한다. [설계·호환성](history/2026-10-10-telegram-receipt-batching.md) · [Telegram LLD](lld/telegram.md#entry).
 
 > #30 수집 수준 분리: ON 기본 `basic`은 업무 경계·사용자 이벤트·티켓/작업 변경·경고/예외를 기록한다. 내부 정상 함수·분기/반복은 `detailed` 전용이다. [설계 이력](history/2026-10-07-diagnostic-logging-levels.md) · [최신 성능](analysis/diagnostic-level-performance.md).

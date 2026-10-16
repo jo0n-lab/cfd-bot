@@ -14,6 +14,10 @@ digraph diagnostics {
   domain -> log [style=dashed];
   process -> log [style=dashed];
   ui -> browser [style=dashed];
+  segments [label="Python/ofps 5분 segment\n기존 크기 회전 유지", fillcolor="#eff6ff"];
+  retention [label="별도 user timer · 5분\n마지막 기록 후 24시간 만료 정리\n삭제 수/byte/실패/시간 집계", fillcolor="#fef3c7"];
+  log -> segments;
+  retention -> segments [label="만료 파일 삭제"];
   log -> map [dir=none, label="사후 연결"];
   browser -> map [dir=none];
   detail [label="detailed 추가 기록\n내부 정상 함수 / 분기 / 반복", fillcolor="#f8fafc"];

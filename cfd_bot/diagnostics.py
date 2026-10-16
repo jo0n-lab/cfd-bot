@@ -241,7 +241,10 @@ class _Sink:
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.pid = os.getpid()
         self.instance = f'{self.pid}-{time.time_ns():x}'
-        self.path = self.directory / f'{component}-{self.instance}.jsonl'
+        self.basename = f'{component}-{self.instance}'
+        self.path = self.directory / f'{self.basename}-s{time.time_ns():x}.jsonl'
+        self.segment_started = time.monotonic()
+        self.segment_wall_started = time.time()
         self.max_bytes, self.backups = max_bytes, backups
         self.lock = threading.RLock()
         self.stream = None
@@ -286,6 +289,17 @@ class _Sink:
     def _drain(self):
         if not self.pending:
             return
+        # A separate retention process can remove an expired, idle segment.
+        # Always switch before writing again, including after a long idle period.
+        if (time.monotonic() - self.segment_started >= 300 or
+                time.time() - self.segment_wall_started >= 300):
+            if self.stream is not None:
+                self.stream.close()
+                self.stream = None
+            self.path = self.directory / f'{self.basename}-s{time.time_ns():x}.jsonl'
+            self.segment_started = time.monotonic()
+            self.segment_wall_started = time.time()
+            self.size = 0
         line = self.encoder.encode(_codec.encode(self.pending, self.function_codes, self.event_codes)) + '\n'
         self.pending = []
         if self.stream is None:

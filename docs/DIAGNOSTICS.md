@@ -61,7 +61,30 @@ basic helper 오류는 Python `function.error`에 실제 함수·stack을 남기
 
 ## 보관과 읽기
 
-프로세스마다 0600 JSONL 파일을 사용한다. 기본 파일 회전은 Python/ofps 각각 20 MiB × 현재 파일+백업 3개다. ofps watch는 scan 경계에서 회전하므로 한 scan만큼 초과할 수 있다. 여러 프로세스·과거 세션 전체 디렉터리의 총 용량 제한은 아니다. 조사에 필요한 파일과 source map은 회전 전에 복사해 보관한다.
+프로세스마다 0600 JSONL 파일을 사용한다. Python/ofps는 다음 기록 전에 5분 경과를 확인해 새 `-s<시각>.jsonl` segment를 연다. 같은 instance/trace와 독립 header를 유지한다. 각 segment의 기존 크기 회전은 20 MiB × 현재 파일+백업 3개이며, ofps 크기 회전은 scan 경계여서 한 scan만큼 초과할 수 있다. 크기 회전은 24시간 이내 기록도 제거할 수 있으므로 24시간 전체 기록의 무손실 보관을 보장하는 용량 설정은 아니다.
+
+[#31](history/2026-10-16-diagnostic-retention.md)의 별도 Linux user timer는 5분마다 **최종 디스크 기록 시각(mtime)이 24시간 지난 진단 파일**을 삭제한다. 요청/함수 호출에서는 디렉터리를 순회하지 않는다. timer가 계속 동작할 때 새 segment의 기록은 최대 24시간 + segment 5분 + timer 5분/1초 정확도 + 정리 실행 시간까지 남을 수 있다. 중지·절전 중에는 정리하지 못하며 재개 후 첫 실행에서 따라잡는다. mtime은 event 생성 시각과 다를 수 있고 파일 복사/시계 변경의 영향을 받는다.
+
+최근 기록이 섞인 legacy 파일은 마지막 기록 후 24시간까지 통째로 보존한다. 쓰기 중인 구버전 파일은 `/proc` FD 조사로 유예하고 `deferred_open`으로 표시한다. 구버전 장기 실행 로거는 종료/재시작 후에 정리된다. 새 로거는 idle segment가 만료되어도 다음 기록 전에 새 segment를 열며, 시스템 절전 뒤에도 wall clock으로 전환을 확인한다.
+
+정리는 지정 디렉터리 최상위의 진단 파일 이름과 `log.file`/`shell.file` header를 가진 일반 파일에만 적용한다. 하위 디렉터리, symlink, solver 로그, 티켓, DB, 별도 조사 자료는 제외한다. `codes-*.json`과 `sources-*.json`은 hash별 공유 해독 자료로 자동 삭제하지 않는다. 참조하는 보관 로그와 실행 중인 구버전 프로세스가 없을 때 별도로 수동 정리한다. 조사에 필요한 로그는 만료/크기 회전 전에 진단 디렉터리 밖에 사전과 함께 복사한다. 브라우저 메모리 buffer, export 파일, PC launcher 로그에는 서버 timer를 적용하지 않는다.
+
+```bash
+# 삭제 대상/용량 확인 (기본 dry-run, 로그 파일은 변경하지 않음)
+python3 -m cfd_bot.diagnostic_retention --config bot.json
+# 만료된 진단 파일 정리
+python3 -m cfd_bot.diagnostic_retention --config bot.json --apply
+# Linux user timer 설치: 예시 unit의 작업 경로를 설치 위치에 맞춘다.
+cp deploy/cfd-bot-log-retention.{service,timer} ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now cfd-bot-log-retention.timer
+systemctl --user start cfd-bot-log-retention.service
+cat state/diagnostics/retention-status.json
+# journal 접근 권한이 있는 환경에서는 과거 실행도 조회 가능
+journalctl --user -u cfd-bot-log-retention.service -n 10 --no-pager
+```
+
+`--directory <경로>`로 직접 대상을 지정할 수도 있다. timer는 로그 OFF여도 기존 파일을 정리한다. `Nice=19`, idle I/O 우선순위로 실행하며 `.retention.lock`으로 중복 정리를 합친다. 매 실행마다 JSON 집계 한 줄을 출력하고 `--apply`는 `retention-status.json` 한 파일을 0600 권한으로 원자 교체한다. 따라서 journal 읽기 권한이 없어도 마지막 정리 결과를 확인할 수 있고 상태 이력이 무한 누적되지 않는다. 정리 비용 수치는 이 상태 파일/표준출력 쓰기 직전까지의 계측이다: 삭제 후보/삭제 파일 수·바이트, 잔여 파일 수·바이트, 열린 legacy 유예, 실패, wall/CPU 시간, process I/O counter 차이. 잔여 수는 순회 중 관측치이므로 동시 생성/회전과 약간 다를 수 있다. I/O counter는 해당 정리 프로세스의 수치이며 물리 디스크 지연 기여율을 의미하지 않는다. 개별 파일 실패 시 나머지를 정리하고 실패 수와 비정상 종료 코드를 남긴다.
 
 Python schema 2는 최대 128개 기록을 `log.batch.v2`에 묶는다. event/function 숫자 코드, batch context/call/value 사전, UTC 원점+시간 차이, 순서 차이를 사용한다. detailed 함수 분기는 최대 64개 `steps[]`에 묶는다. 선택한 수준에 포함된 사건은 샘플링하지 않는다. 동일 예외는 error ID와 공유 frame/추가 stack으로 표현하며 원래 traceback을 복원한다. 최초 오류는 flush하고 같은 예외의 반복 전파에서는 중복 flush를 생략한다. 최상위 호출 완료 및 계속 이벤트가 들어오는 동안 약 1초마다 flush한다. OFF는 요약·직렬화·파일 쓰기를 수행하지 않는다. fsync를 강제하지 않아 강제 종료·전원 장애 직전 버퍼는 유실될 수 있다. 기록 실패는 업무 예외를 대체하지 않으며 stderr와 출력 오류 계수로 드러낸다.
 
@@ -93,3 +116,5 @@ basic/detailed를 분리한 최신 비교는 [수집 수준별 성능](analysis/
 ## Telegram 메시지 기록 지연 분석
 
 `TelegramReceipts.remember_message/checkpoint`의 시간은 local journal 비용이고, `_flush → Store.remember_messages`는 background DB 대기·일괄 commit 비용이다. basic에서도 `telegram.receipts.queued`와 `telegram.receipts.committed`의 generation/개수를 남겨 요청에서 기록한 항목이 어느 batch까지 반영됐는지 확인한다. DB 실패는 경고와 예외로 남으며 journal을 유지한다. 응답 지연은 `Bot.handle → Bot.file → Telegram.call`의 같은 trace와 별도 batch trace를 구분해 읽는다. 실제 기기 클릭·화면 표시 시간은 수집하지 않는다.
+
+#31 보관 정리의 대량 파일·운영 초기 삭제·쓰기 경로 비교는 [보관 성능 검증](analysis/diagnostic-retention-performance.md)을 참고한다.
