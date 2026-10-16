@@ -1,0 +1,10 @@
+[Unit]
+Description=Expire CFD diagnostic logs after 24 hours
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/joon/telegram/cfd_bot
+ExecStart=/usr/bin/python3 -m cfd_bot.diagnostic_retention --config /home/joon/telegram/cfd_bot/bot.json --apply
+Nice=19
+IOSchedulingClass=idle
+UMask=0077

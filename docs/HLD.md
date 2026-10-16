@@ -1,5 +1,8 @@
 # CFD bot High-Level Design
 
+> #31 진단 로그 보관: Python/ofps의 5분 segment와 요청 경로 밖의 5분 user timer로 마지막 기록 후 24시간 지난 파일을 정리한다. [As-Is/To-Be](history/2026-10-16-diagnostic-retention.md) · [보관 계약/설치](DIAGNOSTICS.md#보관과-읽기).
+
+
 > #30 수집 수준 분리: ON 기본 `basic`은 업무 경계·사용자 이벤트·티켓/작업 변경·경고/예외를 기록한다. 내부 정상 함수·분기/반복은 `detailed` 전용이다. [설계 이력](history/2026-10-07-diagnostic-logging-levels.md) · [최신 성능](analysis/diagnostic-level-performance.md).
 
 > #18 사후 원인 분석 로그: [설정·기록·읽기](DIAGNOSTICS.md) · [모든 시퀀스 대응표](analysis/diagnostic-flow-coverage.md) · [ON/OFF 실측](analysis/diagnostic-performance.md). 업무 정책 변경 없이 기록만 추가하며 기본 OFF다.
@@ -37,7 +40,7 @@ Linux 호스트의 OpenFOAM/Basilisk 계산과 cfd-bot 전용 monitor 프로세�
 
 ![사후 분석 로그의 관측 경계](diagrams/diagnostic-logging.svg)
 
-진단 기록은 업무 DB와 분리된 프로세스별 파일 및 브라우저 로컬 버퍼로 간다. 동일 trace/parent를 통해 기존 실행 흐름을 관측한다. #30은 정적 숫자 코드·batch 값/예외 참조를 사용하고 browser는 export 시 JSON으로 변환한다. [별도 코드 사전](analysis/diagnostic-codebook.md)과 schema 1/2 decoder를 제공한다. 기록의 생성·직렬화·회전 외에는 실행 정책을 추가하지 않는다.
+진단 기록은 업무 DB와 분리된 프로세스별 파일 및 브라우저 로컬 버퍼로 간다. 동일 trace/parent를 통해 기존 실행 흐름을 관측한다. #30은 정적 숫자 코드·batch 값/예외 참조를 사용하고 browser는 export 시 JSON으로 변환한다. [별도 코드 사전](analysis/diagnostic-codebook.md)과 schema 1/2 decoder를 제공한다. 기록 생성·직렬화·회전과 별도 보관 정리만 수행하며 업무 실행 정책은 추가하지 않는다.
 
 ![프로세스·저장소·외부 경계](hld-system-design.svg)
 

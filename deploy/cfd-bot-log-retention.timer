@@ -1,0 +1,11 @@
+[Unit]
+Description=Clean expired CFD diagnostic logs every five minutes
+
+[Timer]
+OnStartupSec=1min
+OnUnitInactiveSec=5min
+AccuracySec=1s
+Unit=cfd-bot-log-retention.service
+
+[Install]
+WantedBy=timers.target

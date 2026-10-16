@@ -1,5 +1,8 @@
 # CFD bot Low-Level Design — 함수 요청·응답 시퀀스
 
+> #31 진단 로그 보관: Python/ofps의 5분 segment와 요청 경로 밖의 5분 user timer로 마지막 기록 후 24시간 지난 파일을 정리한다. [As-Is/To-Be](history/2026-10-16-diagnostic-retention.md) · [보관 계약/설치](DIAGNOSTICS.md#보관과-읽기).
+
+
 > #30 수집 수준 분리: ON 기본 `basic`은 업무 경계·사용자 이벤트·티켓/작업 변경·경고/예외를 기록한다. 내부 정상 함수·분기/반복은 `detailed` 전용이다. [설계 이력](history/2026-10-07-diagnostic-logging-levels.md) · [최신 성능](analysis/diagnostic-level-performance.md).
 
 > #18 사후 원인 분석 로그: [설정·기록·읽기](DIAGNOSTICS.md) · [모든 시퀀스 대응표](analysis/diagnostic-flow-coverage.md) · [ON/OFF 실측](analysis/diagnostic-performance.md). 업무 정책 변경 없이 기록만 추가하며 기본 OFF다.
@@ -309,3 +312,7 @@ sequenceDiagram
 `Store.jobs(statuses, limit, newest, ids, root)`는 SQL에서 필터/정렬/제한한 후 JSON을 읽는다. dashboard 이력은 최근 6건, queue는 100건, macro 집계는 연결된 job IDs만 읽는다. `Bot.latest_run`도 root별 최신 1건만 읽는다. web 로그 reader는 기존 parser cursor를 64케이스 이내로 유지하며 교체·절단은 parser가 처리한다.
 
 브라우저는 갱신 Promise 공유/후속 요청 보존, 요청 timeout(GET 30초/POST 120초), 초기 실패 재시도, visibility/focus/pageshow/online 갱신을 사용한다. sessionStorage는 버전 있는 티켓 metadata만 저장하고 런타임 권한은 복원하지 않는다. 폼은 polling으로 재생성하지 않는다. 정적 파일/검증된 이미지의 ETag 재검증, JSON gzip은 HTTP adapter에서 처리한다. CSRF·Host·artifact 경로 검사는 유지한다.
+
+## 진단 로그 보관 호출 계약 (#31)
+
+`_Sink._drain`과 `_cfd_diag_write`는 5분 경과 시 새 segment로 전환한다. `_Sink`는 batch마다, shell은 기록마다 경과 시간만 확인한다. 새 segment header와 부모 trace는 유지하며 최근 기록을 가진 파일을 부분 해독/재작성하지 않는다. 정리는 `cfd-bot-log-retention.timer → diagnostic_retention.main → collect`에서 처리한다. `collect`는 metadata 순회 → legacy 열린 FD 유예 → 만료 후보의 header/identity 확인 → 삭제 → JSON 집계 순서다. DB 연결·UI 호출·Telegram 전송은 하지 않는다. OFF/basic/detailed 및 세 UI의 업무 반환 계약은 동일하다.
