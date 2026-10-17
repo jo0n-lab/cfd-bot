@@ -717,7 +717,7 @@
     "platform": "Bash + Python",
     "trigger": "bin/ofps options",
     "outcome": "managed는 stdout만; --check는 monitor CPU overlap도 거절; --watch는 반복",
-    "error": "유효 case root 또는 지원하는 monitor 표식이 없는 후보 제외; standalone sync 실패가 CPU 검사 exit를 덮어쓰지 않음"
+    "error": "mktemp 실패: 즉시 exit 1. snapshot 생성/scan/읽기 실패: sync·CPU check·watch 중지. 유효 case/monitor 표식 없는 후보 제외"
   },
   {
     "key": "BG-02",

@@ -1,5 +1,7 @@
 # CFD bot High-Level Design
 
+`ofps`는 임시 디렉터리 생성 또는 snapshot 수집·읽기에 실패하면 즉시 nonzero로 종료한다. CPU 검사·반복 조회도 실패 뒤 진행하지 않는다. Telegram·GUI·web·Monitor는 같은 공용 경로의 실패를 전달받으며, Monitor는 신규 큐 실행을 보류한다. [실패 전파 설계](history/2026-10-17-ofps-temp-failure.md).
+
 > #31 진단 로그 보관: Python/ofps의 5분 segment와 요청 경로 밖의 5분 user timer로 마지막 기록 후 24시간 지난 파일을 정리한다. [As-Is/To-Be](history/2026-10-16-diagnostic-retention.md) · [보관 계약/설치](DIAGNOSTICS.md#보관과-읽기).
 
 

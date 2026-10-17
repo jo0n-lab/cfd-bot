@@ -9,6 +9,9 @@ readonly bot_config=${CFD_BOT_CONFIG:-$project_root/bot.json}
 readonly bot_python=${CFD_BOT_PYTHON:-python3}
 
 source "$script_dir/ofps-diagnostics.sh"
+if [[ ${CFD_BOT_DIAGNOSTICS:-0} == 1 ]]; then
+    trap '_cfd_diag_exit "$?"' EXIT
+fi
 
 run_bot_command()
 {
@@ -814,17 +817,21 @@ scan_and_sync()
         local _cfd_diag_call="$BASHPID:${EPOCHREALTIME:-0}:scan_and_sync"
         _cfd_diag_write shell.call 0 "argc=$# caller=${FUNCNAME[1]:-main}" scan_and_sync
     fi
-    local snapshot_file="$scratch_dir/snapshot.txt" scan_status=0
-    scan_once "$records_file" > "$snapshot_file" || scan_status=$?
-    cat "$snapshot_file"
+    local snapshot_file="$scratch_dir/snapshot.txt"
+    scan_once "$records_file" > "$snapshot_file" || return $?
+    cat "$snapshot_file" || return $?
     if [[ ${CFD_BOT_OFPS_MANAGED:-0} != 1 ]] \
         && grep -Eq '^(ENGINE: |No active )' "$snapshot_file"; then
         sync_ticket_state "$snapshot_file" || true
     fi
-    { _cfd_diag_result="$scan_status"; return "$_cfd_diag_result"; }
+    { _cfd_diag_result=0; return "$_cfd_diag_result"; }
 }
 
-readonly scratch_dir=$(mktemp -d -t tcb-processes.XXXXXX)
+if ! scratch_dir=$(mktemp -d -t tcb-processes.XXXXXX); then
+    printf 'ofps: cannot create temporary directory; scan aborted\n' >&2
+    exit 1
+fi
+readonly scratch_dir
 readonly records_file="$scratch_dir/records.tsv"
 readonly supervisors_file="$scratch_dir/supervisors.tsv"
 cleanup() {
@@ -844,7 +851,7 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 if $check_mode; then
-    scan_and_sync
+    scan_and_sync || exit $?
     check_cpu_set "$requested_cpu_set" "$records_file"
     exit $?
 fi
@@ -857,6 +864,6 @@ fi
 while true; do
     if [[ -t 1 ]]; then printf '\033[H\033[2J'; fi
     printf 'TCB process snapshot: %s\n\n' "$(date '+%F %T %Z')"
-    scan_and_sync
+    scan_and_sync || exit $?
     sleep "$interval"
 done

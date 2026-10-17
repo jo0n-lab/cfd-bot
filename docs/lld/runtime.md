@@ -91,7 +91,7 @@ Delivery는 한 batch 최대 10개 recipient row를 순차 처리한다. message
 [SVG 원본 확대](../diagrams/BG-01.svg)
 
 **정상 결과:** managed는 stdout만; --check는 monitor CPU overlap도 거절; --watch는 반복.
-**실패/취소:** 유효 case root 또는 지원하는 monitor 표식이 없는 후보 제외; standalone sync 실패가 CPU 검사 exit를 덮어쓰지 않음.
+**실패/취소:** 유효 case root 또는 지원하는 monitor 표식이 없는 후보 제외. mktemp 실패 시 즉시 exit 1; snapshot 생성/scan/읽기 실패는 sync·CPU 검사·watch의 다음 반복 전에 nonzero로 전파한다. standalone sync 실패가 CPU 검사 exit를 덮어쓰지 않음. [실패 재현 테스트](../../tests/test_ofps_failures.py).
 
 **코드 연결:** [processes.parse_snapshot](../../cfd_bot/processes.py#L177), [storage.Store.put](../../cfd_bot/storage.py#L151), [tickets.sync_ticket_states](../../cfd_bot/tickets.py#L425).
 

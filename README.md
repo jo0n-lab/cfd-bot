@@ -43,6 +43,8 @@ Linux와 Python 3.9 이상이 필요합니다. 계산 실행에는 OpenFOAM과 M
 
 `ofps` 소스는 `bin/ofps`입니다. 별도 빌드 없이 symlink로 설치합니다.
 
+임시 저장 공간이 부족하면 `ofps`는 오류로 종료하며, 상태를 확인할 수 없는 동안 신규 큐 실행을 보류합니다.
+
 ```bash
 cd /home/joon/telegram/cfd_bot
 chmod +x bin/ofps

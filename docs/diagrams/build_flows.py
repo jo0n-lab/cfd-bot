@@ -337,7 +337,8 @@ for c in charts:
 from copy import deepcopy
 for c in charts:
     if c['key']=='BG-01':
-        c['root']['note']='managed=1이면 sync_ticket_state 생략. /proc scan은 실행; standalone은 D-15 증분 sync'
+        c['root']['note']='진입 전 mktemp 실패는 exit 1. managed=1은 sync 생략; standalone은 D-15 증분 sync'
+        c['error']='mktemp 실패: 즉시 exit 1. snapshot 생성/scan/읽기 실패: sync·CPU check·watch 중지. 유효 case/monitor 표식 없는 후보 제외'
     if c['key']=='UC-19-gui':
         nodes=c['root']['children']
         pos=next(i for i,n in enumerate(nodes) if n['name']=='run_views.running_macro_views')

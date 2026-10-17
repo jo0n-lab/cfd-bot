@@ -1,5 +1,7 @@
 # CFD bot Low-Level Design — 함수 요청·응답 시퀀스
 
+`bin/ofps`는 `scratch_dir=$(mktemp ...)`의 결과를 확인한 뒤 readonly로 고정한다. 실패 시 stderr와 exit 1을 반환하고 `scan_and_sync`를 호출하지 않는다. `scan_and_sync`의 redirection/scan/cat 실패도 즉시 반환하며, `--check`와 `--watch`는 그 상태로 종료한다. 기존 진단 EXIT trap은 임시 폴더 준비 전에도 활성화된다. [설계·검증](history/2026-10-17-ofps-temp-failure.md).
+
 > #31 진단 로그 보관: Python/ofps의 5분 segment와 요청 경로 밖의 5분 user timer로 마지막 기록 후 24시간 지난 파일을 정리한다. [As-Is/To-Be](history/2026-10-16-diagnostic-retention.md) · [보관 계약/설치](DIAGNOSTICS.md#보관과-읽기).
 
 
