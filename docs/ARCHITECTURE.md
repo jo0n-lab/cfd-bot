@@ -1,5 +1,7 @@
 # CFD bot 아키텍처 — 유즈케이스와 플랫폼 지도
 
+> 2026-11-03: Telegram 요청 파일을 고정 worker 2개·최대 16개 queue로 분리한다. 같은 파일의 중복 active/pending 요청은 병합하고 `/clean`과 늦은 전송을 연동한다. HTTP 연결·전송·응답 구간은 기존 로거로 계측한다. [설계](history/2026-11-03-telegram-transfer-isolation.md) · [Residual 흐름](diagrams/UC-05-tg.svg).
+
 > 2026-10-17: 공용 ofps가 임시 디렉터리/snapshot 준비 실패 시 즉시 종료하고, CPU 검사 및 watch에 실패를 전파한다. 세 UI는 기존 snapshot/check 경로를 공유한다. [As-Is/To-Be](history/2026-10-17-ofps-temp-failure.md).
 
 > #31 진단 로그 보관: Python/ofps의 5분 segment와 요청 경로 밖의 5분 user timer로 마지막 기록 후 24시간 지난 파일을 정리한다. [As-Is/To-Be](history/2026-10-16-diagnostic-retention.md) · [보관 계약/설치](DIAGNOSTICS.md#보관과-읽기).

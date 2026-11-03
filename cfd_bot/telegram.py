@@ -5,10 +5,12 @@ import mimetypes
 import urllib.error
 import urllib.request
 import uuid
+import time
 from pathlib import Path
 
 from .artifacts import MAX_DOCUMENT, MAX_PHOTO
 from .ui import load_ui
+from .telegram_transport import open_request, phase
 
 
 class TelegramError(RuntimeError):
@@ -45,14 +47,16 @@ class Telegram:
 
     @_diagnostics.trace
     def call(self, method, payload, attachment=None, timeout=30):
+        prepared = time.monotonic()
         headers = {}
         if attachment:
             if _diagnostics.detailed: _diagnostics.step('telegram.Telegram.call:L41:then')
             field, path = attachment
             path = Path(path)
             limit = MAX_PHOTO if field == 'photo' else MAX_DOCUMENT
-            with path.open('rb') as f:
-                data = f.read(limit + 1)
+            with phase(method, 'file_read'):
+                with path.open('rb') as f:
+                    data = f.read(limit + 1)
             if len(data) > limit:
                 if _diagnostics.detailed: _diagnostics.step('telegram.Telegram.call:L47:then')
                 raise ValueError(load_ui().text('scenarios.diagnostics.transport.file_too_large',
@@ -77,13 +81,17 @@ class Telegram:
             encoded = json.dumps(payload).encode()
             headers['Content-Type'] = 'application/json'
         request = urllib.request.Request(self._base + method, data=encoded, headers=headers)
+        _diagnostics.event('telegram.transport.phase', method=method, stage='prepare',
+                           duration_ms=(time.monotonic()-prepared)*1000, bytes=len(encoded))
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
-                result = json.load(response)
+            with open_request(request, timeout=timeout, method=method) as response:
+                with phase(method, 'response_body'):
+                    result = json.load(response)
         except urllib.error.HTTPError as exc:
             if _diagnostics.enabled: _diagnostics.step('telegram.Telegram.call:L70:except')
             try:
-                result = json.loads(exc.read())
+                with phase(method, 'response_body'):
+                    result = json.loads(exc.read())
             except ValueError:
                 if _diagnostics.enabled: _diagnostics.step('telegram.Telegram.call:L73:except')
                 raise TelegramError(f'Telegram HTTP {exc.code}') from None

@@ -4,6 +4,7 @@ digraph platform {
  edge [fontname="Noto Sans CJK KR",fontsize=13,color="#16a34a"];
  tg [label="Telegram\nBot / TicketChat",URL="lld/telegram.md"];
  receipts [label="TelegramReceipts\nID + offset recovery journal\nbackground batch writer",URL="history/2026-10-10-telegram-receipt-batching.md"];
+ transfers [label="TelegramTransfers\nworker 2개 / active+pending 16개\n중복 병합 / clean 연동",URL="history/2026-11-03-telegram-transfer-isolation.md"];
  gui [label="cfd-ticket-gui\nTicketEditor",URL="lld/gui.md"];
  web [label="Web\napp.js → Handler → WebApp",URL="lld/web.md"];
  cli [label="CLI / launcher",URL="lld/runtime.md"];
@@ -17,6 +18,8 @@ digraph platform {
  worker [label="worker\nhooks / solver / 판정\nDB lock 재시도",URL="diagrams/BG-05.svg"];
  tg -> service;gui -> service;web -> service;
  tg -> receipts [label="ACK 후 ID 기록\n응답 후 offset 기록"];
+ tg -> transfers [label="파일 요청 접수"];
+ transfers -> receipts [label="비동기 전송 완료 ID"];
  receipts -> store [label="일괄 commit / retry\nclean 전 flush",style=dashed];
  tg -> run;gui -> run;web -> run;
  tg -> stop;gui -> stop;web -> stop;

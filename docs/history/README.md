@@ -4,6 +4,7 @@
 
 | 날짜 | 변경 | GitHub Issue |
 |---|---|---|
+| 2026-11-03 | [Telegram 파일 전송 격리·중복 병합·단계별 진단](2026-11-03-telegram-transfer-isolation.md) | 사용자 요청으로 생략 |
 | 2026-10-17 | [ofps 임시 디렉터리 실패 시 즉시 종료](2026-10-17-ofps-temp-failure.md) | 사용자 요청으로 생략 |
 | 2026-10-16 | [진단 로그 24시간 보관](2026-10-16-diagnostic-retention.md) | [#31](https://github.com/jo0n-lab/cfd-bot/issues/31) |
 | 2026-10-10 | [Telegram 응답 경로의 DB 대기 제거](2026-10-10-telegram-receipt-batching.md) | 사용자 요청으로 생략 |

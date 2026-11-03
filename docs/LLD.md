@@ -1,5 +1,7 @@
 # CFD bot Low-Level Design — 함수 요청·응답 시퀀스
 
+Telegram `Bot.file(case=...) → TelegramTransfers.submit`은 접수/중복 병합 후 즉시 반환한다. worker는 공용 `inside` 경로 정책을 재사용하여 대기 중 바뀐 symlink를 거부한 뒤 전송하고 receipt를 기록한다. 세대와 receipt publication을 직렬화하여 `/clean` 이후 늦은 전송도 삭제한다. [전송 LLD](history/2026-11-03-telegram-transfer-isolation.md).
+
 `bin/ofps`는 `scratch_dir=$(mktemp ...)`의 결과를 확인한 뒤 readonly로 고정한다. 실패 시 stderr와 exit 1을 반환하고 `scan_and_sync`를 호출하지 않는다. `scan_and_sync`의 redirection/scan/cat 실패도 즉시 반환하며, `--check`와 `--watch`는 그 상태로 종료한다. 기존 진단 EXIT trap은 임시 폴더 준비 전에도 활성화된다. [설계·검증](history/2026-10-17-ofps-temp-failure.md).
 
 > #31 진단 로그 보관: Python/ofps의 5분 segment와 요청 경로 밖의 5분 user timer로 마지막 기록 후 24시간 지난 파일을 정리한다. [As-Is/To-Be](history/2026-10-16-diagnostic-retention.md) · [보관 계약/설치](DIAGNOSTICS.md#보관과-읽기).

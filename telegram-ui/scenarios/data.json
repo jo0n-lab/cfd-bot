@@ -1,5 +1,7 @@
 {
   "no_observation": "{case_name}: 아직 관측된 실행이 없습니다.",
+  "transfer_busy": "파일 전송 대기가 가득 찼습니다. 잠시 후 다시 요청하세요.",
+  "transfer_failed": "{filename}: 파일 전송에 실패했습니다. 잠시 후 다시 요청하세요.",
   "residual_path_required": "티켓 편집기에서 Residual PNG 경로를 지정하세요.",
   "residual_missing": "Residual PNG가 없습니다: {pattern}",
   "unknown_export": "등록되지 않은 데이터 종류입니다.",

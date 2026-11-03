@@ -188,8 +188,8 @@
     "title": "Residual 조회",
     "platform": "Telegram",
     "trigger": "residual:case-id[:name]",
-    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
-    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+    "outcome": "파일 요청 접수/병합 → handle 반환 → offset journal → 다음 polling; 파일 전송과 receipt는 별도 worker",
+    "error": "경로 오류/포화 → JSON 안내; worker 전송 실패 → 파일명과 재요청 안내; 모호한 전송 실패는 자동 재전송하지 않음"
   },
   {
     "key": "UC-05-gui",
@@ -212,8 +212,8 @@
     "title": "결과 파일 조회",
     "platform": "Telegram",
     "trigger": "export:case-id[:name]",
-    "outcome": "메시지/패널 반영 → handle 반환 → offset journal → 다음 polling; SQLite는 background batch",
-    "error": "입력/파일 오류 → 오류 메시지; TelegramError 등은 serve 경고 후 offset 진행"
+    "outcome": "파일 요청 접수/병합 → handle 반환 → offset journal → 다음 polling; 파일 전송과 receipt는 별도 worker",
+    "error": "경로 오류/포화 → JSON 안내; worker 전송 실패 → 파일명과 재요청 안내; 모호한 전송 실패는 자동 재전송하지 않음"
   },
   {
     "key": "UC-06-gui",

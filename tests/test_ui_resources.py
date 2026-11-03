@@ -29,6 +29,13 @@ class FakeAPI:
 
 
 class UiResourceTests(unittest.TestCase):
+    def test_transfer_notices_are_required_resources(self):
+        catalog = UiCatalog(DEFAULT_UI_DIR)
+        required = json.loads((DEFAULT_UI_DIR / 'manifest.json').read_text())['required']
+        for key in ('scenarios.data.transfer_busy', 'scenarios.data.transfer_failed'):
+            self.assertIn(key, required)
+            self.assertTrue(catalog.text(key, filename='residual.png'))
+
     def test_catalog_has_menu_and_scenario_namespaces(self):
         catalog = UiCatalog(DEFAULT_UI_DIR)
         self.assertTrue(catalog.has('menus.home.help'))

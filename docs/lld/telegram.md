@@ -9,6 +9,10 @@
 
 인증 직후 ACK thread를 시작하고 `TelegramReceipts.remember_message`에 수신 ID를 기록한다. `Bot.send/file`의 송신 ID도 같은 복구 journal에 기록한다. `serve`는 처리 후 `checkpoint`에 offset을 기록하고 다음 polling은 메모리 offset을 사용한다. 단일 receipt thread의 `Store.remember_messages` batch가 SQLite의 메시지 ID와 offset을 함께 갱신한다. DB 실패는 journal을 보존해 재시도하며 restart 시 재생한다. 이 경로는 알림 outbox의 전달 checkpoint와 별개다.
 
+운영 `Bot.file`은 `TelegramTransfers.submit`에 FileItem과 case root를 전달하고 접수/병합 여부를 반환한다. worker 2개·active+pending 16개로 제한한다. 같은 chat/clean 세대/경로/형식은 중복 전송하지 않고 pending 항목은 최신 caption으로 교체한다. worker는 공용 `inside` 검사를 재사용한 뒤 파일을 전송한다. 처리 중 main은 다음 polling·상태 조회·중단을 계속한다. 실패/포화 문구는 `scenarios.data.transfer_failed/transfer_busy`다. worker 완료 후 `_remember`로 송신 ID를 기록한다. 명시적 파일 요청 queue는 메모리이며 종료 때 pending 취소·active bounded join; 재시작 후 자동 재생하지 않는다. 자동 종료 알림 outbox는 기존 경로다.
+
+`/clean`은 먼저 해당 chat의 pending 전송을 취소하고 세대를 증가시킨다. worker의 완료 ID 기록과 세대 변경은 같은 lock으로 순서를 정한다. 이전 세대에서 늦게 성공한 전송/오류 안내는 `delete_messages`로 삭제한다. 삭제 자체가 실패하면 ID를 receipt에 남겨 다음 `/clean`에서 추적한다.
+
 `TicketChat.handle`은 일반 Bot.dispatch보다 먼저 호출된다. `/tickets`·`/ticket`·`tickets`·`ticketopen`·`/cancel`, 편집 callback 및 pending field 입력을 소비하면 True를 반환한다. 나머지는 일반 dispatcher로 넘긴다. session은 `ticket-editor:<chat>:<user>`에 저장한다. render마다 token을 교체하며 다른 사용자/오래된 버튼은 거절한다.
 
 일반 요청은 `TicketChat.leave`에서 실제 편집 화면/pending이 있을 때만 이탈 상태를 저장한다. 빈 세션과 이미 away인 세션에는 쓰지 않는다. `/clean`은 receipt writer와 같은 flush lock 아래 pending ID 저장·조회·Telegram 삭제·DB 목록 정리를 수행하고, 그 뒤 편집 panel/token/pending을 정리한다.

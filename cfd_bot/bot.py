@@ -64,6 +64,7 @@ class Bot:
         self.message_store = receipts if receipts is not None else store
         self.ui = load_ui(config.get('_ui_dir'))
         self.ticket_ui = None
+        self.transfers = None
 
     @_diagnostics.trace
     def cases(self):
@@ -92,7 +93,11 @@ class Bot:
         return result
 
     @_diagnostics.trace
-    def file(self, chat, item):
+    def file(self, chat, item, case=None):
+        if self.transfers is not None:
+            if case is not None:
+                item = dict(item, _case_root=case['_root'])
+            return self.transfers.submit(chat, item)
         result = self.api.file(chat, item)
         self._remember(chat, result)
         return result
@@ -389,6 +394,8 @@ class Bot:
             self.send(chat, self.status(snap, runs, error), self.status_keyboard(runs))
             return
         if action == 'clean':
+            if self.transfers is not None:
+                self.transfers.cancel_chat(chat)
             # Telegram cannot delete messages older than 48 hours. Use the
             # message's Telegram timestamp and a small boundary margin so one
             # expired ID cannot force the whole batch into a slow fallback.
@@ -649,7 +656,7 @@ class Bot:
                 self.send(chat, self.ui.text('scenarios.data.residual_missing', pattern=case['residual_pattern']))
             for item in files:
                 if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L457:loop', item=item)
-                self.file(chat, item)
+                self.file(chat, item, case=case)
         elif parts[0] == 'export' and len(parts) == 3:
             if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L459:then')
             export = next((e for e in case['exports'] if e['name'] == parts[2]), None)
@@ -669,7 +676,7 @@ class Bot:
                     if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L467:else')
                     stamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(path.stat().st_mtime))
                     self.file(chat, dict(path=str(path), kind=export['kind'], caption=self.ui.text(
-                        'scenarios.data.caption', case_name=case['name'], name=export['name'], modified=stamp)))
+                        'scenarios.data.caption', case_name=case['name'], name=export['name'], modified=stamp)), case=case)
         else:
             if _diagnostics.detailed: _diagnostics.step('bot.Bot.dispatch:L459:else')
             raise ValueError(self.ui.text('menus.home.unknown_request'))
@@ -785,6 +792,8 @@ def serve(config, store, stop=None):
             raise ValueError(ui.text('scenarios.diagnostics.service.webhook'))
         receipts = TelegramReceipts(store)
         bot.receipts = bot.message_store = receipts
+        from .telegram_transfers import TelegramTransfers
+        bot.transfers = TelegramTransfers(api, bot._remember, ui)
         workers = [threading.Thread(target=_diagnostics.inherit_context(monitor_loop), daemon=True),
                    threading.Thread(target=_diagnostics.inherit_context(notification_loop), daemon=True)]
         for thread in workers:
@@ -810,6 +819,7 @@ def serve(config, store, stop=None):
                     stop.wait(max(3, exc.retry_after))
         finally:
             stop.set()
+            bot.transfers.close()
             for thread in workers:
                 if _diagnostics.detailed: _diagnostics.step('bot.serve:L582:loop', thread=thread)
                 thread.join(timeout=2)

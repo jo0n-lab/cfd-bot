@@ -182,7 +182,15 @@ web('UC-03','등록 케이스 목록','결과 화면 진입 / 복귀','/api/over
 tg('UC-04','상태 상세','detail:case-id',fn('bot.Bot.latest_run','case','Job|Observed|None',db('jobs','','all jobs'),db('get','observed:root','Observed|None'),db('runtime_history','case,cores','samples')),fn('report.render_run','run,templates,detail','text'),tg_send())
 web('UC-04','상태 상세·ETA','loadData','/api/detail?case=id',fn('web.WebApp.detail','cid','Detail',fn('web.WebApp.case','cid','Case'),fn('web.WebApp.read_log','case + cursor','(telemetry,path)'),fn('bot.Bot.latest_run','case','run|None'),fn('logs.estimate','case,telemetry,elapsed,history','Estimate'),db('runtime_history','case','samples')),note='/api/artifacts와 Promise.all; stale dataId이면 결과 폐기')
 for uc,title,action,call in [('UC-05','Residual 조회','residual',fn('artifacts.residual_files','case','FileItem[]',detail='D-10')),('UC-06','결과 파일 조회','export',fn('artifacts.export_files','case,export','Path[]',detail='D-10'))]:
- tg(uc,title,action+':case-id[:name]',call,fn('bot.Bot.file','파일마다 chat,item','Message',fn('telegram.Telegram.file','chat,item','Message',fn('telegram.Telegram.call','sendPhoto/Document, timeout=90','Message'),note='photo 400이면 document 재시도'),fn('bot.Bot._remember','chat, result','None',fn('telegram_receipts.TelegramReceipts.remember_message','chat, message_id, date','None',note='복구 journal 기록; DB 잠금은 업로드/다음 polling을 막지 않음'))))
+ tg(uc,title,action+':case-id[:name]',call,fn('bot.Bot.file','chat,item,case','접수/중복 병합',
+    fn('telegram_transfers.TelegramTransfers.submit','chat, FileItem + case root','bool',
+       fn('telegram_transfers.TelegramTransfers._send','worker: queued job','None',
+          fn('config.inside','case root, relative path','Path',note='대기 중 변경된 symlink에도 같은 공용 정책 적용'),
+          fn('telegram.Telegram.file','chat,item','Message',fn('telegram.Telegram.call','sendPhoto/Document','Message',note='연결 10초 / 응답 20초; 전송 단계별 시간 기록')),
+          fn('bot.Bot._remember','chat,result','None',note='clean 이전 세대이면 늦은 메시지도 삭제; 아니면 receipt 기록')),
+       note='worker 2개 / active+pending 16개; 같은 파일 병합; main은 다음 요청 처리')),
+    error='경로 오류/포화 → JSON 안내; worker 전송 실패 → 파일명과 재요청 안내; 모호한 전송 실패는 자동 재전송하지 않음')
+ charts[-1]['outcome']='파일 요청 접수/병합 → handle 반환 → offset journal → 다음 polling; 파일 전송과 receipt는 별도 worker'
  gui(uc,title,'open_queue_result_data',fn('artifacts.residual_files' if uc=='UC-05' else 'artifacts.export_files','현재 registry Case','파일 목록',detail='D-10'),note='현재 ticket로 추적 가능한 running/종료 job만; Tk Listbox에 경로 표시',outcome='파일 경로 표시; 이미지 preview/다운로드는 구현 없음')
  web(uc,title,'loadData / download','/api/artifacts → /api/file',fn('web.WebApp.artifacts','cid','ArtifactGroup[]',fn('web.WebApp.artifact_paths','cid,source','(Case,Path[])')),note='후속 /api/file은 Handler가 WebApp.file을 직접 호출: 재매칭→inside→open→fd 확인→64 KiB stream',outcome='파일 목록 JSON; 후속 파일 HTTP는 binary inline/attachment')
 tg('UC-07','티켓 목록·다중 선택','/tickets /ticket tickets',fn('ticket_chat.TicketChat.listing','page','None',service('listing','','names'),panel()),fn('ticket_chat.TicketChat.bulk_list','bulk/page/all/none/toggle','None',service('listing','','names'),panel()),editor=True)
@@ -239,7 +247,7 @@ web('UC-23','폴더·파일 선택','showBrowser','/api/browse',fn('web.WebApp.b
 tg('UC-24','입력 취소·초안 폐기·검색 취소','/cancel / backinput / discard / stopscan',fn('ticket_chat.TicketChat.card','pending/browser/scan_id 제거; draft 유지','None',panel()),editor=True)
 gui('UC-24','저장/폐기/취소·닫기','confirm_switch',fn('tkinter.messagebox.askyesnocancel','미저장 변경','True/False/None'),fn('gui.TicketEditor.save','Yes일 때','bool'),note='No: 폐기하고 이동; None: 현재 화면 유지; close는 성공 시 after 취소/destroy',outcome='bool → new/open/duplicate/close 진행 여부')
 chart('UC-24-web','초안 폐기·modal 취소','web','confirmDiscard / close-modal / beforeunload',fn('web_static.app.js:confirmDiscard','next action','UI action',fn('web_static.app.js:modal','dirty면 폐기 확인','None')),'확인 시 다음 action; 취소 시 draft 유지; 서버 rollback 동작 아님','진행 중 fetch의 서버 작업을 취소하는 기능은 없음')
-tg('UC-25','대화 일괄 정리','/clean',fn('telegram_receipts.TelegramReceipts.clean_barrier','','context',fn('telegram_receipts.TelegramReceipts._flush','pending messages + offset','None',db('remember_messages','batch + offset','None')),note='이후 chat_messages/delete_messages/clear_messages 완료까지 flush lock 유지'),db('chat_messages','chat, since=48h-60s','message_ids'),fn('telegram.Telegram.delete_messages','chat,ids','deleted ids',fn('telegram.Telegram._delete_batch','최대 100 ids','deleted ids',fn('telegram.Telegram.call','deleteMessages','API result'),note='400이면 절반씩 재귀; 단일 불가 ID는 []')),db('clear_messages','chat'),fn('ticket_chat.TicketChat.forget_panels','chat','None',note='draft 유지; token/panel/pending 제거'))
+tg('UC-25','대화 일괄 정리','/clean',fn('telegram_transfers.TelegramTransfers.cancel_chat','chat','None',note='pending 취소 / 세대 증가; active 전송 완료 시에도 메시지 삭제'),fn('telegram_receipts.TelegramReceipts.clean_barrier','','context',fn('telegram_receipts.TelegramReceipts._flush','pending messages + offset','None',db('remember_messages','batch + offset','None')),note='이후 chat_messages/delete_messages/clear_messages 완료까지 flush lock 유지'),db('chat_messages','chat, since=48h-60s','message_ids'),fn('telegram.Telegram.delete_messages','chat,ids','deleted ids',fn('telegram.Telegram._delete_batch','최대 100 ids','deleted ids',fn('telegram.Telegram.call','deleteMessages','API result'),note='400이면 절반씩 재귀; 단일 불가 ID는 []')),db('clear_messages','chat'),fn('ticket_chat.TicketChat.forget_panels','chat','None',note='draft 유지; token/panel/pending 제거'))
 # Non-UI operational entrypoints are one chart with explicit command branches.
 chart('UC-26','외부 PC 접속과 브라우저','Windows / macOS / Linux','launcher / cfd-web-tunnel',fn('OpenSSH ssh','-N -T -L loopback:local:loopback:server','연결 유지',note='Windows Get-SshAliases / macOS ssh_config_hosts → Host 번호 선택; ssh가 인증/ProxyJump 해석'), '포트 열림 확인 → 브라우저 http://127.0.0.1 → UC-01-web; 종료 시 자신이 만든 SSH 종료','잘못된 선택·포트 충돌·SSH 종료 시 실패; HTTP health 확인과 단순 포트 열림은 다름')
 chart('UC-27','운영 CLI 명령 분기','CLI','python -m cfd_bot [command]',fn('cli.main','argv','exit code',fn('config.load_bot','config path','BotConfig'),fn('config.cases_for','check: force=True; enqueue: cached index','Case[]'),fn('processes.snapshot','status만: command','Snapshot',detail='D-04'),db('enqueue','enqueue만: selected Case','Job'),fn('monitor.Monitor.run_once','monitor만: loop/once','bool'),fn('bot.serve','serve만','None; loop'),fn('web.serve','web만','None; loop')), 'check는 검증/stdout만; identify는 Telegram 조회; gui는 config 분기 전에 launch','OSError/ValueError/RuntimeError → stderr, exit 2; _worker는 별도 worker 반환')
@@ -370,7 +378,7 @@ def expand_boundaries(n):
     if n['name']=='web.WebApp.fresh' and not n['children']:
         n['children']=[runner('_snapshot','','Snapshot'),fn('tickets.sync_ticket_states','config,store,snapshot','None')]
     if n['name']=='telegram.Telegram.call' and not n['children']:
-        n['children']=[fn('urllib.request.urlopen','HTTPS Telegram Bot API; timeout','HTTP response JSON',note='실제 외부 HTTP 요청; token은 표시하지 않음')]
+        n['children']=[fn('telegram_transport.open_request','HTTPS Telegram Bot API','HTTP response JSON',note='연결 10초 / 응답 20초; 단계별 시간만 기록하고 token/URL은 제외')]
     for child in n['children']:expand_boundaries(child)
 for c in charts:expand_boundaries(c['root'])
 
@@ -407,7 +415,10 @@ def render(item):
         events.append(('call',caller,target,method(n['name'])+'('+n['request']+')',n['detail']))
         note(n['note'])
         for c in n['children']:
-            if c['name'].endswith('.work'):
+            if c['name']=='telegram_transfers.TelegramTransfers._send':
+                events.append(('async',target,owner(c['name']),'기존 worker 깨움 → '+method(c['name'])+' (비동기)',''))
+                deferred.append((c,target,'transfer'))
+            elif c['name'].endswith('.work'):
                 events.append(('async',target,owner(c['name']),'Thread.start → '+method(c['name'])+' (비동기)',''))
                 deferred.append((c,target,'work'))
             elif c['name'].endswith('.finish'):
@@ -423,7 +434,7 @@ def render(item):
         else:
             target=owner(n['name']);note(n['name'])
             for c in n['children']:walk(c,target)
-            note('worker 종료; session 저장 또는 Queue 결과 → UI 갱신')
+            note('파일 작업 완료; worker는 다음 파일 대기' if kind=='transfer' else 'worker 종료; session 저장 또는 Queue 결과 → UI 갱신')
     participants=[external]
     for event in events:
         for p in event[1:3]:

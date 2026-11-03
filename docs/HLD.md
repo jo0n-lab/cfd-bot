@@ -1,5 +1,7 @@
 # CFD bot High-Level Design
 
+Telegram 요청 파일은 main과 분리된 `TelegramTransfers` worker 2개가 전송한다. active+pending 최대 16개와 동일 chat/파일 병합으로 요청 누적을 제한하며 `/clean`은 대기 취소·늦은 전송 삭제까지 처리한다. 공용 티켓/artifact 정책과 GUI/web의 결과 경로는 동일하다. [As-Is/To-Be](history/2026-11-03-telegram-transfer-isolation.md).
+
 `ofps`는 임시 디렉터리 생성 또는 snapshot 수집·읽기에 실패하면 즉시 nonzero로 종료한다. CPU 검사·반복 조회도 실패 뒤 진행하지 않는다. Telegram·GUI·web·Monitor는 같은 공용 경로의 실패를 전달받으며, Monitor는 신규 큐 실행을 보류한다. [실패 전파 설계](history/2026-10-17-ofps-temp-failure.md).
 
 > #31 진단 로그 보관: Python/ofps의 5분 segment와 요청 경로 밖의 5분 user timer로 마지막 기록 후 24시간 지난 파일을 정리한다. [As-Is/To-Be](history/2026-10-16-diagnostic-retention.md) · [보관 계약/설치](DIAGNOSTICS.md#보관과-읽기).
@@ -90,7 +92,8 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 
 | 실행 단위 | 진입점 / 실행 방식 | 점유하는 작업 | 응답/완료 경계 |
 |---|---|---|---|
-| 봇 main thread | `bot.serve`, updates 순차 for loop | 인증·routing·대부분의 도메인 호출·일반 메시지와 파일 전송 | handle 반환 후 offset을 로컬 journal에 기록 |
+| 봇 main thread | `bot.serve`, updates 순차 for loop | 인증·routing·도메인 호출·일반 메시지 전송·파일 queue 접수 | handle 반환 후 offset을 로컬 journal에 기록 |
+| Telegram 파일 worker | `TelegramTransfers`, 고정 2개 | 파일 전송·송신 receipt·실패 안내 | active+pending 16개; chat/세대/경로/형식 중복 병합; 자동 알림 outbox와 별개 |
 | callback ACK thread | callback마다 `start_callback_ack` | answerCallbackQuery 네트워크 호출 | 실제 action 완료와 독립 |
 | Telegram receipt thread | `TelegramReceipts`, daemon lock 안에서 1개 | 메시지 ID·offset을 50ms 병합 후 SQLite 일괄 저장·실패 재시도 | 수신/송신은 journal 기록까지만 기다림; `/clean`은 flush 동기화 |
 | Telegram 검색 thread | `TicketChat.scan.work` | snapshot·매크로 디렉터리 검색 | session 확인 후 RLock 아래 화면 전송 |
@@ -103,7 +106,7 @@ Web은 `127.0.0.1:8766`에 바인딩한다. Windows CMD/PowerShell과 macOS app�
 | Tk 작업 thread | `scan_cases.work`, `submit.work` | scan/discover 또는 실행 요청 | Queue → `after(100, finish)` |
 | CLI | `cli.main` | 선택 명령; monitor는 loop | stdout/exit code 또는 서비스 loop |
 
-일반 Telegram 응답 전송은 outbox를 거치지 않으며 main thread를 점유한다. ACK를 비동기로 보낸다고 다음 사용자 요청까지 병렬 처리되는 것은 아니다. Tk의 일반 저장/검증은 main thread에서 수행한다. 브라우저가 비동기 fetch를 사용해도 현재 click 처리 중 `S.busy`와 `content.inert`가 다른 조작을 제한한다.
+일반 Telegram 텍스트 응답은 outbox를 거치지 않으며 main thread에서 전송한다. 요청 파일은 별도 worker가 전송하므로 다음 요청의 polling/ACK를 막지 않는다. 편집·실행 등 도메인 명령은 main 순서를 유지한다. Tk의 일반 저장/검증은 main thread에서 수행한다. 브라우저가 비동기 fetch를 사용해도 현재 click 처리 중 `S.busy`와 `content.inert`가 다른 조작을 제한한다.
 
 Telegram ACK는 인증 후 메시지 기록보다 먼저 시작한다. 빈 편집 세션과 이미 이탈한 세션에는 조회 요청마다 쓰지 않는다. 메시지 ID/offset은 `state/telegram-receipts.json`에 복구 가능하게 기록하고 별도 writer가 계산 DB에 반영한다. journal 파일 I/O와 Telegram API 시간은 여전히 요청 비용이며, 실제 편집 이탈·티켓 저장 같은 의미 있는 DB 쓰기는 동기 처리한다. [As-Is/To-Be 및 검증](history/2026-10-10-telegram-receipt-batching.md).
 
@@ -135,7 +138,7 @@ Telegram ACK는 인증 후 메시지 기록보다 먼저 시작한다. 빈 편�
 | `TicketChat.lock` | TicketChat 인스턴스 RLock | handle 전체, 검색 결과 반영, render의 API 호출 포함 | 한 사용자의 느린 API 호출이 다른 session 처리·검색 결과 반영에 영향 |
 | SQLite writer | DB 파일; connect마다 timeout=30, WAL | BEGIN IMMEDIATE 또는 쓰기 transaction | 별도 연결/프로세스도 writer 경쟁. live child를 가진 worker는 locked/busy를 재시도해 DB 경합으로 solver를 종료하지 않음 |
 | daemon.lock | state 디렉터리 flock NB | bot/monitor 전체 생애 | 중복 scheduler 프로세스 방지; web은 별도 lock 미사용 |
-| API 네트워크 | Telegram.call | 일반 30초, upload 90초; updates 20초 | main 요청/파일 전송 및 Delivery batch의 순차 대기 |
+| API 네트워크 | Telegram.call / telegram_transport | 연결 socket 10초, 응답 header/body 20초; 요청 전송은 일반 30초/upload 90초/updates 20초 | DNS는 OS resolver; 대화형 파일 worker와 Delivery thread는 main과 독립 |
 | GUI/Web 조작 상태 | run_busy/scan_in_progress, S.busy/S.refreshing | 같은 UI 동작 재진입 제한 | 서버 공용 lock과 다른 개념; web 표시 fallback scan은 같은 process에서 합침 |
 
 일반적인 잠금 순서는 snapshot lock 해제 → ticket flock → 필요한 DB transaction이다. catalog는 여러 폴더를 정렬하여 잠근다. TicketRunner는 fresh scan을 ticket lock 전에 실행하지만 lock 안에서 멤버별 observed와 jobs를 읽는다. 이 설명은 정적 경로 조사이며 모든 외부 프로세스와의 교착 부재를 증명한 것은 아니다.

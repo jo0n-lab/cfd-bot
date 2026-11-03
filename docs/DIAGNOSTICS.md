@@ -42,6 +42,8 @@ basic helper 오류는 Python `function.error`에 실제 함수·stack을 남기
 
 ## 기록 범위와 해석
 
+Telegram 파일 queue는 `telegram.transfer.queued/coalesced/started/finished/failed/cancelled/shutdown`을 기록한다. `transfer_id`와 원래 요청 trace를 연결하며 `queue_ms`로 대기 시간을 구분한다. `telegram.transport.phase`의 `prepare`, `file_read`, `connect`(DNS/TCP/TLS·proxy 포함), `request_send`, `response_headers`, `response_body`와 `duration_ms`, bytes, error_type으로 병목 구간을 읽는다. `prepare`는 file_read를 포함하며 request_send는 header/body별로 여러 번 나올 수 있다. URL·토큰·파일 내용은 기록하지 않는다. connect 내부 DNS/TCP/TLS 개별 시간은 현재 분리하지 않는다. 이 사건들은 basic에서도 남는다.
+
 | 경계 | 주요 기록 |
 |---|---|
 | Python 함수 401개 (전체는 detailed) | function.call / return / raise, caller, input/result 요약, call/parent/trace, 소요 시간 |

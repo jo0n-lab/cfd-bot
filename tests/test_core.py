@@ -1265,7 +1265,7 @@ class TransportTests(Environment):
         p = self.case_root / 'result.csv'
         p.write_text('a,b\n1,2\n')
         response = io.BytesIO(b'{"ok":true,"result":{"message_id":7}}')
-        with patch('urllib.request.urlopen', return_value=response) as request:
+        with patch('cfd_bot.telegram.open_request', return_value=response) as request:
             result = Telegram('test-token').file(20, dict(path=str(p), kind='document'))
         self.assertEqual(result['message_id'], 7)
         body = request.call_args.args[0].data
@@ -1274,7 +1274,7 @@ class TransportTests(Environment):
         self.assertIn(b'a,b\n1,2\n', body)
 
     def test_transport_error_does_not_leak_token(self):
-        with patch('urllib.request.urlopen', side_effect=OSError('url contains secret-token')):
+        with patch('cfd_bot.telegram.open_request', side_effect=OSError('url contains secret-token')):
             with self.assertRaises(TelegramError) as raised:
                 Telegram('secret-token').call('getMe', {})
         self.assertNotIn('secret-token', str(raised.exception))

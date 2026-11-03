@@ -9,7 +9,8 @@ digraph system {
  cli [label="CLI / standalone ofps"];
  subgraph cluster_bot {
   label="cfd-bot.service · Python process";color="#94a3b8";style=rounded;
-  main [label="Main thread\nserve → Bot.handle → dispatch\n요청과 일반 전송 순차 처리"];
+  main [label="Main thread\nserve → Bot.handle → dispatch\n명령 순차 처리 / 파일 queue 접수"];
+  uploads [label="Telegram 파일 worker × 2\n최대 16개 / 같은 파일 병합\nclean 취소·늦은 전송 삭제"];
   mon [label="Monitor thread\nmonitor-only 신규 실행 제외\n미발행 종료 → Scheduler → sync"];
   delivery [label="Delivery thread\noutbox 순차 전송 / checkpoint"];
   ack [label="callback ACK / 검색 workers"];
@@ -22,6 +23,7 @@ digraph system {
  tickets [shape=folder,label="tickets/*.json\nqueue id / cores / dynamic cores\n폴더 flock / revision / replace",fillcolor="#f1f5f9"];
  files [shape=folder,label="case settings / logs / artifacts\nstate/events frozen attachments",fillcolor="#f1f5f9"];
  tg -> main [label="updates / 응답",dir=both];main -> ack [label="async"];
+ main -> uploads [label="파일 요청 / 즉시 반환"];uploads -> tg [label="독립 전송 / 단계별 진단"];
  browser -> ssh -> web;
  main -> scan [label="fresh stat"];
  mon -> scan [label="snapshot / CPU check"];
